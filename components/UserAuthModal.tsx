@@ -77,7 +77,20 @@ export const UserAuthModal: React.FC = () => {
 
       if (userSnap.exists()) {
         const existingProfile = userSnap.data() as UserProfile;
-        loginCustomer(existingProfile);
+        // Always enforce actual Google display name and admin rule
+        const updatedProfile: UserProfile = {
+          ...existingProfile,
+          fullName: isAdmin ? ADMIN_NAME : (userDisplayName || existingProfile.fullName || 'مستخدم'),
+          email: userEmail || existingProfile.email,
+          avatar: userPhotoURL || existingProfile.avatar,
+          isSiteAdmin: isAdmin,
+          role: isAdmin ? 'ADMIN' : 'CUSTOMER',
+        };
+        // Save back updated info to firestore
+        try {
+          await setDoc(doc(db, 'users', userId), updatedProfile, { merge: true });
+        } catch {}
+        loginCustomer(updatedProfile);
         closeModal();
       } else {
         const newProfile: UserProfile = {
@@ -86,7 +99,7 @@ export const UserAuthModal: React.FC = () => {
           email: userEmail,
           avatar: userPhotoURL,
           phone: '',
-          role: 'CUSTOMER',
+          role: isAdmin ? 'ADMIN' : 'CUSTOMER',
           isMember: true,
           ...(isAdmin ? { isSiteAdmin: true } : {}),
           registeredAt: new Date().toISOString(),
