@@ -407,9 +407,16 @@ export default function MasterAdminPage() {
     setProductList(prev => prev.map(p => p.id === productId ? { ...p, status: p.status === 'AVAILABLE' ? 'SOLD' : 'AVAILABLE' } : p));
   };
 
-  const handleDeleteProduct = (productId: string) => {
+  const handleDeleteProduct = async (productId: string) => {
     if (confirm('هل تريد حذف هذا المنشور نهائياً؟')) {
       setProductList(prev => prev.filter(p => p.id !== productId));
+      try {
+        const { deleteDoc, doc } = await import('firebase/firestore');
+        const { db } = await import('../../lib/firebase');
+        await deleteDoc(doc(db, 'products', productId));
+      } catch (err) {
+        console.error('Firestore delete failed:', err);
+      }
     }
   };
 

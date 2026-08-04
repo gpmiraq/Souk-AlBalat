@@ -3,6 +3,8 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { CartItem, CustomerDetails, Product, UserProfile, Vendor, VendorSubCart } from '../types';
 import { INITIAL_VENDORS, INITIAL_PRODUCTS } from '../data/mockData';
+import { db } from '../lib/firebase';
+import { collection, doc, setDoc, getDocs, deleteDoc, updateDoc } from 'firebase/firestore';
 
 export interface SiteSettings {
   siteName: string;
@@ -98,6 +100,33 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   // Load state from localStorage & parse Google OAuth Redirect Token
   useEffect(() => {
+    // 1. Fetch live products from Firestore Database
+    const fetchLiveProducts = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'products'));
+        const liveProductsList: Product[] = [];
+        querySnapshot.forEach((docSnap) => {
+          liveProductsList.push({ id: docSnap.id, ...docSnap.data() } as Product);
+        });
+
+        if (liveProductsList.length > 0) {
+          setProducts(liveProductsList);
+        } else {
+          // If Firestore is empty, seed it with INITIAL_PRODUCTS
+          INITIAL_PRODUCTS.forEach(async (p) => {
+            await setDoc(doc(db, 'products', p.id), p);
+          });
+          setProducts(INITIAL_PRODUCTS);
+        }
+      } catch (err) {
+        console.warn('Firestore fetch failed/disabled, using localStorage fallback:', err);
+        const savedProducts = localStorage.getItem('balat_iq_products');
+        if (savedProducts) setProducts(JSON.parse(savedProducts));
+      }
+    };
+
+    fetchLiveProducts();
+
     try {
       const savedCart = localStorage.getItem('balat_iq_cart');
       if (savedCart) setCart(JSON.parse(savedCart));
@@ -117,9 +146,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const savedActivatedVendors = localStorage.getItem('balat_iq_activated_vendors');
       if (savedActivatedVendors) setActivatedVendorIds(JSON.parse(savedActivatedVendors));
 
-      const savedProducts = localStorage.getItem('balat_iq_products');
-      if (savedProducts) setProducts(JSON.parse(savedProducts));
-
       // Parse Google OAuth Token from hash redirect
       if (typeof window !== 'undefined' && window.location.hash) {
         const hash = window.location.hash.substring(1);
@@ -128,7 +154,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         if (accessToken) {
           fetch(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${accessToken}`)
             .then(res => res.json())
-            .then(data => {
+            .then(async (data) => {
               if (data.name) {
                 const user: UserProfile = {
                   id: `google_${data.sub || Date.now()}`,
@@ -141,6 +167,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
                 };
                 setCurrentUser(user);
                 localStorage.setItem('balat_iq_user', JSON.stringify(user));
+                // Sync user to Firestore
+                try {
+                  await setDoc(doc(db, 'users', user.id), user);
+                } catch {}
                 // Clear URL hash cleanly
                 window.history.replaceState(null, "", window.location.pathname);
               }
@@ -153,10 +183,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Save products
+  // Save products to localStorage as fallback and update Firestore dynamically
   useEffect(() => {
     try {
       localStorage.setItem('balat_iq_products', JSON.stringify(products));
+      // Write each product dynamically to Firestore Cloud Database
+      products.forEach(async (p) => {
+        try {
+          await setDoc(doc(db, 'products', p.id), p);
+        } catch (err) {
+          console.warn('Firestore single save error:', err);
+        }
+      });
     } catch (e) {
       console.error('Error saving products:', e);
     }
