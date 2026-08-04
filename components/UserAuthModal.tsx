@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { X, MapPin, CheckCircle2, ChevronDown, Loader2 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { db, auth } from '../lib/firebase';
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { UserProfile } from '../types';
 
@@ -58,30 +57,34 @@ export const UserAuthModal: React.FC = () => {
     setIsLoading(true);
     setError('');
     try {
+      const { GoogleAuthProvider, signInWithPopup } = await import('firebase/auth');
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
       const result = await signInWithPopup(auth, provider);
       const firebaseUser = result.user;
 
-      const isAdmin = firebaseUser.email === ADMIN_EMAIL;
-      const userId = `google_${firebaseUser.uid}`;
+      const uid = String(firebaseUser.uid || '');
+      const userEmail = String(firebaseUser.email || '');
+      const userDisplayName = String(firebaseUser.displayName || '');
+      const userPhotoURL = String(firebaseUser.photoURL || '');
+
+      const isAdmin = userEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+      const userId = `google_${uid}`;
 
       // Check if user already exists in Firestore
       const userDocRef = doc(db, 'users', userId);
       const userSnap = await getDoc(userDocRef);
 
       if (userSnap.exists()) {
-        // Existing user → login directly
         const existingProfile = userSnap.data() as UserProfile;
         loginCustomer(existingProfile);
         closeModal();
       } else {
-        // New user → go to phone step
         const newProfile: UserProfile = {
           id: userId,
-          fullName: isAdmin ? ADMIN_NAME : (firebaseUser.displayName || 'مستخدم جديد'),
-          email: firebaseUser.email || '',
-          avatar: firebaseUser.photoURL || '',
+          fullName: isAdmin ? ADMIN_NAME : (userDisplayName || 'مستخدم جديد'),
+          email: userEmail,
+          avatar: userPhotoURL,
           phone: '',
           role: 'CUSTOMER',
           isMember: true,
