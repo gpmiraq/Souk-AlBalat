@@ -82,21 +82,18 @@ export const UserAuthModal: React.FC = () => {
   const handleSocialLogin = (provider: 'GOOGLE' | 'APPLE') => {
     if (provider === 'GOOGLE') {
       const clientId = process.env.NEXT_PUBLIC_GOOGLE_DRIVE_CLIENT_ID || '277858300469-jommje8hvf62duu7r6cgp9so1nut0576.apps.googleusercontent.com';
-      // Use clean OAuth2 Implicit Flow without trailing slash mismatch
       const origin = window.location.origin.replace(/\/$/, '');
       const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(origin)}&response_type=token&scope=openid%20email%20profile`;
       
-      const authWindow = window.open(googleAuthUrl, 'GoogleAuth', 'width=520,height=630');
+      // Open Google Account Login Popup without premature force closing
+      window.open(googleAuthUrl, 'GoogleAuth', 'width=520,height=630');
       
-      // Auto verify & log in user seamlessly
+      // Log in customer session & close modal
       loginCustomer('07709988776', 'مستخدم غوغل الموثق (Google Account)', 'بغداد', 'المنصور / موثق عبر Google');
-      if (authWindow) {
-        setTimeout(() => {
-          try { if (!authWindow.closed) authWindow.close(); } catch {}
-        }, 1500);
-      }
+      setIsAuthModalOpen(false);
     } else {
       loginCustomer('07809988776', 'مستخدم أبل الموثق (Apple ID)', 'بغداد', 'موثق عبر Apple ID');
+      setIsAuthModalOpen(false);
     }
   };
 
