@@ -96,7 +96,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     notes: '',
   });
 
-  // Load state from localStorage
+  // Load state from localStorage & parse Google OAuth Redirect Token
   useEffect(() => {
     try {
       const savedCart = localStorage.getItem('balat_iq_cart');
@@ -119,6 +119,35 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       const savedProducts = localStorage.getItem('balat_iq_products');
       if (savedProducts) setProducts(JSON.parse(savedProducts));
+
+      // Parse Google OAuth Token from hash redirect
+      if (typeof window !== 'undefined' && window.location.hash) {
+        const hash = window.location.hash.substring(1);
+        const params = new URLSearchParams(hash);
+        const accessToken = params.get('access_token');
+        if (accessToken) {
+          fetch(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${accessToken}`)
+            .then(res => res.json())
+            .then(data => {
+              if (data.name) {
+                const user: UserProfile = {
+                  id: `google_${data.sub || Date.now()}`,
+                  fullName: data.name,
+                  phone: '07709988776',
+                  role: 'CUSTOMER',
+                  isMember: true,
+                  city: 'بغداد',
+                  address: 'موثق عبر Google Auth',
+                };
+                setCurrentUser(user);
+                localStorage.setItem('balat_iq_user', JSON.stringify(user));
+                // Clear URL hash cleanly
+                window.history.replaceState(null, "", window.location.pathname);
+              }
+            })
+            .catch(err => console.error('OAuth userinfo fetch error:', err));
+        }
+      }
     } catch (e) {
       console.error('Error loading state:', e);
     }
