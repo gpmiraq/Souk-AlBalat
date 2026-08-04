@@ -338,14 +338,26 @@ export const AdminVendorDashboard: React.FC<AdminVendorDashboardProps> = ({
                 ))}
 
                 {images.length < 4 && (
-                  <button
-                    type="button"
-                    onClick={handleAddImage}
-                    className="aspect-square bg-slate-100 dark:bg-carbon-900 hover:bg-slate-200 dark:hover:bg-carbon-800 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center gap-1 text-slate-500 transition-colors"
-                  >
-                    <Plus className="w-5 h-5 text-amber-500" />
-                    <span className="text-[10px] font-bold">إضافة صورة 1:1</span>
-                  </button>
+                  <label className="aspect-square bg-slate-100 dark:bg-carbon-900 hover:bg-amber-500/10 cursor-pointer rounded-xl border-2 border-dashed border-amber-500/40 flex flex-col items-center justify-center gap-1 text-slate-500 hover:text-amber-500 transition-all">
+                    <Camera className="w-5 h-5 text-amber-500" />
+                    <span className="text-[10px] font-bold text-center px-1">رفع من الكاميرا / الاستوديو 📸</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            if (reader.result) {
+                              setImages((prev) => [...prev, reader.result as string]);
+                            }
+                          };
+                          reader.readAsDataURL(e.target.files[0]);
+                        }
+                      }}
+                      className="hidden"
+                    />
+                  </label>
                 )}
               </div>
             </div>

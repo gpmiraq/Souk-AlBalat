@@ -71,7 +71,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   
   const [vendors, setVendors] = useState<Vendor[]>(INITIAL_VENDORS);
-  const [vendorUser, setVendorUser] = useState<Vendor | null>(INITIAL_VENDORS[0]);
+  const [vendorUser, setVendorUser] = useState<Vendor | null>(null);
   const [activatedVendorIds, setActivatedVendorIds] = useState<string[]>(['v1', 'v2', 'v3']);
 
   const [siteSettings, setSiteSettings] = useState<SiteSettings>({

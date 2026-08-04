@@ -301,6 +301,26 @@ export default function MasterAdminPage() {
   const [newCategorySelect, setNewCategorySelect] = useState('إلكترونيات');
   const [newVendorId, setNewVendorId] = useState('v_admin');
   const [newCatName, setNewCatName] = useState('');
+  const [newUploadedImages, setNewUploadedImages] = useState<string[]>([]);
+
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const files = Array.from(e.target.files);
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (reader.result) {
+            setNewUploadedImages(prev => [...prev, reader.result as string]);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  };
+
+  const removeUploadedImage = (index: number) => {
+    setNewUploadedImages(prev => prev.filter((_, i) => i !== index));
+  };
 
   // Users
   const [usersList, setUsersList] = useState<UserProfile[]>(MOCK_USERS);
@@ -336,12 +356,13 @@ export default function MasterAdminPage() {
   const handleAddProduct = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim() || !newPrice) return;
+    const finalImages = newUploadedImages.length > 0 ? newUploadedImages : ['https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=800&q=80'];
     const prod: Product = {
       id: `p_${Date.now()}`, title: newTitle.trim(), description: 'بضاعة ممتازة مفحوصة 100%.',
       condition: 'NEW', conditionNotes: 'جديد بالختم.',
       retailPrice: Number(newPrice) * 1.3, outletPrice: Number(newPrice),
       publishedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
-      images: ['https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=800&q=80'],
+      images: finalImages,
       tags: ['جديد', 'أمازون'], vendorId: newVendorId, status: 'AVAILABLE', quantity: 1,
       category: newCatName.trim() || newCategorySelect, viewsCount: 1,
     };
@@ -350,7 +371,7 @@ export default function MasterAdminPage() {
       setTreeCategories(prev => [...prev, { id, name: newCatName.trim(), slug: newCatName.trim().replace(/\s+/g, '-'), icon: '📁' }]);
     }
     setProductList(prev => [prod, ...prev]);
-    setNewTitle(''); setNewPrice(''); setNewCatName('');
+    setNewTitle(''); setNewPrice(''); setNewCatName(''); setNewUploadedImages([]);
   };
 
   // Tree category handlers
@@ -613,6 +634,48 @@ export default function MasterAdminPage() {
                     className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-amber-500/30 text-white focus:ring-1 focus:ring-amber-500 focus:outline-none" />
                 </div>
               </div>
+
+              {/* Image Upload Picker Section (Studio / Camera) */}
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-2xl space-y-2">
+                <label className="block text-slate-300 font-bold">إضافة صور المنتج (من المعرض / الاستوديو أو الكاميرا) 📸</label>
+                
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="cursor-pointer px-4 py-2.5 bg-amber-500/20 border border-amber-500/40 hover:bg-amber-500/30 text-amber-300 font-bold rounded-xl flex items-center gap-2 transition-all">
+                    <ImageIcon className="w-4 h-4" />
+                    <span>اختر صور من الاستوديو أو الكاميرا</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleImageFileChange}
+                      className="hidden"
+                    />
+                  </label>
+                  <span className="text-[11px] text-slate-500 font-mono">
+                    {newUploadedImages.length} صور تم اختيارها
+                  </span>
+                </div>
+
+                {/* Selected Thumbnails Preview Grid */}
+                {newUploadedImages.length > 0 && (
+                  <div className="flex items-center gap-2 overflow-x-auto pt-2">
+                    {newUploadedImages.map((img, idx) => (
+                      <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-700 flex-shrink-0 group">
+                        <img src={img} alt={`رفع ${idx}`} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeUploadedImage(idx)}
+                          className="absolute top-1 left-1 w-5 h-5 rounded-full bg-red-600 text-white text-[10px] font-black flex items-center justify-center shadow opacity-90 hover:opacity-100"
+                          title="حذف الصورة"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <button type="submit" className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black flex items-center gap-2 shadow-md transition-all">
                 <Plus className="w-4 h-4" />
                 نشر البضاعة
