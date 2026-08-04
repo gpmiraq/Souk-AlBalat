@@ -22,6 +22,7 @@ import {
 import { ConditionType, Product, ProductStatus } from '../types';
 import { useCart } from '../context/CartContext';
 import { generateAIProductDescription } from '../utils/AIDescriptionGenerator';
+import { createStampedImage } from '../utils/imageWatermark';
 
 interface AdminVendorDashboardProps {
   products: Product[];
@@ -347,9 +348,11 @@ export const AdminVendorDashboard: React.FC<AdminVendorDashboardProps> = ({
                       onChange={(e) => {
                         if (e.target.files && e.target.files[0]) {
                           const reader = new FileReader();
-                          reader.onloadend = () => {
+                          reader.onloadend = async () => {
                             if (reader.result) {
-                              setImages((prev) => [...prev, reader.result as string]);
+                              const rawDataUrl = reader.result as string;
+                              const stampedUrl = await createStampedImage(rawDataUrl, { opacity: 0.38 });
+                              setImages((prev) => [...prev, stampedUrl]);
                             }
                           };
                           reader.readAsDataURL(e.target.files[0]);

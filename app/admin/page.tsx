@@ -16,6 +16,7 @@ import {
 import { useCart } from '../../context/CartContext';
 import { INITIAL_PRODUCTS, INITIAL_CATEGORIES } from '../../data/mockData';
 import { Product, Vendor, UserProfile, ReportItem, TreeCategory, ActivityLogEntry } from '../../types';
+import { createStampedImage } from '../../utils/imageWatermark';
 
 // ─── Mock extended user data with tracking ──────────────────────────────────
 const MOCK_USERS: UserProfile[] = [
@@ -366,9 +367,11 @@ export default function MasterAdminPage() {
       const files = Array.from(e.target.files);
       files.forEach(file => {
         const reader = new FileReader();
-        reader.onloadend = () => {
+        reader.onloadend = async () => {
           if (reader.result) {
-            setNewUploadedImages(prev => [...prev, reader.result as string]);
+            const rawDataUrl = reader.result as string;
+            const stampedUrl = await createStampedImage(rawDataUrl, { opacity: 0.38 });
+            setNewUploadedImages(prev => [...prev, stampedUrl]);
           }
         };
         reader.readAsDataURL(file);
