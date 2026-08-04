@@ -130,10 +130,25 @@ export const UserAuthModal: React.FC = () => {
   const handlePhoneSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const cleaned = phone.replace(/\D/g, '');
-    if (cleaned.length < 10) {
-      setPhoneError('يرجى إدخال رقم هاتف صحيح (10 أرقام على الأقل)');
+
+    if (!cleaned) {
+      setPhoneError('رقم الهاتف إجباري لإكمال التسجيل');
       return;
     }
+
+    if (cleaned.length !== 11) {
+      setPhoneError('يجب أن يتكون رقم الهاتف العراقي من 11 رقماً بالضبط (مثال: 07701234567)');
+      return;
+    }
+
+    const validPrefixes = ['077', '078', '075', '079'];
+    const prefix = cleaned.substring(0, 3);
+
+    if (!validPrefixes.includes(prefix)) {
+      setPhoneError('يجب أن يبدأ رقم الهاتف العراقي بـ (077 أو 078 أو 075 أو 079)');
+      return;
+    }
+
     setPhoneError('');
     setStep('LOCATION');
   };
@@ -278,7 +293,8 @@ export const UserAuthModal: React.FC = () => {
                       type="tel"
                       value={phone}
                       onChange={e => setPhone(e.target.value)}
-                      placeholder="07X XXXX XXXX"
+                      placeholder="077XXXXXXXX (11 رقماً)"
+                      maxLength={11}
                       className="flex-1 bg-transparent text-white placeholder-slate-500 outline-none text-right font-mono"
                       dir="ltr"
                       autoFocus
