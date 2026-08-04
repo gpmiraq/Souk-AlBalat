@@ -4,12 +4,13 @@ import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyDemoKeyForDevelopmentMode',
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'souk-albalat.firebaseapp.com',
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'souk-albalat',
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'souk-albalat.appspot.com',
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '123456789',
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '1:123456789:web:demo',
+  apiKey: "AIzaSyBak-U4x0HySyQ40mZne3923KOkuwmQhtI",
+  authDomain: "souk-albalat-drive.firebaseapp.com",
+  projectId: "souk-albalat-drive",
+  storageBucket: "souk-albalat-drive.firebasestorage.app",
+  messagingSenderId: "277858300469",
+  appId: "1:277858300469:web:d6be5aa984585f805c377c",
+  measurementId: "G-M3PMZPWQTL"
 };
 
 // Initialize Firebase app singleton
