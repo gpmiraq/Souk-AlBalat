@@ -61,8 +61,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [isQRCodeOpen, setIsQRCodeOpen] = useState(false);
   const [searchInputValue, setSearchInputValue] = useState('');
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const categoryScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Close user menu on outside click
   useEffect(() => {
@@ -196,13 +201,13 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* 3. Customer Login / Profile Dropdown */}
             <div className="relative" ref={userMenuRef}>
-              {currentUser ? (
+              {isMounted && currentUser ? (
                 <>
                   <button
                     onClick={() => setIsUserMenuOpen(v => !v)}
                     className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-200 bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700"
                   >
-                    {(currentUser as any).isSiteAdmin && (
+                    {Boolean((currentUser as any)?.isSiteAdmin) && (
                       <Crown className="w-3.5 h-3.5 text-amber-400" />
                     )}
                     <User className="w-4 h-4 text-amber-400" />
