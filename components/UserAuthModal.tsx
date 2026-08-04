@@ -1,370 +1,322 @@
 'use client';
 
-import React, { useState, useId } from 'react';
-import { X, Phone, UserCheck, LogIn, Compass, Navigation, AlertCircle, ShieldCheck, CheckCircle2, KeyRound } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Phone, MapPin, ShieldCheck, CheckCircle2, Navigation, ChevronDown } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { db } from '../lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { UserProfile } from '../types';
+
+const IRAQ_GOVERNORATES = [
+  'بغداد','البصرة','نينوى (الموصل)','أربيل','السليمانية','دهوك',
+  'النجف الأشرف','كربلاء المقدسة','بابل (الحلة)','كركوك',
+  'ذي قار (الناصرية)','الأنبار (الرمادي)','ديالي (بعقوبة)',
+  'صلاح الدين (تكريت)','واسط (الكوت)','القادسية (الديوانية)',
+  'ميسان (العمارة)','المثنى (السماوة)',
+];
+
+// The verified admin Google account
+const ADMIN_EMAIL = 'gpm.iraq@gmail.com';
+const ADMIN_NAME = 'أبو وارث أمازون';
+
+type Step = 'GOOGLE_LOGIN' | 'PHONE' | 'LOCATION';
 
 export const UserAuthModal: React.FC = () => {
-  const { isAuthModalOpen, setIsAuthModalOpen, loginCustomer, siteSettings } = useCart();
-  const [activeTab, setActiveTab] = useState<'LOGIN' | 'REGISTER'>('REGISTER');
-  
-  // Registration Form State
+  const { isAuthModalOpen, setIsAuthModalOpen, loginCustomer, currentUser, setIsAdminDashboardOpen } = useCart();
+
+  const [step, setStep] = useState<Step>('GOOGLE_LOGIN');
   const [phone, setPhone] = useState('');
-  const [name, setName] = useState('');
+  const [phoneError, setPhoneError] = useState('');
   const [city, setCity] = useState('بغداد');
   const [district, setDistrict] = useState('');
   const [landmark, setLandmark] = useState('');
-  
-  // SMS OTP Verification Step State
-  const [step, setStep] = useState<'INFO' | 'OTP'>('INFO');
-  const [otpCode, setOtpCode] = useState('');
-  const [otpError, setOtpError] = useState(false);
-
-  const [isDetectingGps, setIsDetectingGps] = useState(false);
-  const [gpsStatus, setGpsStatus] = useState<string | null>(null);
-
-  const fullNameInputId = useId();
-  const phoneInputId = useId();
-  const citySelectId = useId();
-  const districtInputId = useId();
-  const landmarkInputId = useId();
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedUser, setSavedUser] = useState<UserProfile | null>(null);
 
   if (!isAuthModalOpen) return null;
 
-  const handleGpsDetect = () => {
-    if (typeof window !== 'undefined' && 'geolocation' in navigator) {
-      setIsDetectingGps(true);
-      setGpsStatus('جاري تحديد الإحداثيات عبر الـ GPS...');
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setIsDetectingGps(false);
-          setGpsStatus(`تم تحديد موقعك بنجاح! (${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)})`);
-          setDistrict('موقع مستكشف عبر الخارطة (GPS)');
-        },
-        () => {
-          setIsDetectingGps(false);
-          setGpsStatus('تعذر الوصول للـ GPS تلقائياً، يرجى كتابة المنطقة يدوياً.');
-        },
-        { timeout: 8000 }
-      );
-    } else {
-      setGpsStatus('خاصية الـ GPS غير مدعومة في متصفحك.');
-    }
+  // ─ Step 1: Google Sign-In ────────────────────────────────────────────────
+  const handleGoogleLogin = () => {
+    const clientId = '277858300469-jommje8hvf62duu7r6cgp9so1nut0576.apps.googleusercontent.com';
+    const redirectUri = encodeURIComponent(window.location.origin);
+    const scope = encodeURIComponent('openid email profile');
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=token&scope=${scope}&prompt=select_account`;
+    window.location.href = url;
   };
 
-  const handleRegisterSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (phone.trim() && name.trim()) {
-      // Advance to SMS OTP Verification Step
-      setStep('OTP');
-    }
-  };
-
-  const handleVerifyOtp = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Simulate SMS OTP Verification (accepts any 4-digit code like 1234)
-    if (otpCode.length === 4) {
-      loginCustomer(phone.trim(), name.trim(), city, district.trim(), landmark.trim());
-      setStep('INFO');
-      setOtpCode('');
-    } else {
-      setOtpError(true);
-    }
-  };
-
-  const handleLoginSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (phone.trim()) {
-      loginCustomer(phone.trim(), name.trim() || 'زبون موثق', city, district, landmark);
-    }
-  };
-
-  const handleSocialLogin = (provider: 'GOOGLE' | 'APPLE') => {
-    if (provider === 'GOOGLE') {
-      const clientId = process.env.NEXT_PUBLIC_GOOGLE_DRIVE_CLIENT_ID || '277858300469-jommje8hvf62duu7r6cgp9so1nut0576.apps.googleusercontent.com';
-      const origin = window.location.origin.replace(/\/$/, '');
-      const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(origin)}&response_type=token&scope=openid%20email%20profile`;
-      
-      // Open Google Account Login Popup without premature force closing
-      window.open(googleAuthUrl, 'GoogleAuth', 'width=520,height=630');
-      
-      // Log in customer session & close modal
-      loginCustomer('07709988776', 'مستخدم غوغل الموثق (Google Account)', 'بغداد', 'المنصور / موثق عبر Google');
+  // Called from CartContext when Google OAuth token is parsed on mount
+  // Here we handle the next step if user is logged in but missing phone
+  const handleContinueAfterGoogle = () => {
+    if (currentUser && currentUser.phone && currentUser.phone !== '07709988776') {
+      // Already has real phone number - close
       setIsAuthModalOpen(false);
     } else {
-      loginCustomer('07809988776', 'مستخدم أبل الموثق (Apple ID)', 'بغداد', 'موثق عبر Apple ID');
-      setIsAuthModalOpen(false);
+      setStep('PHONE');
     }
   };
 
-  const iraqCities = [
-    'بغداد', 'أربيل', 'البصرة', 'النجف الأشرف', 'كربلاء المقدسة',
-    'الموصل (نينوى)', 'بابل (الحلة)', 'السليمانية', 'دهوك', 'ذي قار (الناصرية)',
-    'كركوك', 'ديالى (بعقوبة)', 'الأنبار (الرمادي)', 'المثنى (السمواة)',
-    'واسط (كوت)', 'القادسية (الديوانية)', 'ميسان (العمارة)', 'صلاح الدين (تكريت)',
-  ];
+  // ─ Step 2: Phone Entry ───────────────────────────────────────────────────
+  const handlePhoneSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleaned = phone.replace(/\s/g, '');
+    if (!cleaned || cleaned.length < 10) {
+      setPhoneError('يرجى إدخال رقم هاتف صحيح (10 أرقام على الأقل)');
+      return;
+    }
+    setPhoneError('');
+    setStep('LOCATION');
+  };
 
+  // ─ Step 3: Location + Save ──────────────────────────────────────────────
+  const handleLocationSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!district.trim()) return;
+    setIsSaving(true);
+
+    const base: UserProfile = currentUser || { id: `user_${Date.now()}`, fullName: 'مستخدم جديد', role: 'CUSTOMER', isMember: true, phone: '' };
+    const updatedUser: UserProfile = {
+      ...base,
+      phone: phone.replace(/\s/g, ''),
+      city,
+      address: `${city} - ${district.trim()}${landmark.trim() ? ' / ' + landmark.trim() : ''}`,
+      isMember: true,
+      role: 'CUSTOMER',
+      registeredAt: base.registeredAt || new Date().toISOString(),
+      lastLoginAt: new Date().toISOString(),
+    };
+
+    // Check if this is the admin
+    if ((base as UserProfile).email === ADMIN_EMAIL) {
+      (updatedUser as any).isSiteAdmin = true;
+      updatedUser.fullName = ADMIN_NAME;
+    }
+
+    loginCustomer(updatedUser);
+    try {
+      await setDoc(doc(db, 'users', updatedUser.id), updatedUser);
+    } catch {}
+
+    setSavedUser(updatedUser);
+    setIsSaving(false);
+    setTimeout(() => {
+      setIsAuthModalOpen(false);
+      setStep('GOOGLE_LOGIN');
+    }, 1800);
+  };
+
+  // ─ Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto p-4 flex items-center justify-center">
+    <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
+        className="absolute inset-0 bg-slate-950/80 backdrop-blur-md"
         onClick={() => setIsAuthModalOpen(false)}
-        className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
       />
 
-      {/* Modal Box */}
-      <div className="relative w-full max-w-lg bg-white dark:bg-carbon-900 rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-200 dark:border-slate-800 z-10 transition-colors my-6">
-        
+      {/* Modal Card */}
+      <div
+        className="relative w-full max-w-md bg-slate-900 rounded-3xl shadow-2xl overflow-hidden animate-scale-in"
+        style={{ border: '1px solid rgba(255,255,255,0.08)' }}
+      >
+        {/* Gradient Top Bar */}
+        <div className="h-1.5 w-full" style={{ background: 'linear-gradient(90deg, #f59e0b, #ef4444, #8b5cf6)' }} />
+
         {/* Close Button */}
         <button
           onClick={() => setIsAuthModalOpen(false)}
-          className="absolute top-4 left-4 p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-carbon-800 transition-colors"
+          className="absolute top-4 left-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 h-4" />
         </button>
 
-        {/* Dual Tab Header (Login vs Register) */}
-        <div className="flex items-center gap-2 p-1 bg-slate-100 dark:bg-carbon-950 rounded-2xl mb-5 font-extrabold text-xs">
-          <button
-            onClick={() => { setActiveTab('REGISTER'); setStep('INFO'); }}
-            className={`flex-1 py-2.5 rounded-xl transition-all ${
-              activeTab === 'REGISTER'
-                ? 'bg-amber-500 text-slate-950 shadow-md font-black'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            تسجيل حساب جديد وتوثيق
-          </button>
-          
-          <button
-            onClick={() => setActiveTab('LOGIN')}
-            className={`flex-1 py-2.5 rounded-xl transition-all ${
-              activeTab === 'LOGIN'
-                ? 'bg-amber-500 text-slate-950 shadow-md font-black'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            تسجيل الدخول مباشرة
-          </button>
+        {/* Step Progress */}
+        <div className="flex justify-center gap-2 pt-6 pb-2">
+          {(['GOOGLE_LOGIN', 'PHONE', 'LOCATION'] as Step[]).map((s, i) => (
+            <div
+              key={s}
+              className="h-1 rounded-full transition-all duration-500"
+              style={{
+                width: step === s ? 32 : 12,
+                background: step === s ? '#f59e0b' : (
+                  ['GOOGLE_LOGIN', 'PHONE', 'LOCATION'].indexOf(step) > i ? '#22c55e' : 'rgba(255,255,255,0.15)'
+                )
+              }}
+            />
+          ))}
         </div>
 
-        {/* TAB 1: NEW REGISTER & PHONE VERIFICATION */}
-        {activeTab === 'REGISTER' && (
-          <>
-            {step === 'INFO' ? (
-              <form onSubmit={handleRegisterSubmit} className="space-y-3.5 text-xs">
-                <div className="text-center mb-2">
-                  <h3 className="text-lg font-black text-slate-900 dark:text-white mb-0.5">
-                    إنشاء حساب جديد وتأكيد الموقع
-                  </h3>
-                  <p className="text-[11px] text-slate-500">
-                    أدخل معلوماتك الشخصية وموقعك للحصول على مصادقة رقمية سريعة
-                  </p>
-                </div>
+        <div className="px-8 pt-4 pb-8">
 
-                {/* Social Login Options */}
-                <div className="grid grid-cols-2 gap-2 mb-3">
-                  <button
-                    type="button"
-                    onClick={() => handleSocialLogin('GOOGLE')}
-                    className="py-2.5 px-3 rounded-xl bg-slate-50 dark:bg-carbon-950 border border-slate-200 dark:border-slate-800 font-bold text-[11px] text-slate-700 dark:text-slate-300 hover:bg-slate-100 flex items-center justify-center gap-2"
-                  >
-                    <span>الدخول بـ Google</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleSocialLogin('APPLE')}
-                    className="py-2.5 px-3 rounded-xl bg-slate-900 text-white font-bold text-[11px] hover:bg-slate-800 flex items-center justify-center gap-2"
-                  >
-                    <span>الدخول بـ Apple</span>
-                  </button>
-                </div>
+          {/* ── STEP 1: Google Login ── */}
+          {step === 'GOOGLE_LOGIN' && (
+            <div className="text-center">
+              {/* Logo */}
+              <div className="mx-auto mb-5 w-20 h-20 rounded-2xl flex items-center justify-center shadow-lg"
+                style={{ background: 'linear-gradient(135deg, #f59e0b, #ef4444)' }}>
+                <span className="text-4xl">🛍️</span>
+              </div>
 
-                <div className="relative flex py-1 items-center">
-                  <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
-                  <span className="flex-shrink mx-2 text-[10px] text-slate-400 font-bold">أو التسجيل برقم الواتساب والمعلومات</span>
-                  <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
-                </div>
+              <h2 className="text-2xl font-black text-white mb-1">سوق البالات</h2>
+              <p className="text-slate-400 text-sm mb-8">سجّل دخولك لتتمكن من الحجز والطلب</p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label htmlFor={fullNameInputId} className="block text-slate-700 dark:text-slate-300 font-bold mb-1">
-                      الاسم الكامل: *
-                    </label>
+              {/* Google Button */}
+              <button
+                onClick={handleGoogleLogin}
+                className="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-100 text-slate-800 font-bold py-4 px-6 rounded-2xl transition-all hover:scale-[1.02] active:scale-95 shadow-lg mb-4"
+              >
+                {/* Google SVG Icon */}
+                <svg width="20" height="20" viewBox="0 0 48 48">
+                  <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                  <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                  <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                  <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.36-8.16 2.36-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                </svg>
+                تسجيل الدخول بحساب Google
+              </button>
+
+              {/* If already logged in with Google, show continue */}
+              {currentUser && (
+                <button
+                  onClick={handleContinueAfterGoogle}
+                  className="w-full py-3 rounded-2xl text-sm font-bold text-amber-400 border border-amber-400/30 hover:bg-amber-400/10 transition-all"
+                >
+                  متابعة كـ {currentUser.fullName} ←
+                </button>
+              )}
+
+              <p className="mt-6 text-xs text-slate-500">
+                بتسجيل دخولك توافق على شروط الاستخدام وسياسة الخصوصية
+              </p>
+            </div>
+          )}
+
+          {/* ── STEP 2: Phone Number ── */}
+          {step === 'PHONE' && (
+            <div>
+              <div className="text-center mb-6">
+                <div className="mx-auto mb-4 w-16 h-16 rounded-2xl bg-amber-500/20 flex items-center justify-center">
+                  <Phone className="w-8 h-8 text-amber-400" />
+                </div>
+                <h2 className="text-xl font-black text-white mb-1">رقم هاتفك</h2>
+                <p className="text-slate-400 text-sm">يُستخدم للتواصل والتوصيل — مرة واحدة فقط</p>
+              </div>
+
+              <form onSubmit={handlePhoneSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-slate-300 text-sm font-bold mb-2">رقم الهاتف (واتساب)</label>
+                  <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-2xl px-4 py-3 focus-within:border-amber-500 transition-colors">
+                    <span className="text-slate-400 text-sm font-mono">🇮🇶 +964</span>
+                    <div className="w-px h-5 bg-slate-600" />
                     <input
-                      id={fullNameInputId}
-                      type="text"
-                      required
-                      placeholder="اسمك الثلاثي"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-carbon-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white"
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor={phoneInputId} className="block text-slate-700 dark:text-slate-300 font-bold mb-1">
-                      رقم الواتساب للتأكيد: *
-                    </label>
-                    <input
-                      id={phoneInputId}
-                      type="text"
-                      required
-                      placeholder="07701234567"
+                      type="tel"
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-carbon-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white"
+                      onChange={e => setPhone(e.target.value)}
+                      placeholder="07X XXXX XXXX"
+                      className="flex-1 bg-transparent text-white placeholder-slate-500 outline-none text-right font-mono"
+                      dir="ltr"
+                      autoFocus
                     />
                   </div>
-                </div>
-
-                {/* GPS Location Button */}
-                <div className="p-3 bg-sky-500/10 border border-sky-500/30 rounded-2xl flex items-center justify-between">
-                  <span className="font-bold text-sky-600 dark:text-sky-400 text-[11px]">
-                    تحديد الموقع التلقائي:
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleGpsDetect}
-                    disabled={isDetectingGps}
-                    className="px-3 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-black text-[10px]"
-                  >
-                    {isDetectingGps ? 'جاري الفحص...' : 'استخدام الخارطة 📍'}
-                  </button>
-                </div>
-                {gpsStatus && <p className="text-[10px] text-sky-500 font-mono">{gpsStatus}</p>}
-
-                {/* Address Selectors */}
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <label htmlFor={citySelectId} className="block text-slate-700 dark:text-slate-300 font-bold mb-1">المحافظة:</label>
-                    <select
-                      id={citySelectId}
-                      value={city}
-                      onChange={(e) => setCity(e.target.value)}
-                      className="w-full px-2 py-2 rounded-xl bg-slate-50 dark:bg-carbon-950 border border-slate-200 dark:border-slate-800 font-bold"
-                    >
-                      {iraqCities.map((c) => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label htmlFor={districtInputId} className="block text-slate-700 dark:text-slate-300 font-bold mb-1">المنطقة:</label>
-                    <input
-                      id={districtInputId}
-                      type="text"
-                      required
-                      placeholder="المنصور"
-                      value={district}
-                      onChange={(e) => setDistrict(e.target.value)}
-                      className="w-full px-2 py-2 rounded-xl bg-slate-50 dark:bg-carbon-950 border border-slate-200 dark:border-slate-800"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor={landmarkInputId} className="block text-slate-700 dark:text-slate-300 font-bold mb-1">نقطة دالة:</label>
-                    <input
-                      id={landmarkInputId}
-                      type="text"
-                      required
-                      placeholder="قرب البريد"
-                      value={landmark}
-                      onChange={(e) => setLandmark(e.target.value)}
-                      className="w-full px-2 py-2 rounded-xl bg-slate-50 dark:bg-carbon-950 border border-slate-200 dark:border-slate-800"
-                    />
-                  </div>
+                  {phoneError && (
+                    <p className="mt-1 text-red-400 text-xs">{phoneError}</p>
+                  )}
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2 mt-2"
+                  className="w-full py-4 rounded-2xl font-black text-slate-950 transition-all hover:scale-[1.02] active:scale-95 shadow-lg"
+                  style={{ background: 'linear-gradient(135deg, #f59e0b, #ef4444)' }}
                 >
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>متابعة إرسال رمز المصادقة SMS</span>
+                  التالي ←
                 </button>
               </form>
-            ) : (
-              /* SMS OTP VERIFICATION STEP */
-              <form onSubmit={handleVerifyOtp} className="space-y-4 text-xs text-center py-2">
-                <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-500 flex items-center justify-center mx-auto mb-2">
-                  <KeyRound className="w-6 h-6" />
-                </div>
-                <h3 className="text-base font-black text-slate-900 dark:text-white">
-                  المصادقة وتوثيق رقم الهاتف
-                </h3>
-                <p className="text-xs text-slate-500">
-                  تم إرسال رمز التوثيق المكون من 4 أرقام لـ <strong className="text-amber-500 font-mono">{phone}</strong>
-                </p>
+            </div>
+          )}
 
+          {/* ── STEP 3: Location ── */}
+          {step === 'LOCATION' && (
+            <div>
+              <div className="text-center mb-6">
+                <div className="mx-auto mb-4 w-16 h-16 rounded-2xl bg-emerald-500/20 flex items-center justify-center">
+                  <MapPin className="w-8 h-8 text-emerald-400" />
+                </div>
+                <h2 className="text-xl font-black text-white mb-1">موقعك للتوصيل</h2>
+                <p className="text-slate-400 text-sm">يُحفظ في ملفك ويُرسل تلقائياً مع الطلبات</p>
+              </div>
+
+              <form onSubmit={handleLocationSubmit} className="space-y-4">
+                {/* Governorate */}
                 <div>
+                  <label className="block text-slate-300 text-sm font-bold mb-2">المحافظة</label>
+                  <div className="relative">
+                    <select
+                      value={city}
+                      onChange={e => setCity(e.target.value)}
+                      className="w-full bg-slate-800 border border-slate-700 text-white rounded-2xl px-4 py-3 outline-none appearance-none focus:border-amber-500 transition-colors"
+                    >
+                      {IRAQ_GOVERNORATES.map(g => (
+                        <option key={g} value={g}>{g}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* District */}
+                <div>
+                  <label className="block text-slate-300 text-sm font-bold mb-2">المنطقة / الحي <span className="text-red-400">*</span></label>
                   <input
                     type="text"
-                    maxLength={4}
-                    placeholder="1 2 3 4"
-                    value={otpCode}
-                    onChange={(e) => { setOtpCode(e.target.value); setOtpError(false); }}
-                    className="w-48 mx-auto px-4 py-3 rounded-2xl bg-slate-50 dark:bg-carbon-950 border-2 border-amber-500 text-center font-mono font-black text-xl tracking-widest text-slate-900 dark:text-white focus:outline-none"
+                    value={district}
+                    onChange={e => setDistrict(e.target.value)}
+                    placeholder="مثال: المنصور، شارع 14 رمضان"
+                    required
+                    className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-2xl px-4 py-3 outline-none focus:border-amber-500 transition-colors"
                   />
-                  {otpError && <p className="text-[11px] text-red-500 font-bold mt-1">يرجى إدخال 4 أرقام للمصادقة</p>}
                 </div>
 
-                <div className="flex items-center justify-center gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setStep('INFO')}
-                    className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-carbon-800 text-slate-600 dark:text-slate-300 font-bold"
-                  >
-                    تغيير الرقم
-                  </button>
+                {/* Landmark */}
+                <div>
+                  <label className="block text-slate-300 text-sm font-bold mb-2">أقرب نقطة دالة</label>
+                  <input
+                    type="text"
+                    value={landmark}
+                    onChange={e => setLandmark(e.target.value)}
+                    placeholder="مثال: قرب مول زيونة، أمام مدرسة..."
+                    className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-2xl px-4 py-3 outline-none focus:border-amber-500 transition-colors"
+                  />
+                </div>
+
+                {/* Save Button */}
+                {savedUser ? (
+                  <div className="flex items-center justify-center gap-2 py-4 text-emerald-400 font-bold">
+                    <CheckCircle2 className="w-5 h-5" />
+                    تم حفظ بياناتك بنجاح! مرحباً {savedUser.fullName} 🎉
+                  </div>
+                ) : (
                   <button
                     type="submit"
-                    className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black shadow-md flex items-center gap-1.5"
+                    disabled={isSaving}
+                    className="w-full py-4 rounded-2xl font-black text-slate-950 transition-all hover:scale-[1.02] active:scale-95 shadow-lg disabled:opacity-70"
+                    style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)' }}
                   >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>تأكيد التوثيق وتفعيل الحساب</span>
+                    {isSaving ? '⏳ جاري الحفظ...' : 'حفظ وإكمال التسجيل ✓'}
                   </button>
-                </div>
+                )}
               </form>
-            )}
-          </>
-        )}
-
-        {/* TAB 2: SIMPLE DIRECT LOGIN */}
-        {activeTab === 'LOGIN' && (
-          <form onSubmit={handleLoginSubmit} className="space-y-4 text-xs">
-            <div className="text-center mb-3">
-              <h3 className="text-lg font-black text-slate-900 dark:text-white mb-1">
-                تسجيل الدخول المباشر
-              </h3>
-              <p className="text-xs text-slate-500">
-                أدخل رقم هاتفك للوصول لحسابك الحالي وسلتك المقسمة
-              </p>
             </div>
+          )}
 
-            <div>
-              <label htmlFor={phoneInputId} className="block text-slate-700 dark:text-slate-300 font-bold mb-1">
-                رقم الهاتف (واتساب): *
-              </label>
-              <input
-                id={phoneInputId}
-                type="text"
-                required
-                placeholder="07701234567"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-carbon-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="w-full py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2"
-            >
-              <LogIn className="w-4 h-4" />
-              <span>دخول الحساب</span>
-            </button>
-          </form>
-        )}
-
+        </div>
       </div>
+
+      <style>{`
+        @keyframes scale-in {
+          from { opacity: 0; transform: scale(0.92) translateY(20px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .animate-scale-in { animation: scale-in 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+      `}</style>
     </div>
   );
 };

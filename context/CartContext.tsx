@@ -35,7 +35,8 @@ interface CartContextType {
   
   // Customer Auth
   currentUser: UserProfile | null;
-  loginCustomer: (phone: string, name: string, city?: string, address?: string, landmark?: string) => void;
+  setCurrentUser: React.Dispatch<React.SetStateAction<UserProfile | null>>;
+  loginCustomer: (phoneOrProfile: string | UserProfile, name?: string, city?: string, address?: string, landmark?: string) => void;
   logoutCustomer: () => void;
   isAuthModalOpen: boolean;
   setIsAuthModalOpen: (open: boolean) => void;
@@ -272,25 +273,38 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
-  const loginCustomer = (phone: string, name: string, city: string = 'بغداد', address: string = '', landmark: string = '') => {
-    const fullAddressString = [city, address, landmark ? `(أقرب نقطة دالة: ${landmark})` : ''].filter(Boolean).join(' - ');
-    const user: UserProfile = {
-      id: `usr_${Date.now()}`,
-      fullName: name,
-      phone: phone,
-      role: 'CUSTOMER',
-      isMember: true,
-      city: city,
-      address: fullAddressString,
-    };
+  const loginCustomer = (phoneOrProfile: string | UserProfile, name: string = '', city: string = 'بغداد', address: string = '', landmark: string = '') => {
+    let user: UserProfile;
+    if (typeof phoneOrProfile === 'object') {
+      // Called with a full UserProfile (from Google OAuth flow)
+      user = phoneOrProfile;
+      setCustomerDetails((prev) => ({
+        ...prev,
+        fullName: user.fullName,
+        phone: user.phone,
+        city: user.city || 'بغداد',
+        address: user.address || '',
+      }));
+    } else {
+      const fullAddressString = [city, address, landmark ? `(أقرب نقطة دالة: ${landmark})` : ''].filter(Boolean).join(' - ');
+      user = {
+        id: `usr_${Date.now()}`,
+        fullName: name,
+        phone: phoneOrProfile,
+        role: 'CUSTOMER',
+        isMember: true,
+        city,
+        address: fullAddressString,
+      };
+      setCustomerDetails((prev) => ({
+        ...prev,
+        fullName: name,
+        phone: phoneOrProfile,
+        city,
+        address: fullAddressString,
+      }));
+    }
     setCurrentUser(user);
-    setCustomerDetails((prev) => ({
-      ...prev,
-      fullName: name,
-      phone: phone,
-      city: city,
-      address: fullAddressString,
-    }));
     setIsAuthModalOpen(false);
   };
 
@@ -502,6 +516,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         setVendors,
 
         currentUser,
+        setCurrentUser,
         loginCustomer,
         logoutCustomer,
         isAuthModalOpen,
