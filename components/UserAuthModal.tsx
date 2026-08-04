@@ -93,9 +93,17 @@ export const UserAuthModal: React.FC = () => {
         setStep('PHONE');
       }
     } catch (err: any) {
-      if (err.code !== 'auth/popup-closed-by-user') {
-        setError('حدث خطأ أثناء تسجيل الدخول. حاول مجدداً.');
-        console.error('Google Sign-In error:', err);
+      console.error('Firebase Google Sign-In error:', err?.code, err?.message);
+      if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
+        // User closed the popup - no error needed
+      } else if (err.code === 'auth/operation-not-allowed') {
+        setError('⚠️ يجب تفعيل Google Sign-In في Firebase Console أولاً. (operation-not-allowed)');
+      } else if (err.code === 'auth/unauthorized-domain') {
+        setError('⚠️ النطاق غير مضاف في Firebase Auth المسموح بها. (unauthorized-domain)');
+      } else if (err.code === 'auth/popup-blocked') {
+        setError('⚠️ المتصفح منع نافذة Google - يرجى السماح للنوافذ المنبثقة وإعادة المحاولة.');
+      } else {
+        setError(`خطأ: ${err?.code || err?.message || 'غير معروف'}`);
       }
     } finally {
       setIsLoading(false);
