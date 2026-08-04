@@ -288,7 +288,7 @@ const UserCardModal: React.FC<UserCardModalProps> = ({ user, onClose, onConvertT
 
 // ─── Main Admin Page ─────────────────────────────────────────────────────────
 export default function MasterAdminPage() {
-  const { siteSettings, updateSiteSettings, vendors, setVendors, toggleVendorActivation, activatedVendorIds, products: productList, setProducts: setProductList } = useCart();
+  const { siteSettings, updateSiteSettings, vendors, setVendors, toggleVendorActivation, activatedVendorIds, products: productList, setProducts: setProductList, publishProductToFirestore, deleteProductFromFirestore } = useCart();
   const [activeTab, setActiveTab] = useState<AdminTab>('DASHBOARD');
 
   const [treeCategories, setTreeCategories] = useState<TreeCategory[]>(INITIAL_TREE_CATEGORIES);
@@ -409,13 +409,12 @@ export default function MasterAdminPage() {
 
   const handleDeleteProduct = async (productId: string) => {
     if (confirm('هل تريد حذف هذا المنشور نهائياً؟')) {
-      setProductList(prev => prev.filter(p => p.id !== productId));
       try {
-        const { deleteDoc, doc } = await import('firebase/firestore');
-        const { db } = await import('../../lib/firebase');
-        await deleteDoc(doc(db, 'products', productId));
+        await deleteProductFromFirestore(productId);
       } catch (err) {
         console.error('Firestore delete failed:', err);
+        // Fallback: remove from local state
+        setProductList(prev => prev.filter(p => p.id !== productId));
       }
     }
   };
@@ -449,7 +448,8 @@ export default function MasterAdminPage() {
       const id = `c_${Date.now()}`;
       setTreeCategories(prev => [...prev, { id, name: newCatName.trim(), slug: newCatName.trim().replace(/\s+/g, '-'), icon: '📁' }]);
     }
-    setProductList(prev => [prod, ...prev]);
+    // Publish to Firestore with role-protection
+    publishProductToFirestore(prod);
     setNewTitle(''); setNewPrice(''); setNewRetailPrice(''); setNewDescription(''); setNewCatName(''); setNewUploadedImages([]); setAiNotice('');
   };
 

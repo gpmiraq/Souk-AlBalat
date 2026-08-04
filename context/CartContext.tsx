@@ -64,6 +64,8 @@ interface CartContextType {
   // Products Database
   products: Product[];
   setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
+  publishProductToFirestore: (product: Product) => Promise<void>;
+  deleteProductFromFirestore: (productId: string) => Promise<void>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -109,15 +111,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           liveProductsList.push({ id: docSnap.id, ...docSnap.data() } as Product);
         });
 
-        if (liveProductsList.length > 0) {
-          setProducts(liveProductsList);
-        } else {
-          // If Firestore is empty, seed it with INITIAL_PRODUCTS
-          INITIAL_PRODUCTS.forEach(async (p) => {
-            await setDoc(doc(db, 'products', p.id), p);
-          });
-          setProducts(INITIAL_PRODUCTS);
-        }
+        // Always use live Firestore data (empty = empty, no mock seeding)
+        setProducts(liveProductsList);
       } catch (err: any) {
         console.error('Firestore Database Connection Error Details:', err?.message || err);
         const savedProducts = localStorage.getItem('balat_iq_products');
@@ -183,22 +178,40 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Save products to localStorage as fallback and update Firestore dynamically
+  // Save products to localStorage as local cache only
   useEffect(() => {
     try {
       localStorage.setItem('balat_iq_products', JSON.stringify(products));
-      // Write each product dynamically to Firestore Cloud Database
-      products.forEach(async (p) => {
-        try {
-          await setDoc(doc(db, 'products', p.id), p);
-        } catch (err) {
-          console.warn('Firestore single save error:', err);
-        }
-      });
     } catch (e) {
-      console.error('Error saving products:', e);
+      console.error('Error saving products cache:', e);
     }
   }, [products]);
+
+  // ─ Role-protected Firestore product publish/delete ────────────────────────
+  const publishProductToFirestore = async (product: Product): Promise<void> => {
+    const isAdmin = !!vendorUser?.isSiteAdmin;
+    const isVendor = !!vendorUser;
+    if (!isAdmin && !isVendor) {
+      console.warn('Unauthorized: Only admins or vendors can publish products.');
+      return;
+    }
+    await setDoc(doc(db, 'products', product.id), product);
+    setProducts(prev => {
+      const exists = prev.find(p => p.id === product.id);
+      return exists ? prev.map(p => p.id === product.id ? product : p) : [product, ...prev];
+    });
+  };
+
+  const deleteProductFromFirestore = async (productId: string): Promise<void> => {
+    const isAdmin = !!vendorUser?.isSiteAdmin;
+    const isVendor = !!vendorUser;
+    if (!isAdmin && !isVendor) {
+      console.warn('Unauthorized: Only admins or vendors can delete products.');
+      return;
+    }
+    await deleteDoc(doc(db, 'products', productId));
+    setProducts(prev => prev.filter(p => p.id !== productId));
+  };
 
   // Save cart
   useEffect(() => {
@@ -511,6 +524,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         reserveProduct,
         products,
         setProducts,
+        publishProductToFirestore,
+        deleteProductFromFirestore,
       }}
     >
       {children}
