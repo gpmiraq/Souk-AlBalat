@@ -153,49 +153,52 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Action Buttons Cluster */}
           <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
             
-            {/* Conditional Vendor Add Listing Button (Only visible when vendor account is activated by Master Admin) */}
-            {isVendorActivated && (
+            {/* 1. Vendor Add Listing Button (ONLY visible when a vendor is logged in AND activated) */}
+            {vendorUser && isVendorActivated && (
               <button
                 onClick={() => setIsAdminDashboardOpen(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black text-slate-950 bg-amber-500 hover:bg-amber-400 shadow-md transition-all active:scale-95"
                 title="لوحة التاجر ونشر جديد"
               >
                 <PlusCircle className="w-4 h-4 text-slate-950" />
-                <span className="hidden sm:inline">نشر بضاعة جديدة</span>
+                <span>نشر بضاعة جديدة</span>
               </button>
             )}
 
-            {/* Vendor Portal */}
-            <Link
-              href="/vendor/portal"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-200 bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700"
-              title="بوابة التجار"
-            >
-              <Store className="w-4 h-4 text-amber-400" />
-              <span className="hidden md:inline">
-                {vendorUser ? vendorUser.name.slice(0, 10) : 'بوابة التجار'}
-              </span>
-            </Link>
+            {/* 2. Vendor Portal (ONLY visible if vendor is logged in or attempting vendor portal) */}
+            {vendorUser && (
+              <Link
+                href="/vendor/portal"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-200 bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700"
+                title="بوابة التجار"
+              >
+                <Store className="w-4 h-4 text-amber-400" />
+                <span className="hidden md:inline">{vendorUser.name.slice(0, 12)}</span>
+              </Link>
+            )}
 
-            {/* Customer Login */}
+            {/* 3. Customer Login / Profile */}
             <button
               onClick={() => setIsAuthModalOpen(true)}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-200 bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700"
             >
               <User className="w-4 h-4 text-amber-400" />
-              <span className="hidden xl:inline">
+              <span>
                 {currentUser ? currentUser.fullName : 'تسجيل الدخول'}
               </span>
             </button>
 
-            {/* Master Admin CMS Trigger Button */}
-            <button
-              onClick={() => setIsMasterAdminOpen(true)}
-              className="p-2 rounded-xl text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 transition-colors border border-amber-500/30"
-              title="لوحة الإدارة الشاملة (CMS Master)"
-            >
-              <Sliders className="w-4 h-4" />
-            </button>
+            {/* 4. Master Admin CMS Link (ONLY visible for Super Admin "أبو وارث أمازون" or admin role) */}
+            {(currentUser?.role === 'ADMIN' || vendorUser?.isSiteAdmin || vendorUser?.id === 'v_admin') && (
+              <Link
+                href="/admin"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-black text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 transition-colors border border-amber-500/30"
+                title="لوحة المدير العامة"
+              >
+                <Sliders className="w-4 h-4 text-amber-400" />
+                <span className="hidden sm:inline">لوحة المدير 👑</span>
+              </Link>
+            )}
 
             {/* Theme Toggle */}
             <button

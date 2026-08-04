@@ -295,6 +295,33 @@ export default function MasterAdminPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [productFilter, setProductFilter] = useState<'ALL' | 'AVAILABLE' | 'SOLD'>('ALL');
 
+  // Admin Authentication State
+  const [isAdminAuth, setIsAdminAuth] = useState(false);
+  const [adminUserInput, setAdminUserInput] = useState('');
+  const [adminPassInput, setAdminPassInput] = useState('');
+  const [adminAuthError, setAdminAuthError] = useState('');
+
+  // Check existing session
+  React.useEffect(() => {
+    const savedAuth = sessionStorage.getItem('souk_admin_authed');
+    if (savedAuth === 'true') {
+      setIsAdminAuth(true);
+    }
+  }, []);
+
+  const handleAdminLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const u = adminUserInput.trim().toLowerCase();
+    const p = adminPassInput.trim();
+    if ((u === 'admin' || u.includes('أبو وارث') || u === 'gpmiraq' || u === 'demo') && (p === 'admin' || p === '123456' || p === 'demo')) {
+      setIsAdminAuth(true);
+      sessionStorage.setItem('souk_admin_authed', 'true');
+      setAdminAuthError('');
+    } else {
+      setAdminAuthError('بيانات الدخول غير صحيحة! يرجى التأكد من اسم المدير وكلمة السر.');
+    }
+  };
+
   // Add product form
   const [newTitle, setNewTitle] = useState('');
   const [newPrice, setNewPrice] = useState('');
@@ -454,6 +481,68 @@ export default function MasterAdminPage() {
     { id: 'BRANDING', label: 'إعدادات القالب', icon: Sliders },
   ];
 
+  // Guard: Show Admin Login Screen if not authenticated
+  if (!isAdminAuth) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white font-sans flex items-center justify-center p-4" dir="rtl">
+        <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+          <div className="text-center space-y-2">
+            <div className="w-16 h-16 rounded-2xl bg-amber-500 flex items-center justify-center text-slate-950 mx-auto shadow-lg shadow-amber-500/20">
+              <Shield className="w-8 h-8" />
+            </div>
+            <h1 className="text-xl font-black text-white">دخول لوحة إدارة المدير 👑</h1>
+            <p className="text-xs text-slate-400">سوق البالات — حساب المدير الرسمي (أبو وارث أمازون)</p>
+          </div>
+
+          {adminAuthError && (
+            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-xs font-bold text-red-400 text-center">
+              {adminAuthError}
+            </div>
+          )}
+
+          <form onSubmit={handleAdminLoginSubmit} className="space-y-4 text-xs">
+            <div>
+              <label className="block text-slate-300 font-bold mb-1">اسم حساب المدير *</label>
+              <input
+                type="text"
+                required
+                value={adminUserInput}
+                onChange={(e) => setAdminUserInput(e.target.value)}
+                placeholder="أبو وارث أمازون أو admin"
+                className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-white font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-300 font-bold mb-1">كلمة السر / PIN *</label>
+              <input
+                type="password"
+                required
+                value={adminPassInput}
+                onChange={(e) => setAdminPassInput(e.target.value)}
+                placeholder="••••••••"
+                className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-white font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-sm transition-all shadow-lg shadow-amber-500/20 active:scale-98"
+            >
+              دخول اللوحة الرئيسية 🔑
+            </button>
+          </form>
+
+          <div className="text-center">
+            <Link href="/" className="text-xs text-slate-500 hover:text-slate-300 transition-colors">
+              ← العودة للواجهة الرئيسية للمتجر
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-white font-sans flex flex-col md:flex-row" dir="rtl" style={{ textAlign: 'right' }}>
 
@@ -537,6 +626,19 @@ export default function MasterAdminPage() {
             <p className="text-xs text-slate-400 mt-0.5">لوحة إدارة سوق البالات الاحترافية</p>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                if (confirm('هل أنت تأكد من تصفير المنشورات وحذف البيانات التجريبية للبدء من الصفر؟')) {
+                  setProductList([]);
+                  localStorage.removeItem('balat_iq_cart');
+                }
+              }}
+              className="px-3.5 py-2 rounded-xl bg-red-600/20 hover:bg-red-600 hover:text-white border border-red-500/30 text-red-400 font-extrabold text-xs transition-all flex items-center gap-1.5"
+              title="تصفير المنتجات للبدء من الصفر"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>تصفير المنتجات (Zero DB)</span>
+            </button>
             <Link href="/" className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all flex items-center gap-2 shadow-md">
               <span>معاينة الواجهة</span>
               <ArrowRight className="w-4 h-4 rotate-180" />
