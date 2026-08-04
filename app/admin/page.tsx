@@ -309,6 +309,25 @@ export default function MasterAdminPage() {
     }
   }, []);
 
+  const [realUsers, setRealUsers] = useState<UserProfile[]>([]);
+
+  // Fetch real users from Firestore
+  React.useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const { collection, getDocs } = await import('firebase/firestore');
+        const { db } = await import('../../lib/firebase');
+        const snap = await getDocs(collection(db, 'users'));
+        const list: UserProfile[] = [];
+        snap.forEach(d => list.push({ id: d.id, ...d.data() } as UserProfile));
+        setRealUsers(list);
+      } catch (err) {
+        console.error('Failed to fetch real users:', err);
+      }
+    };
+    fetchUsers();
+  }, []);
+
   const { currentUser } = useCart();
 
   // Auto-auth if logged in as site admin (gpm.iraq@gmail.com)
@@ -496,7 +515,7 @@ export default function MasterAdminPage() {
 
   const handleExportExcel = () => {
     const headers = ['الاسم', 'الهاتف', 'المدينة', 'العنوان', 'الطلبات', 'تاريخ التسجيل', 'آخر دخول', 'آخر IP'];
-    const rows = usersList.map(u => [
+    const rows = realUsers.map(u => [
       u.fullName, u.phone, u.city || '', u.address || '',
       String(u.totalOrders || 0), u.registeredAt ? new Date(u.registeredAt).toLocaleDateString('ar-IQ') : '',
       u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString('ar-IQ') : '', u.lastIp || '',
@@ -511,7 +530,7 @@ export default function MasterAdminPage() {
   };
 
   const handleCopyPhones = () => {
-    navigator.clipboard.writeText(usersList.map(u => u.phone).join('\n'));
+    navigator.clipboard.writeText(realUsers.map(u => u.phone).join('\n'));
     setCopiedNotice('تم نسخ كافة الأرقام للحافظة! ✅');
     setTimeout(() => setCopiedNotice(''), 3000);
   };
@@ -530,8 +549,8 @@ export default function MasterAdminPage() {
   }), [productList, searchTerm, productFilter]);
 
   const filteredUsers = useMemo(() =>
-    usersList.filter(u => u.fullName.includes(userSearch) || u.phone.includes(userSearch) || (u.city || '').includes(userSearch)),
-    [usersList, userSearch]);
+    realUsers.filter(u => u.fullName.includes(userSearch) || u.phone.includes(userSearch) || (u.city || '').includes(userSearch)),
+    [realUsers, userSearch]);
 
   // Nav items
   const navItems: { id: AdminTab; label: string; icon: React.ElementType; badge?: number | string }[] = [
@@ -539,7 +558,7 @@ export default function MasterAdminPage() {
     { id: 'PRODUCTS', label: `المنشورات والبضائع`, icon: ShoppingBag, badge: productList.length },
     { id: 'CATEGORIES', label: 'إدارة التصنيفات', icon: Layers },
     { id: 'SALES', label: 'المبيعات والتجار', icon: BarChart3 },
-    { id: 'USERS', label: 'المستخدمون', icon: Users, badge: usersList.length },
+    { id: 'USERS', label: 'المستخدمون', icon: Users, badge: realUsers.length },
     { id: 'REPORTS', label: 'البلاغات والشكاوي', icon: AlertOctagon, badge: reportsInbox.length },
     { id: 'BRANDING', label: 'إعدادات القالب', icon: Sliders },
   ];

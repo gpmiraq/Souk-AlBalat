@@ -89,6 +89,7 @@ export interface UserProfile {
   avatar?: string;
   role: 'CUSTOMER' | 'VENDOR' | 'ADMIN';
   isMember: boolean;
+  isSiteAdmin?: boolean;
   city?: string;
   address?: string;
   // Tracking fields
