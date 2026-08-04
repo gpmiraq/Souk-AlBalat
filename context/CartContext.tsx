@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { CartItem, CustomerDetails, Product, UserProfile, Vendor, VendorSubCart } from '../types';
-import { INITIAL_VENDORS } from '../data/mockData';
+import { INITIAL_VENDORS, INITIAL_PRODUCTS } from '../data/mockData';
 
 export interface SiteSettings {
   siteName: string;
@@ -58,6 +58,10 @@ interface CartContextType {
 
   // Reserve a product for 1 hour
   reserveProduct: (productId: string) => void;
+
+  // Products Database
+  products: Product[];
+  setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -73,6 +77,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [vendors, setVendors] = useState<Vendor[]>(INITIAL_VENDORS);
   const [vendorUser, setVendorUser] = useState<Vendor | null>(null);
   const [activatedVendorIds, setActivatedVendorIds] = useState<string[]>(['v1', 'v2', 'v3']);
+  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
 
   const [siteSettings, setSiteSettings] = useState<SiteSettings>({
     siteName: 'سوق البالات',
@@ -111,10 +116,22 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       const savedActivatedVendors = localStorage.getItem('balat_iq_activated_vendors');
       if (savedActivatedVendors) setActivatedVendorIds(JSON.parse(savedActivatedVendors));
+
+      const savedProducts = localStorage.getItem('balat_iq_products');
+      if (savedProducts) setProducts(JSON.parse(savedProducts));
     } catch (e) {
       console.error('Error loading state:', e);
     }
   }, []);
+
+  // Save products
+  useEffect(() => {
+    try {
+      localStorage.setItem('balat_iq_products', JSON.stringify(products));
+    } catch (e) {
+      console.error('Error saving products:', e);
+    }
+  }, [products]);
 
   // Save cart
   useEffect(() => {
@@ -425,6 +442,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         logoutVendor,
         updateVendorProfile,
         reserveProduct,
+        products,
+        setProducts,
       }}
     >
       {children}

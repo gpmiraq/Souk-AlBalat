@@ -288,10 +288,9 @@ const UserCardModal: React.FC<UserCardModalProps> = ({ user, onClose, onConvertT
 
 // ─── Main Admin Page ─────────────────────────────────────────────────────────
 export default function MasterAdminPage() {
-  const { siteSettings, updateSiteSettings, vendors, setVendors, toggleVendorActivation, activatedVendorIds } = useCart();
+  const { siteSettings, updateSiteSettings, vendors, setVendors, toggleVendorActivation, activatedVendorIds, products: productList, setProducts: setProductList } = useCart();
   const [activeTab, setActiveTab] = useState<AdminTab>('DASHBOARD');
 
-  const [productList, setProductList] = useState<Product[]>(INITIAL_PRODUCTS);
   const [treeCategories, setTreeCategories] = useState<TreeCategory[]>(INITIAL_TREE_CATEGORIES);
   const [searchTerm, setSearchTerm] = useState('');
   const [productFilter, setProductFilter] = useState<'ALL' | 'AVAILABLE' | 'SOLD'>('ALL');

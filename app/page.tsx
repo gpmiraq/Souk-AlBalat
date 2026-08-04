@@ -17,10 +17,11 @@ import { Footer } from '../components/Footer';
 import { CookieConsentBanner } from '../components/CookieConsentBanner';
 import { INITIAL_CATEGORIES, INITIAL_PRODUCTS, INITIAL_VENDORS } from '../data/mockData';
 import { Product, ProductStatus, SearchFilters } from '../types';
+import { useCart } from '../context/CartContext';
 import { Sparkles, ShieldCheck, Zap, ArrowLeft, Clock, Award, Package, Truck } from 'lucide-react';
 
 export default function HomePage() {
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+  const { products, setProducts } = useCart();
   const [categories, setCategories] = useState<string[]>(INITIAL_CATEGORIES);
   const [isConditionGuideOpen, setIsConditionGuideOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
