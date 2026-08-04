@@ -286,6 +286,127 @@ const UserCardModal: React.FC<UserCardModalProps> = ({ user, onClose, onConvertT
   );
 };
 
+// ─── Detailed Vendor Card Modal ──────────────────────────────────────────────
+const VendorCardModal: React.FC<{
+  vendor: Vendor;
+  products: Product[];
+  isActive: boolean;
+  onClose: () => void;
+  onToggleActivation: (id: string) => void;
+}> = ({ vendor, products, isActive, onClose, onToggleActivation }) => {
+  const vProds = products.filter(p => p.vendorId === vendor.id);
+  const available = vProds.filter(p => p.status === 'AVAILABLE').length;
+  const reserved = vProds.filter(p => p.status === 'RESERVED').length;
+  const sold = vProds.filter(p => p.status === 'SOLD').length;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl space-y-0"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Modal Header */}
+        <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/50">
+          <div className="flex items-center gap-3">
+            <img src={vendor.avatar} alt={vendor.name} className="w-12 h-12 rounded-2xl object-cover border border-amber-500/30" />
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-black text-white text-base">{vendor.name}</h3>
+                {vendor.verifiedBadge && <ShieldCheck className="w-4 h-4 text-amber-500" />}
+                {vendor.isSiteAdmin && <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-bold">مدير الموقع 👑</span>}
+              </div>
+              <p className="text-xs text-slate-400 font-medium">{vendor.location} • سرعة الرد: {vendor.responseTime}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Detailed Stats */}
+        <div className="p-5 grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-900/50 text-center text-xs">
+          <div className="p-3 bg-slate-950 rounded-2xl border border-slate-800">
+            <span className="text-slate-400 text-[11px] block font-bold mb-1">التقييم العام</span>
+            <span className="text-amber-400 font-black text-base">★ {vendor.rating}</span>
+          </div>
+          <div className="p-3 bg-slate-950 rounded-2xl border border-slate-800">
+            <span className="text-emerald-400 text-[11px] block font-bold mb-1">المتاحة للحجز</span>
+            <span className="text-emerald-400 font-black text-base">{available}</span>
+          </div>
+          <div className="p-3 bg-slate-950 rounded-2xl border border-slate-800">
+            <span className="text-amber-400 text-[11px] block font-bold mb-1">محجوزة حالياً</span>
+            <span className="text-amber-400 font-black text-base">{reserved}</span>
+          </div>
+          <div className="p-3 bg-slate-950 rounded-2xl border border-slate-800">
+            <span className="text-red-400 text-[11px] block font-bold mb-1">تم بيعها</span>
+            <span className="text-red-400 font-black text-base">{sold}</span>
+          </div>
+        </div>
+
+        {/* Contact Info */}
+        <div className="px-5 py-3 border-y border-slate-800 flex items-center justify-between text-xs bg-slate-950">
+          <span className="text-slate-400 font-bold">رقم التواصل والواتساب:</span>
+          <span className="font-mono text-white font-bold">{vendor.phone}</span>
+        </div>
+
+        {/* Products List owned by vendor */}
+        <div className="p-5 space-y-3">
+          <h4 className="font-black text-white text-xs uppercase tracking-wider flex items-center gap-2">
+            <ShoppingBag className="w-4 h-4 text-amber-400" />
+            بضائع ومنشورات هذا التاجر ({vProds.length}):
+          </h4>
+          <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
+            {vProds.length === 0 ? (
+              <p className="text-slate-500 text-xs py-4 text-center">لا توجد بضائع منشورة لهذا التاجر بعد.</p>
+            ) : (
+              vProds.map(prod => (
+                <div key={prod.id} className="flex items-center justify-between p-3 bg-slate-950 rounded-2xl border border-slate-800 text-xs">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {prod.images[0] && (
+                      <img src={prod.images[0]} alt={prod.title} className="w-10 h-10 rounded-xl object-cover flex-shrink-0" />
+                    )}
+                    <div className="min-w-0">
+                      <h5 className="font-bold text-white truncate">{prod.title}</h5>
+                      <span className="text-amber-400 font-mono text-[11px]">{prod.outletPrice.toLocaleString('en-US')} د.ع</span>
+                    </div>
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-black ${
+                    prod.status === 'AVAILABLE' ? 'bg-emerald-500/20 text-emerald-400' :
+                    prod.status === 'RESERVED' ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'
+                  }`}>
+                    {prod.status === 'AVAILABLE' ? 'متاح' : prod.status === 'RESERVED' ? 'محجوز' : 'مباع'}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="p-5 border-t border-slate-800 flex items-center justify-between gap-3 bg-slate-950">
+          <a
+            href={`https://wa.me/${vendor.phone.replace(/^0/, '964')}?text=مرحباً ${vendor.name}، تواصل من إدارة سوق البالات`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl flex items-center justify-center gap-2 transition-all"
+          >
+            <Phone className="w-4 h-4" />
+            <span>مراسلة عبر واتساب</span>
+          </a>
+          <button
+            onClick={() => onToggleActivation(vendor.id)}
+            className={`px-5 py-3 rounded-xl text-xs font-black transition-all ${
+              isActive ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+            }`}
+          >
+            {isActive ? 'إيقاف التاجر' : 'تفعيل التاجر'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── Main Admin Page ─────────────────────────────────────────────────────────
 export default function MasterAdminPage() {
   const { siteSettings, updateSiteSettings, vendors, setVendors, toggleVendorActivation, activatedVendorIds, products: productList, setProducts: setProductList, publishProductToFirestore, deleteProductFromFirestore } = useCart();
@@ -309,6 +430,7 @@ export default function MasterAdminPage() {
     }
   }, []);
 
+  const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const [realUsers, setRealUsers] = useState<UserProfile[]>([]);
 
   // Fetch real users from Firestore
@@ -1001,7 +1123,16 @@ export default function MasterAdminPage() {
         {/* ── 4. SALES ─────────────────────────────────────────────────────── */}
         {activeTab === 'SALES' && (
           <div className="space-y-5">
-            <h3 className="text-sm font-black text-white">إحصائيات المبيعات والتجار</h3>
+            {selectedVendor && (
+              <VendorCardModal
+                vendor={selectedVendor}
+                products={productList}
+                isActive={activatedVendorIds.includes(selectedVendor.id)}
+                onClose={() => setSelectedVendor(null)}
+                onToggleActivation={toggleVendorActivation}
+              />
+            )}
+            <h3 className="text-sm font-black text-white">إحصائيات المبيعات والتجار (اضغط للتفاصيل الكاملة)</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {vendors.map(v => {
                 const vProds = productList.filter(p => p.vendorId === v.id);
@@ -1010,7 +1141,11 @@ export default function MasterAdminPage() {
                 const reserved = vProds.filter(p => p.status === 'RESERVED').length;
                 const isActive = activatedVendorIds.includes(v.id);
                 return (
-                  <div key={v.id} className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-3">
+                  <div
+                    key={v.id}
+                    onClick={() => setSelectedVendor(v)}
+                    className="p-4 bg-slate-900 border border-slate-800 hover:border-amber-500/50 cursor-pointer rounded-2xl space-y-3 transition-all hover:scale-[1.01]"
+                  >
                     <div className="flex items-center gap-3">
                       <img src={v.avatar} alt={v.name} className="w-10 h-10 rounded-xl object-cover" />
                       <div className="flex-1 min-w-0">
@@ -1026,10 +1161,20 @@ export default function MasterAdminPage() {
                       <div className="p-2 bg-slate-950 rounded-xl"><span className="text-amber-400 font-bold block">{reserved}</span><span className="text-slate-500 text-[10px]">محجوز</span></div>
                       <div className="p-2 bg-slate-950 rounded-xl"><span className="text-red-400 font-bold block">{sold}</span><span className="text-slate-500 text-[10px]">مباع</span></div>
                     </div>
-                    <button onClick={() => toggleVendorActivation(v.id)}
-                      className={`w-full py-2 rounded-xl text-xs font-black transition-all ${isActive ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}>
-                      {isActive ? 'إيقاف التاجر' : 'تفعيل التاجر'}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setSelectedVendor(v); }}
+                        className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-bold rounded-xl transition-all"
+                      >
+                        عرض التفاصيل 🔍
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleVendorActivation(v.id); }}
+                        className={`px-3 py-2 rounded-xl text-xs font-black transition-all ${isActive ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}
+                      >
+                        {isActive ? 'إيقاف' : 'تفعيل'}
+                      </button>
+                    </div>
                   </div>
                 );
               })}

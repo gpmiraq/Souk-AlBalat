@@ -156,9 +156,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [products]);
 
-  // ─ Role-protected Firestore product publish/delete ────────────────────────
+  // ─ Firestore product publish/delete ────────────────────────
   const publishProductToFirestore = async (product: Product): Promise<void> => {
-    const isAdmin = !!vendorUser?.isSiteAdmin;
+    const isAdmin = !!currentUser?.isSiteAdmin || currentUser?.role === 'ADMIN' || !!vendorUser?.isSiteAdmin || vendorUser?.id === 'v_admin';
     const isVendor = !!vendorUser;
     if (!isAdmin && !isVendor) {
       console.warn('Unauthorized: Only admins or vendors can publish products.');
@@ -172,7 +172,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteProductFromFirestore = async (productId: string): Promise<void> => {
-    const isAdmin = !!vendorUser?.isSiteAdmin;
+    const isAdmin = !!currentUser?.isSiteAdmin || currentUser?.role === 'ADMIN' || !!vendorUser?.isSiteAdmin || vendorUser?.id === 'v_admin';
     const isVendor = !!vendorUser;
     if (!isAdmin && !isVendor) {
       console.warn('Unauthorized: Only admins or vendors can delete products.');

@@ -21,7 +21,7 @@ const ADMIN_NAME = 'أبو وارث أمازون';
 type Step = 'GOOGLE' | 'PHONE' | 'LOCATION' | 'DONE';
 
 export const UserAuthModal: React.FC = () => {
-  const { isAuthModalOpen, setIsAuthModalOpen, loginCustomer } = useCart();
+  const { isAuthModalOpen, setIsAuthModalOpen, loginCustomer, currentUser } = useCart();
 
   const [step, setStep] = useState<Step>('GOOGLE');
   const [isLoading, setIsLoading] = useState(false);
@@ -39,6 +39,27 @@ export const UserAuthModal: React.FC = () => {
 
   // Signed-in Google user (temp before full profile save)
   const [pendingUser, setPendingUser] = useState<UserProfile | null>(null);
+
+  // Initialize or populate profile when editing existing user
+  React.useEffect(() => {
+    if (isAuthModalOpen && currentUser) {
+      setPendingUser(currentUser);
+      setPhone(currentUser.phone || '');
+      setCity(currentUser.city || 'بغداد');
+      
+      // Parse address format "City - District / Landmark"
+      if (currentUser.address) {
+        const parts = currentUser.address.split(' - ');
+        const locationPart = parts[1] || parts[0] || '';
+        const subParts = locationPart.split(' / ');
+        setDistrict(subParts[0] || '');
+        setLandmark(subParts[1] || '');
+      }
+      setStep('PHONE');
+    } else if (isAuthModalOpen && !currentUser) {
+      setStep('GOOGLE');
+    }
+  }, [isAuthModalOpen, currentUser]);
 
   if (!isAuthModalOpen) return null;
 
