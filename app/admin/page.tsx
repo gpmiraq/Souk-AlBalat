@@ -325,10 +325,41 @@ export default function MasterAdminPage() {
   // Add product form
   const [newTitle, setNewTitle] = useState('');
   const [newPrice, setNewPrice] = useState('');
+  const [newRetailPrice, setNewRetailPrice] = useState('');
+  const [newDescription, setNewDescription] = useState('');
   const [newCategorySelect, setNewCategorySelect] = useState('إلكترونيات');
   const [newVendorId, setNewVendorId] = useState('v_admin');
   const [newCatName, setNewCatName] = useState('');
   const [newUploadedImages, setNewUploadedImages] = useState<string[]>([]);
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
+  const [aiNotice, setAiNotice] = useState('');
+
+  const handleGenerateAi = async () => {
+    if (!newTitle.trim()) {
+      alert('يرجى كتابة عنوان البضاعة أولاً ليتسنى للذكاء الاصطناعي توليد الوصف!');
+      return;
+    }
+    setIsGeneratingAi(true);
+    setAiNotice('');
+    try {
+      const res = await fetch('/api/ai/describe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newTitle.trim(), category: newCategorySelect }),
+      });
+      const data = await res.json();
+      if (data.description) {
+        setNewDescription(data.description);
+        if (data.suggestedCategory) setNewCategorySelect(data.suggestedCategory);
+        setAiNotice('تم توليد الوصف والتصنيف بالذكاء الاصطناعي بنجاح ✨');
+      }
+    } catch (e) {
+      console.error(e);
+      setNewDescription(`بضاعة ${newTitle} مفحوصة 100% بحالة ممتازة، استيراد بالة وأمازون أوروبي مع الضمان كامل.`);
+    } finally {
+      setIsGeneratingAi(false);
+    }
+  };
 
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -384,21 +415,33 @@ export default function MasterAdminPage() {
     e.preventDefault();
     if (!newTitle.trim() || !newPrice) return;
     const finalImages = newUploadedImages.length > 0 ? newUploadedImages : ['https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=800&q=80'];
+    const outletP = Number(newPrice);
+    const retailP = newRetailPrice ? Number(newRetailPrice) : Math.round(outletP * 1.35);
+
     const prod: Product = {
-      id: `p_${Date.now()}`, title: newTitle.trim(), description: 'بضاعة ممتازة مفحوصة 100%.',
-      condition: 'NEW', conditionNotes: 'جديد بالختم.',
-      retailPrice: Number(newPrice) * 1.3, outletPrice: Number(newPrice),
-      publishedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
+      id: `p_${Date.now()}`,
+      title: newTitle.trim(),
+      description: newDescription.trim() || 'بضاعة ممتازة مفحوصة 100% بحالة أصلية.',
+      condition: 'NEW',
+      conditionNotes: 'جديد بالختم وفحص 100%.',
+      retailPrice: retailP,
+      outletPrice: outletP,
+      publishedAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
       images: finalImages,
-      tags: ['جديد', 'أمازون'], vendorId: newVendorId, status: 'AVAILABLE', quantity: 1,
-      category: newCatName.trim() || newCategorySelect, viewsCount: 1,
+      tags: ['جديد', 'أمازون'],
+      vendorId: newVendorId,
+      status: 'AVAILABLE',
+      quantity: 1,
+      category: newCatName.trim() || newCategorySelect,
+      viewsCount: 1,
     };
     if (newCatName.trim()) {
       const id = `c_${Date.now()}`;
       setTreeCategories(prev => [...prev, { id, name: newCatName.trim(), slug: newCatName.trim().replace(/\s+/g, '-'), icon: '📁' }]);
     }
     setProductList(prev => [prod, ...prev]);
-    setNewTitle(''); setNewPrice(''); setNewCatName(''); setNewUploadedImages([]);
+    setNewTitle(''); setNewPrice(''); setNewRetailPrice(''); setNewDescription(''); setNewCatName(''); setNewUploadedImages([]); setAiNotice('');
   };
 
   // Tree category handlers
@@ -626,19 +669,6 @@ export default function MasterAdminPage() {
             <p className="text-xs text-slate-400 mt-0.5">لوحة إدارة سوق البالات الاحترافية</p>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                if (confirm('هل أنت تأكد من تصفير المنشورات وحذف البيانات التجريبية للبدء من الصفر؟')) {
-                  setProductList([]);
-                  localStorage.removeItem('balat_iq_cart');
-                }
-              }}
-              className="px-3.5 py-2 rounded-xl bg-red-600/20 hover:bg-red-600 hover:text-white border border-red-500/30 text-red-400 font-extrabold text-xs transition-all flex items-center gap-1.5"
-              title="تصفير المنتجات للبدء من الصفر"
-            >
-              <Trash2 className="w-4 h-4" />
-              <span>تصفير المنتجات (Zero DB)</span>
-            </button>
             <Link href="/" className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all flex items-center gap-2 shadow-md">
               <span>معاينة الواجهة</span>
               <ArrowRight className="w-4 h-4 rotate-180" />
@@ -703,16 +733,12 @@ export default function MasterAdminPage() {
                 <Plus className="w-4 h-4 text-amber-500" />
                 إضافة منشور / بضاعة جديدة
               </h3>
+
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
+                <div className="sm:col-span-2">
                   <label className="block text-slate-300 font-bold mb-1">عنوان البضاعة *</label>
-                  <input required value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="عنوان المنتج"
+                  <input required value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="مثال: سماعات رأس لاسلكية Sony WH-1000XM5 أوبن بوكس"
                     className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white focus:ring-1 focus:ring-amber-500 focus:outline-none" />
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-bold mb-1">السعر (د.ع) *</label>
-                  <input required type="number" value={newPrice} onChange={e => setNewPrice(e.target.value)} placeholder="320000"
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono focus:ring-1 focus:ring-amber-500 focus:outline-none" />
                 </div>
                 <div>
                   <label className="block text-slate-300 font-bold mb-1">التاجر الناشر</label>
@@ -722,16 +748,56 @@ export default function MasterAdminPage() {
                   </select>
                 </div>
               </div>
+
+              {/* Prices Row (Retail & Outlet) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-bold mb-1">اختر من التصنيفات</label>
+                  <label className="block text-amber-400 font-bold mb-1">سعر الستوك / الخصم الحالي (د.ع) *</label>
+                  <input required type="number" value={newPrice} onChange={e => setNewPrice(e.target.value)} placeholder="320000"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-amber-500/40 text-amber-400 font-mono font-black focus:ring-1 focus:ring-amber-500 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-slate-400 font-bold mb-1">سعر أمازون الأصلي قبل الخصم (اختياري - د.ع)</label>
+                  <input type="number" value={newRetailPrice} onChange={e => setNewRetailPrice(e.target.value)} placeholder="480000"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono focus:ring-1 focus:ring-amber-500 focus:outline-none" />
+                </div>
+              </div>
+
+              {/* Description & AI Generator */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-slate-300 font-bold">وصف وتفاصيل البضاعة:</label>
+                  <button
+                    type="button"
+                    onClick={handleGenerateAi}
+                    disabled={isGeneratingAi}
+                    className="px-3 py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-black text-[11px] border border-amber-500/40 transition-all flex items-center gap-1.5"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    <span>{isGeneratingAi ? 'جاري التوليد بالذكاء الاصطناعي...' : 'توليد الوصف والتصنيف بالذكاء الاصطناعي ✨'}</span>
+                  </button>
+                </div>
+                <textarea
+                  rows={3}
+                  value={newDescription}
+                  onChange={e => setNewDescription(e.target.value)}
+                  placeholder="اكتب وصف المنتج وملاحظات الفحص هنا..."
+                  className="w-full p-3 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs leading-relaxed focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                />
+                {aiNotice && <p className="text-[11px] text-emerald-400 font-bold font-mono">{aiNotice}</p>}
+              </div>
+
+              {/* Categories Selector */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">اختر من التصنيفات الموجودة</label>
                   <select value={newCategorySelect} onChange={e => setNewCategorySelect(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold focus:outline-none">
                     {treeCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-amber-400 font-bold mb-1">أو اكتب تصنيفاً جديداً (يُضاف تلقائياً)</label>
+                  <label className="block text-amber-400 font-bold mb-1">أو اكتب تصنيفاً جديداً (إذا لم تجده)</label>
                   <input value={newCatName} onChange={e => setNewCatName(e.target.value)} placeholder="تصنيف جديد..."
                     className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-amber-500/30 text-white focus:ring-1 focus:ring-amber-500 focus:outline-none" />
                 </div>

@@ -261,18 +261,6 @@ export const ProductDetailClient: React.FC<ProductDetailClientProps> = ({
                     <span>{vendor.rating}/5</span>
                   </div>
                 </div>
-
-                {/* ── Vendor WhatsApp Direct Link ── */}
-                <a
-                  href={`https://wa.me/${vendorWhatsapp}?text=${encodeURIComponent(`مرحباً، سؤال عن منتج: ${product.title}`)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-md transition-all active:scale-95"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  <span>مراسلة التاجر مباشرة على واتساب</span>
-                  <span className="font-mono opacity-70">{vendor.phone}</span>
-                </a>
               </div>
 
               {/* Title */}
