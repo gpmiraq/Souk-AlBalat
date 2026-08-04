@@ -13,7 +13,7 @@ const firebaseConfig = {
   measurementId: "G-M3PMZPWQTL"
 };
 
-// Initialize Firebase app singleton
+// Initialize Firebase app singleton safely
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 export const db = getFirestore(app);
