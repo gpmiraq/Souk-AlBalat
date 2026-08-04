@@ -118,8 +118,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           });
           setProducts(INITIAL_PRODUCTS);
         }
-      } catch (err) {
-        console.warn('Firestore fetch failed/disabled, using localStorage fallback:', err);
+      } catch (err: any) {
+        console.error('Firestore Database Connection Error Details:', err?.message || err);
         const savedProducts = localStorage.getItem('balat_iq_products');
         if (savedProducts) setProducts(JSON.parse(savedProducts));
       }
