@@ -309,16 +309,27 @@ export default function MasterAdminPage() {
     }
   }, []);
 
+  const { currentUser } = useCart();
+
+  // Auto-auth if logged in as site admin (gpm.iraq@gmail.com)
+  React.useEffect(() => {
+    if ((currentUser as any)?.isSiteAdmin) {
+      setIsAdminAuth(true);
+      sessionStorage.setItem('souk_admin_authed', 'true');
+    }
+  }, [currentUser]);
+
   const handleAdminLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const u = adminUserInput.trim().toLowerCase();
     const p = adminPassInput.trim();
-    if ((u === 'admin' || u.includes('أبو وارث') || u === 'gpmiraq' || u === 'demo') && (p === 'admin' || p === '123456' || p === 'demo')) {
+    // Secure: only allow access if the admin PIN matches (removed demo/open credentials)
+    if (u === 'ابو وارث' && p === 'GPM@2025!') {
       setIsAdminAuth(true);
       sessionStorage.setItem('souk_admin_authed', 'true');
       setAdminAuthError('');
     } else {
-      setAdminAuthError('بيانات الدخول غير صحيحة! يرجى التأكد من اسم المدير وكلمة السر.');
+      setAdminAuthError('بيانات الدخول غير صحيحة! يرجى استخدام حساب Google الموثّق.');
     }
   };
 

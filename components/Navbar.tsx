@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import {
   ShoppingBag,
@@ -19,7 +19,10 @@ import {
   Zap,
   Truck,
   Sliders,
-  PlusCircle
+  PlusCircle,
+  LogOut,
+  Edit3,
+  Crown
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useCart } from '../context/CartContext';
@@ -52,11 +55,25 @@ export const Navbar: React.FC<NavbarProps> = ({
     siteSettings,
     activatedVendorIds,
     vendorUser,
+    logoutCustomer,
   } = useCart();
 
   const [isQRCodeOpen, setIsQRCodeOpen] = useState(false);
   const [searchInputValue, setSearchInputValue] = useState('');
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const categoryScrollRef = useRef<HTMLDivElement>(null);
+
+  // Close user menu on outside click
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   const scrollCategories = (dir: 'right' | 'left') => {
     if (categoryScrollRef.current) {
@@ -177,27 +194,82 @@ export const Navbar: React.FC<NavbarProps> = ({
               </Link>
             )}
 
-            {/* 3. Customer Login / Profile */}
-            <button
-              onClick={() => setIsAuthModalOpen(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-200 bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700"
-            >
-              <User className="w-4 h-4 text-amber-400" />
-              <span>
-                {currentUser ? currentUser.fullName : 'تسجيل الدخول'}
-              </span>
-            </button>
+            {/* 3. Customer Login / Profile Dropdown */}
+            <div className="relative" ref={userMenuRef}>
+              {currentUser ? (
+                <>
+                  <button
+                    onClick={() => setIsUserMenuOpen(v => !v)}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-200 bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700"
+                  >
+                    {(currentUser as any).isSiteAdmin && (
+                      <Crown className="w-3.5 h-3.5 text-amber-400" />
+                    )}
+                    <User className="w-4 h-4 text-amber-400" />
+                    <span className="max-w-[90px] truncate">{currentUser.fullName}</span>
+                    <ChevronDown className={`w-3 h-3 transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+                  </button>
 
-            {/* 4. Master Admin CMS Link (ONLY visible for Super Admin "أبو وارث أمازون" or admin role) */}
-            {(currentUser?.role === 'ADMIN' || vendorUser?.isSiteAdmin || vendorUser?.id === 'v_admin') && (
-              <Link
+                  {/* Dropdown Menu */}
+                  {isUserMenuOpen && (
+                    <div
+                      className="absolute left-0 top-full mt-2 w-52 rounded-2xl shadow-2xl overflow-hidden z-50"
+                      style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.08)' }}
+                    >
+                      {/* User Info */}
+                      <div className="px-4 py-3 border-b border-slate-700">
+                        <p className="font-black text-white text-sm truncate">{currentUser.fullName}</p>
+                        {currentUser.email && (
+                          <p className="text-slate-400 text-xs truncate">{currentUser.email}</p>
+                        )}
+                        {(currentUser as any).isSiteAdmin && (
+                          <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-black">
+                            <Crown className="w-3 h-3" /> مدير الموقع
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Menu Items */}
+                      <div className="py-1">
+                        <button
+                          onClick={() => { setIsUserMenuOpen(false); setIsAuthModalOpen(true); }}
+                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors text-right"
+                        >
+                          <Edit3 className="w-4 h-4 text-slate-400" />
+                          تعديل بياناتي
+                        </button>
+                        <button
+                          onClick={() => { logoutCustomer(); setIsUserMenuOpen(false); }}
+                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors text-right"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          تسجيل الخروج
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <button
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-200 bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700"
+                >
+                  <User className="w-4 h-4 text-amber-400" />
+                  <span>تسجيل الدخول</span>
+                </button>
+              )}
+            </div>
+
+            {/* 4. Master Admin CMS Link (ONLY for admin) */}
+            {((currentUser as any)?.isSiteAdmin || vendorUser?.isSiteAdmin || vendorUser?.id === 'v_admin') && (
+              <a
                 href="/admin"
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-black text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 transition-colors border border-amber-500/30"
                 title="لوحة المدير العامة"
               >
                 <Sliders className="w-4 h-4 text-amber-400" />
-                <span className="hidden sm:inline">لوحة المدير 👑</span>
-              </Link>
+                <span className="hidden sm:inline">الإدارة 👑</span>
+              </a>
             )}
 
             {/* Theme Toggle */}
