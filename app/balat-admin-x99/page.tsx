@@ -422,14 +422,6 @@ export default function MasterAdminPage() {
   const [adminPassInput, setAdminPassInput] = useState('');
   const [adminAuthError, setAdminAuthError] = useState('');
 
-  // Check existing session
-  React.useEffect(() => {
-    const savedAuth = sessionStorage.getItem('souk_admin_authed');
-    if (savedAuth === 'true') {
-      setIsAdminAuth(true);
-    }
-  }, []);
-
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const [realUsers, setRealUsers] = useState<UserProfile[]>([]);
 
@@ -452,19 +444,33 @@ export default function MasterAdminPage() {
 
   const { currentUser } = useCart();
 
-  const handleAdminLogout = () => {
-    sessionStorage.removeItem('souk_admin_authed');
-    sessionStorage.setItem('souk_admin_manual_logout', 'true');
-    setIsAdminAuth(false);
-  };
-
-  // Auto-auth if logged in as site admin (gpm.iraq@gmail.com)
+  // 1. Professional Secure Session Check
   React.useEffect(() => {
+    const isAuthed = sessionStorage.getItem('souk_admin_authed');
+    const isLoggedOut = sessionStorage.getItem('souk_admin_manual_logout');
+
+    if (isLoggedOut === 'true') {
+      setIsAdminAuth(false);
+      return;
+    }
+
+    if (isAuthed === 'true') {
+      setIsAdminAuth(true);
+      return;
+    }
+
+    // Auto-auth for logged in Super Admin if not explicitly logged out
     if (currentUser?.email === 'gpm.iraq@gmail.com' || (currentUser as any)?.isSiteAdmin || currentUser?.role === 'ADMIN') {
       setIsAdminAuth(true);
       sessionStorage.setItem('souk_admin_authed', 'true');
     }
   }, [currentUser]);
+
+  const handleAdminLogout = () => {
+    sessionStorage.setItem('souk_admin_authed', 'false');
+    sessionStorage.setItem('souk_admin_manual_logout', 'true');
+    setIsAdminAuth(false);
+  };
 
   const handleAdminLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -473,9 +479,10 @@ export default function MasterAdminPage() {
     if ((u === 'ابو وارث' || u === 'admin' || u === 'gpm.iraq@gmail.com') && (p === 'GPM@2025!' || p === 'admin')) {
       setIsAdminAuth(true);
       sessionStorage.setItem('souk_admin_authed', 'true');
+      sessionStorage.removeItem('souk_admin_manual_logout');
       setAdminAuthError('');
     } else {
-      setAdminAuthError('بيانات الدخول غير صحيحة! يرجى استخدام حساب المدير المعتمد.');
+      setAdminAuthError('بيانات الدخول غير صحيحة! يرجى إدخال اسم المدير وكلمة السر الصحيحة.');
     }
   };
 
