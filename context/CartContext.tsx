@@ -276,8 +276,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setIsAuthModalOpen(false);
   };
 
-  const logoutCustomer = () => {
+  const logoutCustomer = async () => {
+    try {
+      const { auth } = await import('../lib/firebase');
+      const { signOut } = await import('firebase/auth');
+      await signOut(auth);
+    } catch (err) {
+      console.error('Firebase signOut error:', err);
+    }
     setCurrentUser(null);
+    setVendorUser(null);
+    localStorage.removeItem('balat_iq_user');
+    localStorage.removeItem('balat_iq_vendor');
+    sessionStorage.removeItem('souk_admin_authed');
+    sessionStorage.removeItem('souk_admin_manual_logout');
   };
 
   const loginVendor = (user: string, pass: string): boolean => {
