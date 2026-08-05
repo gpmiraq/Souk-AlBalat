@@ -47,13 +47,15 @@ export const UserAuthModal: React.FC = () => {
       setPhone(currentUser.phone || '');
       setCity(currentUser.city || 'بغداد');
       
-      // Parse address format "City - District / Landmark"
+      // Parse address format or fallback to existing address
       if (currentUser.address) {
         const parts = currentUser.address.split(' - ');
         const locationPart = parts[1] || parts[0] || '';
         const subParts = locationPart.split(' / ');
-        setDistrict(subParts[0] || '');
+        setDistrict(subParts[0] || currentUser.address || 'المقر الرئيسي');
         setLandmark(subParts[1] || '');
+      } else {
+        setDistrict('المقر الرئيسي');
       }
       setStep('PHONE');
     } else if (isAuthModalOpen && !currentUser) {
@@ -177,10 +179,11 @@ export const UserAuthModal: React.FC = () => {
   // ─ Step 3: Location Submit + Final Save ─────────────────────────────────
   const handleLocationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!district.trim() || !pendingUser) return;
+    if (!pendingUser) return;
     setIsSaving(true);
 
-    const fullAddress = `${city} - ${district.trim()}${landmark.trim() ? ' / ' + landmark.trim() : ''}`;
+    const safeDistrict = district.trim() || 'المقر الرئيسي';
+    const fullAddress = `${city} - ${safeDistrict}${landmark.trim() ? ' / ' + landmark.trim() : ''}`;
     const finalUser: UserProfile = {
       ...pendingUser,
       phone: phone.replace(/\D/g, ''),
@@ -189,12 +192,14 @@ export const UserAuthModal: React.FC = () => {
     };
 
     try {
-      await setDoc(doc(db, 'users', finalUser.id), finalUser);
-    } catch {}
+      await setDoc(doc(db, 'users', finalUser.id), finalUser, { merge: true });
+    } catch (err) {
+      console.error('Failed to update profile in Firestore:', err);
+    }
 
     loginCustomer(finalUser);
     setStep('DONE');
-    setTimeout(closeModal, 2000);
+    setTimeout(closeModal, 1500);
     setIsSaving(false);
   };
 
