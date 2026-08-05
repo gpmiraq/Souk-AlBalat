@@ -1,51 +1,74 @@
 import { NextResponse } from 'next/server';
 
 /**
- * Cloud & Google Drive Image Upload API Route
- * Accepts imageBase64 (or file data), uploads to cloud storage,
- * and returns a direct permanent public image URL (https://...).
+ * Google Drive API v3 & Cloud Image Upload Route
+ * Uses Google API Key AIzaSyBak-U4x0HySyQ40mZne3923KOkuwmQhtI
+ * Uploads base64 image data to Cloud / Google Drive storage and returns direct HTTP URL.
  */
 export async function POST(req: Request) {
   try {
     const { imageBase64, filename } = await req.json();
 
     if (!imageBase64) {
-      return NextResponse.json({ error: 'لم يتم تزويد صورة للرفع' }, { status: 400 });
+      return NextResponse.json({ error: 'لم يتم إرفاق صورة للرفع' }, { status: 400 });
     }
 
-    // Strip data:image/...;base64, prefix if present
     const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+    const API_KEY = 'AIzaSyBak-U4x0HySyQ40mZne3923KOkuwmQhtI';
 
-    // Upload to Cloud Storage API (ImgBB Cloud Service for direct permanent URLs)
-    const IMGBB_API_KEY = 'd00a12e3e9d80d283626e257ef678d8a';
-    const formData = new URLSearchParams();
-    formData.append('image', cleanBase64);
-    if (filename) formData.append('name', filename);
+    // 1. Attempt upload to Google Drive API v3
+    try {
+      const buffer = Buffer.from(cleanBase64, 'base64');
+      const meta = { name: filename || `balat_${Date.now()}.jpg`, mimeType: 'image/jpeg' };
 
-    const cloudRes = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+      const body = new FormData();
+      body.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+      body.append('file', new Blob([buffer], { type: 'image/jpeg' }));
+
+      const driveRes = await fetch(`https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&key=${API_KEY}`, {
+        method: 'POST',
+        body: body,
+      });
+
+      const driveData = await driveRes.json();
+      if (driveData && driveData.id) {
+        return NextResponse.json({
+          success: true,
+          url: `https://lh3.googleusercontent.com/d/${driveData.id}`,
+          fileId: driveData.id,
+        });
+      }
+    } catch (driveErr) {
+      console.warn('Google Drive v3 direct multipart upload fallback:', driveErr);
+    }
+
+    // 2. High-speed Cloud CDN fallback (ImgBB API) to guarantee image is uploaded publicly
+    const IMGBB_KEY = 'd00a12e3e9d80d283626e257ef678d8a';
+    const params = new URLSearchParams();
+    params.append('image', cleanBase64);
+    if (filename) params.append('name', filename);
+
+    const cdnRes = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: formData.toString(),
+      body: params.toString(),
     });
 
-    const cloudData = await cloudRes.json();
-
-    if (cloudData && cloudData.data && cloudData.data.url) {
+    const cdnData = await cdnRes.json();
+    if (cdnData && cdnData.data && cdnData.data.url) {
       return NextResponse.json({
         success: true,
-        url: cloudData.data.url,
-        filename: filename || `balat_${Date.now()}.jpg`,
+        url: cdnData.data.url,
       });
     }
 
-    // Fallback if cloud provider is temporarily unavailable
+    // Fallback: return base64
     return NextResponse.json({
       success: true,
       url: imageBase64,
-      filename: filename || `balat_${Date.now()}.jpg`,
     });
-  } catch (error: any) {
-    console.error('Upload API Error:', error?.message || error);
+  } catch (err: any) {
+    console.error('Upload Error:', err?.message || err);
     return NextResponse.json({ error: 'فشل في رفع الصورة للسحابة' }, { status: 500 });
   }
 }

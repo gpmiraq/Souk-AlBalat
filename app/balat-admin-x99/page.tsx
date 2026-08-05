@@ -458,10 +458,9 @@ export default function MasterAdminPage() {
     setIsAdminAuth(false);
   };
 
-  // Auto-auth if logged in as site admin (gpm.iraq@gmail.com) and not manually logged out
+  // Auto-auth if logged in as site admin (gpm.iraq@gmail.com)
   React.useEffect(() => {
-    const isManualLogout = sessionStorage.getItem('souk_admin_manual_logout');
-    if ((currentUser as any)?.isSiteAdmin && isManualLogout !== 'true') {
+    if (currentUser?.email === 'gpm.iraq@gmail.com' || (currentUser as any)?.isSiteAdmin || currentUser?.role === 'ADMIN') {
       setIsAdminAuth(true);
       sessionStorage.setItem('souk_admin_authed', 'true');
     }
@@ -474,10 +473,9 @@ export default function MasterAdminPage() {
     if ((u === 'ابو وارث' || u === 'admin' || u === 'gpm.iraq@gmail.com') && (p === 'GPM@2025!' || p === 'admin')) {
       setIsAdminAuth(true);
       sessionStorage.setItem('souk_admin_authed', 'true');
-      sessionStorage.removeItem('souk_admin_manual_logout');
       setAdminAuthError('');
     } else {
-      setAdminAuthError('بيانات الدخول غير صحيحة! يرجى إدخال اسم المدير وكلمة السر الصحيحة.');
+      setAdminAuthError('بيانات الدخول غير صحيحة! يرجى استخدام حساب المدير المعتمد.');
     }
   };
 
@@ -627,38 +625,55 @@ export default function MasterAdminPage() {
     }
   };
 
-  const handleAddProduct = (e: React.FormEvent) => {
+  const [isPublishingProduct, setIsPublishingProduct] = useState(false);
+  const [publishNotice, setPublishNotice] = useState('');
+
+  const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim() || !newPrice) return;
-    const finalImages = newUploadedImages.length > 0 ? newUploadedImages : ['https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=800&q=80'];
-    const outletP = Number(newPrice);
-    const retailP = newRetailPrice ? Number(newRetailPrice) : Math.round(outletP * 1.35);
+    setIsPublishingProduct(true);
+    setPublishNotice('⏳ جاري رفع وتأكيد مزامنة المنتج مع قاعدة بيانات Firestore...');
 
-    const prod: Product = {
-      id: `p_${Date.now()}`,
-      title: newTitle.trim(),
-      description: newDescription.trim() || 'بضاعة ممتازة مفحوصة 100% بحالة أصلية.',
-      condition: 'NEW',
-      conditionNotes: 'جديد بالختم وفحص 100%.',
-      retailPrice: retailP,
-      outletPrice: outletP,
-      publishedAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
-      images: finalImages,
-      tags: ['جديد', 'أمازون'],
-      vendorId: newVendorId,
-      status: 'AVAILABLE',
-      quantity: 1,
-      category: newCatName.trim() || newCategorySelect,
-      viewsCount: 1,
-    };
-    if (newCatName.trim()) {
-      const id = `c_${Date.now()}`;
-      setTreeCategories(prev => [...prev, { id, name: newCatName.trim(), slug: newCatName.trim().replace(/\s+/g, '-'), icon: '📁' }]);
+    try {
+      const finalImages = newUploadedImages.length > 0 ? newUploadedImages : ['https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=800&q=80'];
+      const outletP = Number(newPrice);
+      const retailP = newRetailPrice ? Number(newRetailPrice) : Math.round(outletP * 1.35);
+
+      const prod: Product = {
+        id: `p_${Date.now()}`,
+        title: newTitle.trim(),
+        description: newDescription.trim() || 'بضاعة ممتازة مفحوصة 100% بحالة أصلية.',
+        condition: 'NEW',
+        conditionNotes: 'جديد بالختم وفحص 100%.',
+        retailPrice: retailP,
+        outletPrice: outletP,
+        publishedAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
+        images: finalImages,
+        tags: ['جديد', 'أمازون'],
+        vendorId: newVendorId,
+        status: 'AVAILABLE',
+        quantity: 1,
+        category: newCatName.trim() || newCategorySelect,
+        viewsCount: 1,
+      };
+
+      if (newCatName.trim()) {
+        const id = `c_${Date.now()}`;
+        setTreeCategories(prev => [...prev, { id, name: newCatName.trim(), slug: newCatName.trim().replace(/\s+/g, '-'), icon: '📁' }]);
+      }
+
+      // Publish to Firestore with role-protection and await write confirmation
+      await publishProductToFirestore(prod);
+
+      setPublishNotice('✅ تم نشر المنتج وحفظه بنجاح 100% في قاعدة البيانات وتفعيله بالصفحة الرئيسية للمتجر!');
+      setNewTitle(''); setNewPrice(''); setNewRetailPrice(''); setNewDescription(''); setNewCatName(''); setNewUploadedImages([]); setAiNotice('');
+    } catch (err: any) {
+      console.error('Failed to publish product to Firestore:', err);
+      setPublishNotice('❌ حدث خطأ أثناء النشر في قاعدة البيانات. يرجى إعادة المحاولة.');
+    } finally {
+      setIsPublishingProduct(false);
     }
-    // Publish to Firestore with role-protection
-    publishProductToFirestore(prod);
-    setNewTitle(''); setNewPrice(''); setNewRetailPrice(''); setNewDescription(''); setNewCatName(''); setNewUploadedImages([]); setAiNotice('');
   };
 
   // Tree category handlers
@@ -1095,9 +1110,34 @@ export default function MasterAdminPage() {
                 )}
               </div>
 
-              <button type="submit" className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black flex items-center gap-2 shadow-md transition-all">
-                <Plus className="w-4 h-4" />
-                نشر البضاعة
+              {publishNotice && (
+                <div className={`p-3.5 rounded-xl border text-xs font-black leading-relaxed ${
+                  publishNotice.includes('✅')
+                    ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+                    : publishNotice.includes('❌')
+                    ? 'bg-red-500/15 border-red-500/30 text-red-300'
+                    : 'bg-amber-500/15 border-amber-500/30 text-amber-300 animate-pulse'
+                }`}>
+                  {publishNotice}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={isPublishingProduct || isUploadingImage}
+                className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black flex items-center gap-2 shadow-lg shadow-amber-500/20 transition-all disabled:opacity-50 active:scale-98"
+              >
+                {isPublishingProduct ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+                    <span>جاري التأكد ونشر البضاعة في Firestore...</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4" />
+                    <span>نشر البضاعة الآن 🚀</span>
+                  </>
+                )}
               </button>
             </form>
 
