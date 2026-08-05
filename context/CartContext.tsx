@@ -322,6 +322,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setVendors((prev) => prev.map((v) => (v.id === vendorUser.id ? newVendor : v)));
   };
 
+  const [cartToastNotice, setCartToastNotice] = useState<string | null>(null);
+
   const addToCart = (product: Product, quantity: number = 1): boolean => {
     // REQUIRE USER AUTHENTICATION FOR PURCHASING / RESERVING!
     if (!currentUser) {
@@ -341,7 +343,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         return [...prev, { product, quantity }];
       }
     });
-    setIsCartOpen(true);
+
+    // Show toast notification without opening drawer!
+    setCartToastNotice(`🛒 تم إضافة "${product.title}" إلى سلة المشتريات!`);
+    setTimeout(() => {
+      setCartToastNotice(null);
+    }, 3500);
+
     return true;
   };
 
@@ -447,6 +455,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       })
       .join('\n\n');
 
+    // Use live currentUser profile details
+    const liveName = currentUser?.fullName || customerDetails.fullName || 'غير مدخل';
+    const livePhone = currentUser?.phone || customerDetails.phone || 'غير مدخل';
+    const liveCity = currentUser?.city || customerDetails.city || 'بغداد';
+    const liveAddress = currentUser?.address || customerDetails.address || 'حسب الاتفاق';
+
     const messageLines = [
       `*طلب شراء جديد من متجر ${siteSettings.siteName}*`,
       '----------------------------------------',
@@ -454,10 +468,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       `*التاجر الموجه إليه:* ${subCart.vendor.name}`,
       '',
       '*معلومات الزبون المسجل:*',
-      `• *الاسم:* ${customerDetails.fullName || 'غير مدخل'}`,
-      `• *الهاتف:* ${customerDetails.phone || 'غير مدخل'}`,
-      `• *المحافظة/المدينة:* ${customerDetails.city || 'بغداد'}`,
-      `• *العنوان وأقرب نقطة دالة:* ${customerDetails.address || 'حسب الاتفاق'}`,
+      `• *الاسم:* ${liveName}`,
+      `• *الهاتف:* ${livePhone}`,
+      `• *المحافظة/المدينة:* ${liveCity}`,
+      `• *العنوان وأقرب نقطة دالة:* ${liveAddress}`,
       customerDetails.notes ? `• *ملاحظات:* ${customerDetails.notes}` : '',
       '----------------------------------------',
       '*قائمة المنتجات المطلوبة:*',
@@ -472,7 +486,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     const messageString = messageLines.join('\n');
     const encoded = encodeURIComponent(messageString);
-    return `https://wa.me/${subCart.vendor.phone}?text=${encoded}`;
+
+    let rawVendorPhone = subCart.vendor.phone;
+    if ((subCart.vendor.id === 'v_admin' || subCart.vendor.isSiteAdmin) && siteSettings.adminPhone) {
+      rawVendorPhone = siteSettings.adminPhone;
+    }
+    const cleanPhone = rawVendorPhone.replace(/\D/g, '').replace(/^0/, '964');
+
+    return `https://wa.me/${cleanPhone}?text=${encoded}`;
   };
 
   return (
@@ -524,6 +545,22 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
+
+      {/* Floating Add to Cart Toast Notification */}
+      {cartToastNotice && (
+        <div className="fixed bottom-6 left-6 right-6 sm:left-auto sm:right-6 z-[9999] max-w-md px-5 py-3.5 bg-slate-900 border border-amber-500/50 text-white rounded-2xl shadow-2xl flex items-center justify-between gap-4 animate-bounce">
+          <div className="flex items-center gap-2.5 text-xs font-bold truncate">
+            <span className="text-base flex-shrink-0">🛒</span>
+            <span className="truncate">{cartToastNotice}</span>
+          </div>
+          <button
+            onClick={() => { setIsCartOpen(true); setCartToastNotice(null); }}
+            className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-black transition-all flex-shrink-0 shadow-md"
+          >
+            عرض السلة ↗
+          </button>
+        </div>
+      )}
     </CartContext.Provider>
   );
 }
