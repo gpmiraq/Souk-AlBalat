@@ -445,8 +445,8 @@ export default function MasterAdminPage() {
   const { currentUser, logoutCustomer, loginCustomer } = useCart();
 
   const isMasterAdmin = useMemo(() => {
-    const isAuthedSession = sessionStorage.getItem('souk_admin_authed') === 'true';
-    const isLoggedOutSession = sessionStorage.getItem('souk_admin_manual_logout') === 'true';
+    const isAuthedSession = typeof window !== 'undefined' ? sessionStorage.getItem('souk_admin_authed') === 'true' : false;
+    const isLoggedOutSession = typeof window !== 'undefined' ? sessionStorage.getItem('souk_admin_manual_logout') === 'true' : false;
     if (isLoggedOutSession) return false;
     return (
       isAuthedSession ||
