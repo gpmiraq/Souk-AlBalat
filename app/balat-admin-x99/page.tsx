@@ -593,24 +593,28 @@ export default function MasterAdminPage() {
         const reader = new FileReader();
         reader.onloadend = async () => {
           if (reader.result) {
+            let stampedUrl = '';
             try {
               const rawDataUrl = reader.result as string;
-              const stampedUrl = await createStampedImage(rawDataUrl, { opacity: 0.38 });
+              stampedUrl = await createStampedImage(rawDataUrl, { opacity: 0.38 });
 
-              // Upload to Cloud API to get a permanent public URL
-              const res = await fetch('/api/upload', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ imageBase64: stampedUrl, filename: file.name }),
-              });
-              const data = await res.json();
-              if (data.url) {
-                setNewUploadedImages(prev => [...prev, data.url]);
-              } else {
-                setNewUploadedImages(prev => [...prev, stampedUrl]);
-              }
+              // Direct Firebase Cloud Storage Upload (creates products/ folder in your Firebase console)
+              const { uploadToFirebaseStorage } = await import('../../lib/firebaseStorage');
+              const firestoreUrl = await uploadToFirebaseStorage(stampedUrl, file.name);
+              setNewUploadedImages(prev => [...prev, firestoreUrl]);
             } catch (err) {
-              console.error('Cloud upload error:', err);
+              console.error('Firebase direct storage error, trying API route fallback:', err);
+              try {
+                const res = await fetch('/api/upload', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ imageBase64: stampedUrl, filename: file.name }),
+                });
+                const data = await res.json();
+                if (data.url) setNewUploadedImages(prev => [...prev, data.url]);
+              } catch (apiErr) {
+                console.error('API upload fallback failed:', apiErr);
+              }
             } finally {
               setIsUploadingImage(false);
             }
