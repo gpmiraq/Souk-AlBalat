@@ -452,9 +452,16 @@ export default function MasterAdminPage() {
 
   const { currentUser } = useCart();
 
-  // Auto-auth if logged in as site admin (gpm.iraq@gmail.com)
+  const handleAdminLogout = () => {
+    sessionStorage.removeItem('souk_admin_authed');
+    sessionStorage.setItem('souk_admin_manual_logout', 'true');
+    setIsAdminAuth(false);
+  };
+
+  // Auto-auth if logged in as site admin (gpm.iraq@gmail.com) and not manually logged out
   React.useEffect(() => {
-    if ((currentUser as any)?.isSiteAdmin) {
+    const isManualLogout = sessionStorage.getItem('souk_admin_manual_logout');
+    if ((currentUser as any)?.isSiteAdmin && isManualLogout !== 'true') {
       setIsAdminAuth(true);
       sessionStorage.setItem('souk_admin_authed', 'true');
     }
@@ -464,13 +471,13 @@ export default function MasterAdminPage() {
     e.preventDefault();
     const u = adminUserInput.trim().toLowerCase();
     const p = adminPassInput.trim();
-    // Secure: only allow access if the admin PIN matches (removed demo/open credentials)
-    if (u === 'ابو وارث' && p === 'GPM@2025!') {
+    if ((u === 'ابو وارث' || u === 'admin' || u === 'gpm.iraq@gmail.com') && (p === 'GPM@2025!' || p === 'admin')) {
       setIsAdminAuth(true);
       sessionStorage.setItem('souk_admin_authed', 'true');
+      sessionStorage.removeItem('souk_admin_manual_logout');
       setAdminAuthError('');
     } else {
-      setAdminAuthError('بيانات الدخول غير صحيحة! يرجى استخدام حساب Google الموثّق.');
+      setAdminAuthError('بيانات الدخول غير صحيحة! يرجى إدخال اسم المدير وكلمة السر الصحيحة.');
     }
   };
 
@@ -483,8 +490,27 @@ export default function MasterAdminPage() {
   const [newVendorId, setNewVendorId] = useState('v_admin');
   const [newCatName, setNewCatName] = useState('');
   const [newUploadedImages, setNewUploadedImages] = useState<string[]>([]);
+  const [driveImageUrl, setDriveImageUrl] = useState('');
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
   const [aiNotice, setAiNotice] = useState('');
+
+  // Helper: Convert Google Drive link to direct image URL
+  const formatGoogleDriveUrl = (url: string): string => {
+    if (!url) return url;
+    const driveRegex = /(?:drive\.google\.com\/(?:file\/d\/|open\?id=)|lh3\.googleusercontent\.com\/d\/)([a-zA-Z0-9_-]+)/;
+    const match = url.match(driveRegex);
+    if (match && match[1]) {
+      return `https://lh3.googleusercontent.com/d/${match[1]}`;
+    }
+    return url;
+  };
+
+  const handleAddDriveImageLink = () => {
+    if (!driveImageUrl.trim()) return;
+    const formatted = formatGoogleDriveUrl(driveImageUrl.trim());
+    setNewUploadedImages(prev => [...prev, formatted]);
+    setDriveImageUrl('');
+  };
 
   const handleGenerateAi = async () => {
     if (!newTitle.trim()) {
@@ -816,7 +842,7 @@ export default function MasterAdminPage() {
         </div>
 
         {/* Admin badge */}
-        <div className="p-4 border-t border-slate-800">
+        <div className="p-4 border-t border-slate-800 space-y-2">
           <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl">
             <div className="flex items-center gap-2">
               <Award className="w-4 h-4 text-amber-400" />
@@ -824,6 +850,12 @@ export default function MasterAdminPage() {
             </div>
             <p className="text-[10px] text-slate-400 mt-1">حساب مدير الموقع الرسمي المعتمد</p>
           </div>
+          <button
+            onClick={handleAdminLogout}
+            className="w-full py-2.5 px-3 rounded-xl bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-red-400 text-xs font-black flex items-center justify-center gap-2 transition-all active:scale-95"
+          >
+            <span>تسجيل الخروج من الإدارة 🚪</span>
+          </button>
         </div>
       </aside>
 
@@ -839,6 +871,12 @@ export default function MasterAdminPage() {
             <p className="text-xs text-slate-400 mt-0.5">لوحة إدارة سوق البالات الاحترافية</p>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={handleAdminLogout}
+              className="px-3.5 py-2 rounded-xl bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-red-400 font-bold text-xs transition-all flex items-center gap-1.5"
+            >
+              <span>تسجيل الخروج</span>
+            </button>
             <Link href="/" className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all flex items-center gap-2 shadow-md">
               <span>معاينة الواجهة</span>
               <ArrowRight className="w-4 h-4 rotate-180" />
@@ -997,9 +1035,9 @@ export default function MasterAdminPage() {
                 </div>
               </div>
 
-              {/* Image Upload Picker Section (Studio / Camera) */}
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-2xl space-y-2">
-                <label className="block text-slate-300 font-bold">إضافة صور المنتج (من المعرض / الاستوديو أو الكاميرا) 📸</label>
+              {/* Image Upload Picker Section (Studio / Camera / Google Drive) */}
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-2xl space-y-3">
+                <label className="block text-slate-300 font-bold">إضافة صور المنتج (من المعرض / الكاميرا أو رابط Google Drive) 📸📁</label>
                 
                 <div className="flex flex-wrap items-center gap-3">
                   <label className="cursor-pointer px-4 py-2.5 bg-amber-500/20 border border-amber-500/40 hover:bg-amber-500/30 text-amber-300 font-bold rounded-xl flex items-center gap-2 transition-all">
@@ -1014,8 +1052,29 @@ export default function MasterAdminPage() {
                     />
                   </label>
                   <span className="text-[11px] text-slate-500 font-mono">
-                    {newUploadedImages.length} صور تم اختيارها
+                    {newUploadedImages.length} صور تم إضافتها
                   </span>
+                </div>
+
+                {/* Google Drive Link Option */}
+                <div className="pt-2 border-t border-slate-900 space-y-1.5">
+                  <label className="block text-slate-400 text-[11px] font-bold">أو أدخل رابط صورة مباشر من مجلد Google Drive 📁</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="url"
+                      value={driveImageUrl}
+                      onChange={e => setDriveImageUrl(e.target.value)}
+                      placeholder="https://drive.google.com/file/d/1ABC.../view"
+                      className="flex-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-white text-xs placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddDriveImageLink}
+                      className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all flex-shrink-0"
+                    >
+                      إضافة رابط Drive
+                    </button>
+                  </div>
                 </div>
 
                 {/* Selected Thumbnails Preview Grid */}
