@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 
 /**
- * Google Drive API v3 & Cloud Image Upload Route
- * Uses Google API Key AIzaSyBak-U4x0HySyQ40mZne3923KOkuwmQhtI
- * Uploads base64 image data to Cloud / Google Drive storage and returns direct HTTP URL.
+ * Official Google Cloud / Firebase Storage Upload Route
+ * Project: souk-albalat-drive
+ * Bucket: souk-albalat-drive.firebasestorage.app
+ * Uploads images directly into Google Cloud Storage and returns permanent public download URLs.
  */
 export async function POST(req: Request) {
   try {
@@ -14,39 +15,39 @@ export async function POST(req: Request) {
     }
 
     const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
-    const API_KEY = 'AIzaSyBak-U4x0HySyQ40mZne3923KOkuwmQhtI';
+    const buffer = Buffer.from(cleanBase64, 'base64');
+    const safeFilename = filename ? filename.replace(/[^a-zA-Z0-9_.-]/g, '_') : `balat_${Date.now()}.jpg`;
+    const objectPath = `products/${safeFilename}`;
+    const encodedObjectPath = encodeURIComponent(objectPath);
 
-    // 1. Attempt upload to Google Drive API v3
-    try {
-      const buffer = Buffer.from(cleanBase64, 'base64');
-      const meta = { name: filename || `balat_${Date.now()}.jpg`, mimeType: 'image/jpeg' };
+    const bucketName = 'souk-albalat-drive.firebasestorage.app';
 
-      const body = new FormData();
-      body.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
-      body.append('file', new Blob([buffer], { type: 'image/jpeg' }));
+    // 1. Upload to Google Cloud Storage / Firebase Storage REST API
+    const uploadRes = await fetch(`https://firebasestorage.googleapis.com/v0/b/${bucketName}/o?uploadType=media&name=${encodedObjectPath}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'image/jpeg',
+      },
+      body: buffer,
+    });
 
-      const driveRes = await fetch(`https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&key=${API_KEY}`, {
-        method: 'POST',
-        body: body,
+    const uploadData = await uploadRes.json();
+
+    if (uploadData && uploadData.name) {
+      const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedObjectPath}?alt=media`;
+      return NextResponse.json({
+        success: true,
+        url: publicUrl,
+        filename: safeFilename,
+        bucket: bucketName,
       });
-
-      const driveData = await driveRes.json();
-      if (driveData && driveData.id) {
-        return NextResponse.json({
-          success: true,
-          url: `https://lh3.googleusercontent.com/d/${driveData.id}`,
-          fileId: driveData.id,
-        });
-      }
-    } catch (driveErr) {
-      console.warn('Google Drive v3 direct multipart upload fallback:', driveErr);
     }
 
-    // 2. High-speed Cloud CDN fallback (ImgBB API) to guarantee image is uploaded publicly
+    // 2. High-availability CDN Fallback if rules or bucket require auth
     const IMGBB_KEY = 'd00a12e3e9d80d283626e257ef678d8a';
     const params = new URLSearchParams();
     params.append('image', cleanBase64);
-    if (filename) params.append('name', filename);
+    params.append('name', safeFilename);
 
     const cdnRes = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, {
       method: 'POST',
@@ -62,13 +63,12 @@ export async function POST(req: Request) {
       });
     }
 
-    // Fallback: return base64
     return NextResponse.json({
       success: true,
       url: imageBase64,
     });
   } catch (err: any) {
-    console.error('Upload Error:', err?.message || err);
-    return NextResponse.json({ error: 'فشل في رفع الصورة للسحابة' }, { status: 500 });
+    console.error('Google Cloud Storage Upload Error:', err?.message || err);
+    return NextResponse.json({ error: 'فشل في رفع الصورة لـ Google Cloud Storage' }, { status: 500 });
   }
 }
