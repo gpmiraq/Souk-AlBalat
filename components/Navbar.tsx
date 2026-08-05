@@ -268,7 +268,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* 4. Master Admin CMS Link (ONLY for admin) */}
             {((currentUser as any)?.isSiteAdmin || vendorUser?.isSiteAdmin || vendorUser?.id === 'v_admin') && (
               <a
-                href="/admin"
+                href="/balat-admin-x99"
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-black text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 transition-colors border border-amber-500/30"
                 title="لوحة المدير العامة"
               >

@@ -100,7 +100,7 @@ export const Footer: React.FC = () => {
         <div>
           <h4 className="font-extrabold text-sm text-amber-400 uppercase tracking-wider mb-4">معلومات وتجار</h4>
           <ul className="space-y-2 text-xs text-slate-300">
-            <li><Link href="/admin" className="hover:text-amber-400 transition-colors font-bold text-amber-400">لوحة الإدارة (WordPress CMS)</Link></li>
+            <li><Link href="/balat-admin-x99" className="hover:text-amber-400 transition-colors font-bold text-amber-400">لوحة الإدارة (CMS)</Link></li>
             <li><Link href="/vendor/portal" className="hover:text-amber-400 transition-colors">بوابة التجار والبائعين</Link></li>
             <li><Link href="/about" className="hover:text-amber-400 transition-colors">من نحن</Link></li>
             <li><Link href="/contact" className="hover:text-amber-400 transition-colors">تواصل معنا</Link></li>
