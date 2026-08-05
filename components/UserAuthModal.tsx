@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, MapPin, CheckCircle2, ChevronDown, Loader2 } from 'lucide-react';
+import { X, MapPin, CheckCircle2, ChevronDown, Loader2, User, Phone, Save } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { db, auth } from '../lib/firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
@@ -18,7 +18,7 @@ const IRAQ_GOVERNORATES = [
 const ADMIN_EMAIL = 'gpm.iraq@gmail.com';
 const ADMIN_NAME = 'أبو وارث أمازون';
 
-type Step = 'GOOGLE' | 'PHONE' | 'LOCATION' | 'DONE';
+type Step = 'GOOGLE' | 'PHONE' | 'LOCATION' | 'EDIT_PROFILE' | 'DONE';
 
 export const UserAuthModal: React.FC = () => {
   const { isAuthModalOpen, setIsAuthModalOpen, loginCustomer, currentUser } = useCart();
@@ -27,11 +27,10 @@ export const UserAuthModal: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Step 2: Phone
+  // Profile Edit fields
+  const [fullNameInput, setFullNameInput] = useState('');
   const [phone, setPhone] = useState('');
   const [phoneError, setPhoneError] = useState('');
-
-  // Step 3: Location
   const [city, setCity] = useState('بغداد');
   const [district, setDistrict] = useState('');
   const [landmark, setLandmark] = useState('');
@@ -44,10 +43,10 @@ export const UserAuthModal: React.FC = () => {
   React.useEffect(() => {
     if (isAuthModalOpen && currentUser) {
       setPendingUser(currentUser);
+      setFullNameInput(currentUser.fullName || '');
       setPhone(currentUser.phone || '');
       setCity(currentUser.city || 'بغداد');
       
-      // Parse address format or fallback to existing address
       if (currentUser.address) {
         const parts = currentUser.address.split(' - ');
         const locationPart = parts[1] || parts[0] || '';
@@ -57,7 +56,7 @@ export const UserAuthModal: React.FC = () => {
       } else {
         setDistrict('المقر الرئيسي');
       }
-      setStep('PHONE');
+      setStep('EDIT_PROFILE');
     } else if (isAuthModalOpen && !currentUser) {
       setStep('GOOGLE');
     }
@@ -100,7 +99,6 @@ export const UserAuthModal: React.FC = () => {
 
       if (userSnap.exists()) {
         const existingProfile = userSnap.data() as UserProfile;
-        // Always enforce actual Google display name and admin rule
         const updatedProfile: UserProfile = {
           ...existingProfile,
           fullName: isAdmin ? ADMIN_NAME : (userDisplayName || existingProfile.fullName || 'مستخدم'),
@@ -109,7 +107,6 @@ export const UserAuthModal: React.FC = () => {
           isSiteAdmin: isAdmin,
           role: isAdmin ? 'ADMIN' : 'CUSTOMER',
         };
-        // Save back updated info to firestore
         try {
           await setDoc(doc(db, 'users', userId), updatedProfile, { merge: true });
         } catch {}
@@ -134,11 +131,11 @@ export const UserAuthModal: React.FC = () => {
     } catch (err: any) {
       console.error('Firebase Google Sign-In error:', err?.code, err?.message);
       if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
-        // User closed the popup - no error needed
+        // User closed the popup
       } else if (err.code === 'auth/operation-not-allowed') {
-        setError('⚠️ يجب تفعيل Google Sign-In في Firebase Console أولاً. (operation-not-allowed)');
+        setError('⚠️ يجب تفعيل Google Sign-In في Firebase Console أولاً.');
       } else if (err.code === 'auth/unauthorized-domain') {
-        setError('⚠️ النطاق غير مضاف في Firebase Auth المسموح بها. (unauthorized-domain)');
+        setError('⚠️ النطاق غير مضاف في Firebase Auth المسموح بها.');
       } else if (err.code === 'auth/popup-blocked') {
         setError('⚠️ المتصفح منع نافذة Google - يرجى السماح للنوافذ المنبثقة وإعادة المحاولة.');
       } else {
@@ -149,7 +146,7 @@ export const UserAuthModal: React.FC = () => {
     }
   };
 
-  // ─ Step 2: Phone Submit ─────────────────────────────────────────────────
+  // ─ Step 2: Phone Submit (New Users) ──────────────────────────────────────
   const handlePhoneSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const cleaned = phone.replace(/\D/g, '');
@@ -159,24 +156,11 @@ export const UserAuthModal: React.FC = () => {
       return;
     }
 
-    if (cleaned.length !== 11) {
-      setPhoneError('يجب أن يتكون رقم الهاتف العراقي من 11 رقماً بالضبط (مثال: 07701234567)');
-      return;
-    }
-
-    const validPrefixes = ['077', '078', '075', '079'];
-    const prefix = cleaned.substring(0, 3);
-
-    if (!validPrefixes.includes(prefix)) {
-      setPhoneError('يجب أن يبدأ رقم الهاتف العراقي بـ (077 أو 078 أو 075 أو 079)');
-      return;
-    }
-
     setPhoneError('');
     setStep('LOCATION');
   };
 
-  // ─ Step 3: Location Submit + Final Save ─────────────────────────────────
+  // ─ Step 3: Location Submit + Final Save (New Users) ──────────────────────
   const handleLocationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pendingUser) return;
@@ -203,9 +187,39 @@ export const UserAuthModal: React.FC = () => {
     setIsSaving(false);
   };
 
-  // ─ UI ───────────────────────────────────────────────────────────────────
+  // ─ Step EDIT_PROFILE: Save existing profile updates ───────────────────────
+  const handleEditProfileSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const targetUser = currentUser || pendingUser;
+    if (!targetUser) return;
+
+    setIsSaving(true);
+    const safeDistrict = district.trim() || 'المقر الرئيسي';
+    const fullAddress = `${city} - ${safeDistrict}${landmark.trim() ? ' / ' + landmark.trim() : ''}`;
+    const cleanedPhone = phone.replace(/\D/g, '');
+
+    const updatedUser: UserProfile = {
+      ...targetUser,
+      fullName: fullNameInput.trim() || targetUser.fullName,
+      phone: cleanedPhone || targetUser.phone,
+      city,
+      address: fullAddress,
+    };
+
+    try {
+      await setDoc(doc(db, 'users', updatedUser.id), updatedUser, { merge: true });
+    } catch (err) {
+      console.error('Failed to update profile in Firestore:', err);
+    }
+
+    loginCustomer(updatedUser);
+    setStep('DONE');
+    setTimeout(closeModal, 1500);
+    setIsSaving(false);
+  };
+
   return (
-    <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[999] flex items-center justify-center p-4" dir="rtl">
       <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-md" onClick={closeModal} />
 
       <div
@@ -216,10 +230,8 @@ export const UserAuthModal: React.FC = () => {
           animation: 'scaleIn 0.28s cubic-bezier(0.34,1.56,0.64,1) forwards',
         }}
       >
-        {/* Gradient Bar */}
         <div className="h-1 w-full" style={{ background: 'linear-gradient(90deg, #f59e0b 0%, #ef4444 50%, #8b5cf6 100%)' }} />
 
-        {/* Close */}
         <button
           onClick={closeModal}
           className="absolute top-4 left-4 z-10 p-2 rounded-full bg-white/8 hover:bg-white/15 text-slate-400 hover:text-white transition-all"
@@ -227,26 +239,7 @@ export const UserAuthModal: React.FC = () => {
           <X className="w-4 h-4" />
         </button>
 
-        {/* Step Indicators */}
-        <div className="flex justify-center gap-2 pt-6 pb-1">
-          {(['GOOGLE', 'PHONE', 'LOCATION'] as Step[]).map((s, i) => {
-            const currentIdx = ['GOOGLE', 'PHONE', 'LOCATION'].indexOf(step);
-            const isActive = step === s;
-            const isDone = currentIdx > i;
-            return (
-              <div
-                key={s}
-                className="h-1 rounded-full transition-all duration-500"
-                style={{
-                  width: isActive ? 32 : 12,
-                  background: isDone ? '#22c55e' : isActive ? '#f59e0b' : 'rgba(255,255,255,0.12)',
-                }}
-              />
-            );
-          })}
-        </div>
-
-        <div className="px-8 pt-5 pb-8">
+        <div className="px-8 pt-6 pb-8">
 
           {/* ── STEP 1: Google Login ── */}
           {step === 'GOOGLE' && (
@@ -285,14 +278,101 @@ export const UserAuthModal: React.FC = () => {
                   {error}
                 </div>
               )}
-
-              <p className="mt-6 text-xs text-slate-500">
-                بتسجيل دخولك توافق على شروط الاستخدام وسياسة الخصوصية
-              </p>
             </div>
           )}
 
-          {/* ── STEP 2: Phone Number ── */}
+          {/* ── STEP EDIT_PROFILE: Comprehensive Profile Edit Form ── */}
+          {step === 'EDIT_PROFILE' && (
+            <div>
+              <div className="text-center mb-5">
+                <div className="mx-auto mb-3 w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                  <User className="w-6 h-6" />
+                </div>
+                <h2 className="text-lg font-black text-white">تعديل الملف الشخصي ✏️</h2>
+                <p className="text-slate-400 text-xs mt-0.5">حدث رقم هاتفك وموقعك ليصلك التوصيل بدقة</p>
+              </div>
+
+              <form onSubmit={handleEditProfileSubmit} className="space-y-3 text-xs">
+                {/* Full Name */}
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">الاسم الكامل *</label>
+                  <input
+                    type="text"
+                    required
+                    value={fullNameInput}
+                    onChange={e => setFullNameInput(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                  />
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">رقم الهاتف (واتساب) *</label>
+                  <input
+                    type="tel"
+                    required
+                    value={phone}
+                    onChange={e => setPhone(e.target.value)}
+                    placeholder="077XXXXXXXX"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                    dir="ltr"
+                  />
+                </div>
+
+                {/* Governorate */}
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">المحافظة *</label>
+                  <div className="relative">
+                    <select
+                      value={city}
+                      onChange={e => setCity(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-bold appearance-none focus:outline-none"
+                    >
+                      {IRAQ_GOVERNORATES.map(g => <option key={g} value={g} style={{ background: '#0f172a' }}>{g}</option>)}
+                    </select>
+                    <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* District */}
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">المنطقة / الحي *</label>
+                  <input
+                    type="text"
+                    required
+                    value={district}
+                    onChange={e => setDistrict(e.target.value)}
+                    placeholder="المنصور، الكرادة، شارع فلسطين..."
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                  />
+                </div>
+
+                {/* Landmark */}
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">أقرب نقطة دالة</label>
+                  <input
+                    type="text"
+                    value={landmark}
+                    onChange={e => setLandmark(e.target.value)}
+                    placeholder="قرب مول، جامع، أو متجر..."
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="w-full py-3.5 rounded-xl font-black text-slate-950 transition-all hover:scale-[1.02] active:scale-95 shadow-lg flex items-center justify-center gap-2 mt-3 disabled:opacity-60"
+                  style={{ background: 'linear-gradient(135deg, #f59e0b, #eab308)' }}
+                >
+                  <Save className="w-4 h-4" />
+                  <span>{isSaving ? '⏳ جاري الحفظ...' : 'حفظ التعديلات في قاعدة البيانات 💾'}</span>
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* ── STEP 2: Phone (New Users) ── */}
           {step === 'PHONE' && (
             <div>
               <div className="text-center mb-6">
@@ -319,8 +399,7 @@ export const UserAuthModal: React.FC = () => {
                       type="tel"
                       value={phone}
                       onChange={e => setPhone(e.target.value)}
-                      placeholder="077XXXXXXXX (11 رقماً)"
-                      maxLength={11}
+                      placeholder="077XXXXXXXX"
                       className="flex-1 bg-transparent text-white placeholder-slate-500 outline-none text-right font-mono"
                       dir="ltr"
                       autoFocus
@@ -340,7 +419,7 @@ export const UserAuthModal: React.FC = () => {
             </div>
           )}
 
-          {/* ── STEP 3: Location ── */}
+          {/* ── STEP 3: Location (New Users) ── */}
           {step === 'LOCATION' && (
             <div>
               <div className="text-center mb-6">
@@ -409,19 +488,12 @@ export const UserAuthModal: React.FC = () => {
             <div className="text-center py-6">
               <CheckCircle2 className="w-16 h-16 text-emerald-400 mx-auto mb-4" />
               <h2 className="text-xl font-black text-white mb-2">مرحباً بك! 🎉</h2>
-              <p className="text-slate-400">تم حفظ بياناتك بنجاح. يمكنك الآن الحجز والطلب.</p>
+              <p className="text-slate-400">تم حفظ وتحديث بياناتك بنجاح في قاعدة البيانات.</p>
             </div>
           )}
 
         </div>
       </div>
-
-      <style>{`
-        @keyframes scaleIn {
-          from { opacity: 0; transform: scale(0.9) translateY(24px); }
-          to   { opacity: 1; transform: scale(1) translateY(0); }
-        }
-      `}</style>
     </div>
   );
 };
