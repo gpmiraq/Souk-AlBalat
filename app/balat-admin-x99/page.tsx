@@ -886,77 +886,85 @@ export default function MasterAdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white font-sans flex flex-col" dir="rtl" style={{ textAlign: 'right' }}>
+    <div className="min-h-screen bg-slate-950 text-white font-sans flex flex-col md:flex-row" dir="rtl" style={{ textAlign: 'right' }}>
 
-      {/* ── TOP HEADER (NO SIDEBAR) ─────────────────────────────────────────── */}
-      <header className="sticky top-0 z-40 bg-slate-900 border-b border-slate-800 shadow-xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-4">
-          
-          {/* Logo & Admin Badge */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-slate-950 font-black shadow-lg shadow-amber-500/20">
-              <Zap className="w-5 h-5 fill-slate-950 text-slate-950" />
+      {/* ── SIDEBAR ─────────────────────────────────────────────────────────── */}
+      <aside className="w-full md:w-64 bg-slate-900 border-b md:border-b-0 md:border-l border-slate-800 flex flex-col flex-shrink-0">
+        
+        {/* Logo */}
+        <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-xl bg-amber-500 flex items-center justify-center text-slate-950 font-black">
+              <Zap className="w-5 h-5 fill-slate-950" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="font-black text-base text-white tracking-tight">سوق البالات CMS</h1>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-black">
-                  أبو وارث أمازون 👑
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400">لوحة الإدارة المركزية المعتمدة</p>
+              <h1 className="font-black text-sm text-white">سوق البالات CMS</h1>
+              <span className="text-[10px] text-amber-400 font-mono">Master Admin Panel</span>
             </div>
           </div>
+          <Link href="/" title="زيارة الموقع" className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors">
+            <Globe className="w-4 h-4" />
+          </Link>
+        </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2.5">
-            <Link
-              href="/"
-              target="_blank"
-              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs transition-all flex items-center gap-1.5 border border-slate-700"
+        {/* Nav */}
+        <nav className="flex-1 p-3 space-y-0.5">
+          {navItems.map(item => (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={`w-full py-2.5 px-3 rounded-xl flex items-center gap-3 text-xs font-bold transition-all ${
+                activeTab === item.id ? 'bg-amber-500 text-slate-950 shadow-md font-black' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+              }`}
             >
-              <Globe className="w-4 h-4 text-amber-400" />
-              <span>معاينة المتجر ↗</span>
-            </Link>
+              <item.icon className="w-4 h-4 flex-shrink-0" />
+              <span className="flex-1 text-right">{item.label}</span>
+              {item.badge !== undefined && (
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono font-black ${
+                  activeTab === item.id ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-slate-300'
+                }`}>{item.badge}</span>
+              )}
+            </button>
+          ))}
+        </nav>
 
+        {/* Admin badge */}
+        <div className="p-4 border-t border-slate-800">
+          <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl">
+            <div className="flex items-center gap-2">
+              <Award className="w-4 h-4 text-amber-400" />
+              <span className="font-black text-amber-300 text-xs">أبو وارث أمازون 👑</span>
+            </div>
+            <p className="text-[10px] text-slate-400 mt-1">حساب مدير الموقع الرسمي المعتمد</p>
+          </div>
+        </div>
+      </aside>
+
+      {/* ── MAIN CONTENT ─────────────────────────────────────────────────────── */}
+      <main className="flex-1 p-5 md:p-8 overflow-y-auto space-y-6">
+
+        {/* Top Bar */}
+        <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-5 border-b border-slate-800">
+          <div>
+            <h2 className="text-xl font-black text-white flex items-center gap-2">
+              {navItems.find(n => n.id === activeTab)?.label}
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5">لوحة إدارة سوق البالات الاحترافية</p>
+          </div>
+          <div className="flex items-center gap-3">
             <button
               onClick={handleAdminLogout}
-              className="px-4 py-2 rounded-xl bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-red-400 font-black text-xs transition-all flex items-center gap-1.5 active:scale-95"
+              className="px-3.5 py-2 rounded-xl bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-red-400 font-bold text-xs transition-all flex items-center gap-1.5 active:scale-95"
             >
               <LogOut className="w-4 h-4" />
               <span>تسجيل الخروج 🚪</span>
             </button>
+            <Link href="/" target="_blank" className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all flex items-center gap-2 shadow-md">
+              <span>معاينة الواجهة</span>
+              <ArrowRight className="w-4 h-4 rotate-180" />
+            </Link>
           </div>
-        </div>
-
-        {/* Horizontal Navigation Tabs Bar */}
-        <div className="bg-slate-950/80 border-t border-slate-800/80 overflow-x-auto">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-1 py-1.5 min-w-max">
-            {navItems.map(item => (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`py-2 px-3.5 rounded-xl flex items-center gap-2 text-xs font-bold transition-all flex-shrink-0 ${
-                  activeTab === item.id
-                    ? 'bg-amber-500 text-slate-950 shadow-md font-black'
-                    : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                }`}
-              >
-                <item.icon className="w-4 h-4 flex-shrink-0" />
-                <span>{item.label}</span>
-                {item.badge !== undefined && (
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono font-black ${
-                    activeTab === item.id ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-slate-300'
-                  }`}>{item.badge}</span>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      </header>
-
-      {/* ── MAIN CONTENT ─────────────────────────────────────────────────────── */}
-      <main className="max-w-7xl mx-auto w-full p-4 sm:p-6 lg:p-8 space-y-6 flex-1">
+        </header>
 
         {/* ── 1. DASHBOARD ─────────────────────────────────────────────────── */}
         {activeTab === 'DASHBOARD' && (
@@ -1109,9 +1117,9 @@ export default function MasterAdminPage() {
                 </div>
               </div>
 
-              {/* Image Upload Picker Section (Studio / Camera / Google Drive) */}
+              {/* Image Upload Picker Section (Studio / Camera - Automatic Google Drive Cloud Upload) */}
               <div className="p-3 bg-slate-950 border border-slate-800 rounded-2xl space-y-3">
-                <label className="block text-slate-300 font-bold">إضافة صور المنتج (من المعرض / الكاميرا أو رابط Google Drive) 📸📁</label>
+                <label className="block text-slate-300 font-bold">إضافة صور المنتج (رفع تلقائي إلى Google Drive) 📸☁️</label>
                 
                 <div className="flex flex-wrap items-center gap-3">
                   <label className="cursor-pointer px-4 py-2.5 bg-amber-500/20 border border-amber-500/40 hover:bg-amber-500/30 text-amber-300 font-bold rounded-xl flex items-center gap-2 transition-all">
@@ -1131,30 +1139,9 @@ export default function MasterAdminPage() {
                   {isUploadingImage && (
                     <span className="text-amber-400 font-bold text-xs flex items-center gap-1.5 animate-pulse">
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      جاري رفع وتخزين الصورة سحابياً... ☁️
+                      جاري رفع وتخزين الصورة تلقائياً في Google Drive... ☁️
                     </span>
                   )}
-                </div>
-
-                {/* Google Drive Link Option */}
-                <div className="pt-2 border-t border-slate-900 space-y-1.5">
-                  <label className="block text-slate-400 text-[11px] font-bold">أو أدخل رابط صورة مباشر من مجلد Google Drive 📁</label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="url"
-                      value={driveImageUrl}
-                      onChange={e => setDriveImageUrl(e.target.value)}
-                      placeholder="https://drive.google.com/file/d/1ABC.../view"
-                      className="flex-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-white text-xs placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddDriveImageLink}
-                      className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all flex-shrink-0"
-                    >
-                      إضافة رابط Drive
-                    </button>
-                  </div>
                 </div>
 
                 {/* Selected Thumbnails Preview Grid */}
