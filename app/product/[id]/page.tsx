@@ -3,7 +3,9 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { INITIAL_PRODUCTS, INITIAL_VENDORS } from '../../../data/mockData';
 import { ProductDetailClient } from '@/app/product/[id]/ProductDetailClient';
-
+import { Product } from '../../../types';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../../lib/firebase';
 
 interface ProductPageProps {
   params: {
@@ -11,9 +13,21 @@ interface ProductPageProps {
   };
 }
 
+async function getProduct(id: string): Promise<Product | null> {
+  try {
+    const docSnap = await getDoc(doc(db, 'products', id));
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() } as Product;
+    }
+  } catch (err) {
+    console.error('Failed to fetch product from Firestore:', err);
+  }
+  return INITIAL_PRODUCTS.find((p) => p.id === id) || null;
+}
+
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
-  const product = INITIAL_PRODUCTS.find((p) => p.id === params.id);
-  
+  const product = await getProduct(params.id);
+
   if (!product) {
     return {
       title: 'المنتج غير موجود | سوق البالات',
@@ -21,11 +35,11 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
   }
 
   const vendor = INITIAL_VENDORS.find((v) => v.id === product.vendorId);
-  const conditionLabel = product.condition.replace('_', ' ');
+  const conditionLabel = (product.condition || 'NEW').replace('_', ' ');
 
   return {
     title: `${product.title} | سوق البالات أمازون`,
-    description: `${product.description} - حالة القطعة: ${conditionLabel} - السعر: ${product.outletPrice.toLocaleString('ar-IQ')} د.ع (خصم من ${product.retailPrice.toLocaleString('ar-IQ')} د.ع)`,
+    description: `${product.description} - السعر: ${product.outletPrice?.toLocaleString('ar-IQ') || 0} د.ع`,
     openGraph: {
       title: `${product.title} (${conditionLabel})`,
       description: `${product.description} | متوفر لدى: ${vendor?.name || 'سوق البالات'}`,
@@ -33,7 +47,7 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
       siteName: 'سوق البالات - Amazon Outlet IQ',
       images: [
         {
-          url: product.images[0],
+          url: product.images?.[0] || '',
           width: 800,
           height: 600,
           alt: product.title,
@@ -41,22 +55,11 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
       ],
       type: 'article',
     },
-    other: {
-      'product:price:amount': product.outletPrice.toString(),
-      'product:price:currency': 'IQD',
-      'product:condition': product.condition,
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: product.title,
-      description: product.description,
-      images: [product.images[0]],
-    },
   };
 }
 
-export default function ProductPage({ params }: ProductPageProps) {
-  const product = INITIAL_PRODUCTS.find((p) => p.id === params.id);
+export default async function ProductPage({ params }: ProductPageProps) {
+  const product = await getProduct(params.id);
 
   if (!product) {
     notFound();
