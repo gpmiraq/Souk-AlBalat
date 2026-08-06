@@ -21,8 +21,8 @@ import { useCart } from '../context/CartContext';
 import { Sparkles, ShieldCheck, Zap, ArrowLeft, Clock, Award, Package, Truck } from 'lucide-react';
 
 export default function HomePage() {
-  const { products, setProducts } = useCart();
-  const [categories, setCategories] = useState<string[]>(INITIAL_CATEGORIES);
+  const { products, setProducts, categories: liveCategories = [], vendors: liveVendors = [], publishCategoryToFirestore, publishProductToFirestore, currentUser } = useCart();
+  const categories = liveCategories.length > 0 ? liveCategories : ['الكل'];
   const [isConditionGuideOpen, setIsConditionGuideOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
@@ -69,27 +69,22 @@ export default function HomePage() {
 
   const handleAddCategory = (newCat: string) => {
     if (!categories.includes(newCat)) {
-      setCategories((prev) => [...prev, newCat]);
+      publishCategoryToFirestore(newCat);
     }
   };
 
   const handleUpdateProductStatus = (productId: string, status: ProductStatus, quantity?: number) => {
-    setProducts((prev) =>
-      prev.map((p) =>
-        p.id === productId
-          ? {
-              ...p,
-              status,
-              quantity: quantity !== undefined ? quantity : p.quantity,
-              reservedAt: status === 'RESERVED' ? new Date().toISOString() : undefined,
-            }
-          : p
-      )
-    );
+    const prod = products.find((p) => p.id === productId);
+    if (!prod) return;
+    publishProductToFirestore({
+      ...prod,
+      status,
+      quantity: quantity !== undefined ? quantity : prod.quantity,
+    });
   };
 
   const handleAddProduct = (newProduct: Product) => {
-    setProducts((prev) => [newProduct, ...prev]);
+    publishProductToFirestore(newProduct);
   };
 
   const categoryCounts = useMemo(() => {
@@ -122,12 +117,20 @@ export default function HomePage() {
         const isWithin24h = Date.now() - pubTime < 24 * 3600 * 1000;
         if (!isWithin24h) return false;
       }
-      if (filters.showSection === 'SOLD' && p.status === 'AVAILABLE') {
-        return false;
+      if (filters.showSection === 'SOLD') {
+        const isSoldOrReserved = p.status === 'SOLD' || p.status === 'RESERVED';
+        const isOwnProduct = !!currentUser && (p.vendorId === currentUser.id || (currentUser.isSiteAdmin && p.vendorId === 'v_admin'));
+        if (!isSoldOrReserved || !isOwnProduct) {
+          return false;
+        }
+      } else {
+        if (p.status === 'SOLD') {
+          return false;
+        }
       }
 
       if (queryTokens.length > 0) {
-        const vendor = INITIAL_VENDORS.find((v) => v.id === p.vendorId);
+        const vendor = liveVendors.find((v) => v.id === p.vendorId);
         const searchableText = [
           p.title,
           p.description,
@@ -343,7 +346,7 @@ export default function HomePage() {
             {/* Product Cards Grid */}
             <ProductGrid
               products={filteredProducts}
-              vendors={INITIAL_VENDORS}
+              vendors={liveVendors.length > 0 ? liveVendors : INITIAL_VENDORS}
             />
 
           </div>

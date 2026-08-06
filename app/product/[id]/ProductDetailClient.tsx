@@ -56,7 +56,8 @@ export const ProductDetailClient: React.FC<ProductDetailClientProps> = ({
   vendor,
   relatedProducts,
 }) => {
-  const { addToCart, setIsCartOpen, reserveProduct } = useCart();
+  const { addToCart, setIsCartOpen, reserveProduct, vendors } = useCart();
+  const activeVendor = vendors.find((v) => v.id === product.vendorId) || vendor;
   const [selectedImage, setSelectedImage] = useState(product.images[0]);
   const [copied, setCopied] = useState(false);
   const [isConditionGuideOpen, setIsConditionGuideOpen] = useState(false);
@@ -74,10 +75,10 @@ export const ProductDetailClient: React.FC<ProductDetailClientProps> = ({
   const isAvailable = product.status === 'AVAILABLE';
 
   // Format vendor phone for WhatsApp (remove leading 0, add 964 prefix)
-  const vendorWhatsapp = vendor.phone.replace(/^0/, '964');
+  const vendorWhatsapp = (activeVendor.phone || '9647701234567').replace(/^0/, '964');
   const buildOrderWhatsappUrl = () => {
     const msg = encodeURIComponent(
-      `مرحباً ${vendor.name}، أريد تثبيت طلب:\n\n` +
+      `مرحباً ${activeVendor.name}، أريد تثبيت طلب:\n\n` +
       `📦 المنتج: ${product.title}\n` +
       (product.model ? `🔖 الموديل: ${product.model}\n` : '') +
       (product.serialNumber ? `🔢 الرقم التسلسلي: ${product.serialNumber}\n` : '') +
@@ -241,24 +242,24 @@ export const ProductDetailClient: React.FC<ProductDetailClientProps> = ({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center font-black text-base">
-                      {vendor.name.charAt(0)}
+                      {activeVendor.name.charAt(0)}
                     </div>
                     <div>
                       <h4 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-1">
-                        <span>{vendor.name}</span>
-                        {vendor.verifiedBadge && <ShieldCheck className="w-4 h-4 text-amber-500" />}
-                        {vendor.isSiteAdmin && (
+                        <span>{activeVendor.name}</span>
+                        {activeVendor.verifiedBadge && <ShieldCheck className="w-4 h-4 text-amber-500" />}
+                        {activeVendor.isSiteAdmin && (
                           <span className="text-[10px] bg-red-600 text-white px-1.5 py-0.5 rounded-full font-black">مدير الموقع 👑</span>
                         )}
                       </h4>
                       <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                        {vendor.location} • سرعة الرد: {vendor.responseTime}
+                        {activeVendor.location} • سرعة الرد: {activeVendor.responseTime}
                       </span>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 bg-amber-500/20 px-2 py-1 rounded-xl text-xs font-black text-amber-600 dark:text-amber-400">
                     <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                    <span>{vendor.rating}/5</span>
+                    <span>{activeVendor.rating}/5</span>
                   </div>
                 </div>
               </div>

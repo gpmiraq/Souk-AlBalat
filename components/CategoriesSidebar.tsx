@@ -3,6 +3,7 @@
 import React from 'react';
 import { Layers, Tag, Check, Sparkles, X, Filter, Grid, AlertCircle, ShieldAlert, Sparkle } from 'lucide-react';
 import { SearchFilters } from '../types';
+import { useCart } from '../context/CartContext';
 
 interface CategoriesSidebarProps {
   categories: string[];
@@ -37,6 +38,9 @@ export const CategoriesSidebar: React.FC<CategoriesSidebarProps> = ({
   const isCosmeticsCategory =
     filters.category.includes('عطور') ||
     filters.category.includes('كوزمتك');
+
+  const { currentUser } = useCart();
+  const isVendorOrAdmin = !!currentUser && (currentUser.isSiteAdmin || currentUser.role === 'ADMIN' || currentUser.role === 'VENDOR');
 
   return (
     <aside className="w-full bg-white dark:bg-carbon-900 rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6 transition-colors">
@@ -170,19 +174,21 @@ export const CategoriesSidebar: React.FC<CategoriesSidebarProps> = ({
             </span>
           </button>
 
-          <button
-            onClick={() => setFilters((prev) => ({ ...prev, showSection: 'SOLD' }))}
-            className={`w-full text-right px-3.5 py-2.5 rounded-xl font-bold transition-all flex items-center justify-between ${
-              filters.showSection === 'SOLD'
-                ? 'bg-amber-500 text-slate-950 shadow-md font-black'
-                : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-carbon-800'
-            }`}
-          >
-            <span>الأرشيف والمباع / المحجوز</span>
-            <span className="text-[10px] bg-red-500/20 text-red-600 dark:text-red-300 px-2 py-0.5 rounded-md font-black">
-              مباع ⏱️
-            </span>
-          </button>
+          {isVendorOrAdmin && (
+            <button
+              onClick={() => setFilters((prev) => ({ ...prev, showSection: 'SOLD' }))}
+              className={`w-full text-right px-3.5 py-2.5 rounded-xl font-bold transition-all flex items-center justify-between ${
+                filters.showSection === 'SOLD'
+                  ? 'bg-amber-500 text-slate-950 shadow-md font-black'
+                  : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-carbon-800'
+              }`}
+            >
+              <span>الأرشيف والمباع / المحجوز</span>
+              <span className="text-[10px] bg-red-500/20 text-red-600 dark:text-red-300 px-2 py-0.5 rounded-md font-black">
+                مباع ⏱️
+              </span>
+            </button>
+          )}
         </div>
       </div>
 

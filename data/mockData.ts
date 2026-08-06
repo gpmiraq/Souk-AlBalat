@@ -1,5 +1,9 @@
 import { Product, Vendor } from '../types';
 
+/**
+ * Standard Categories & Master Vendor Fallbacks.
+ * Live data is fetched dynamically from Firestore database collections.
+ */
 export const INITIAL_CATEGORIES = [
   'الكل',
   'إلكترونيات',
@@ -23,7 +27,7 @@ export const INITIAL_CATEGORIES = [
 export const INITIAL_VENDORS: Vendor[] = [
   {
     id: 'v_admin',
-    name: 'أبو وارث أمازون (مدير الموقع 👑)',
+    name: 'أبو وارث أمازون',
     avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
     phone: '9647701234567',
     whatsappFormatted: '0770 123 4567',

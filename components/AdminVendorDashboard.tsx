@@ -347,15 +347,22 @@ export const AdminVendorDashboard: React.FC<AdminVendorDashboardProps> = ({
                       accept="image/*"
                       onChange={(e) => {
                         if (e.target.files && e.target.files[0]) {
+                          const file = e.target.files[0];
                           const reader = new FileReader();
                           reader.onloadend = async () => {
                             if (reader.result) {
                               const rawDataUrl = reader.result as string;
                               const stampedUrl = await createStampedImage(rawDataUrl, { opacity: 0.38 });
-                              setImages((prev) => [...prev, stampedUrl]);
+                              try {
+                                const { uploadImageWithFallback } = await import('../lib/firebaseStorage');
+                                const storageUrl = await uploadImageWithFallback(stampedUrl, file.name);
+                                setImages((prev) => [...prev, storageUrl]);
+                              } catch (err) {
+                                setImages((prev) => [...prev, stampedUrl]);
+                              }
                             }
                           };
-                          reader.readAsDataURL(e.target.files[0]);
+                          reader.readAsDataURL(file);
                         }
                       }}
                       className="hidden"

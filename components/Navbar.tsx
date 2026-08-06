@@ -56,6 +56,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     activatedVendorIds,
     vendorUser,
     logoutCustomer,
+    categories,
   } = useCart();
 
   const [isQRCodeOpen, setIsQRCodeOpen] = useState(false);
@@ -93,7 +94,21 @@ export const Navbar: React.FC<NavbarProps> = ({
     }
   };
 
-  const isVendorActivated = vendorUser ? activatedVendorIds.includes(vendorUser.id) : true;
+  const activeVendorObj = vendorUser || (currentUser?.role === 'VENDOR' ? {
+    id: currentUser.id,
+    name: currentUser.fullName,
+    avatar: currentUser.avatar || '',
+    phone: currentUser.phone,
+    whatsappFormatted: currentUser.phone,
+    location: currentUser.city || 'بغداد',
+    trustTier: 3 as const,
+    verifiedBadge: true,
+    totalSales: 0,
+    rating: 5.0,
+    responseTime: 'سريع ⚡',
+  } : null);
+
+  const isVendorActivated = activeVendorObj ? activatedVendorIds.includes(activeVendorObj.id) : true;
 
   return (
     <>
@@ -127,7 +142,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       {/* Main E-Commerce Navbar */}
       <header className="sticky top-0 z-40 w-full transition-colors duration-200 bg-slate-900 dark:bg-carbon-950 text-white border-b border-slate-800 shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-3 sm:gap-6">
-          
+
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5 flex-shrink-0 group">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600 flex items-center justify-center text-slate-950 font-black shadow-lg shadow-amber-500/20 group-hover:scale-105 transition-transform">
@@ -174,9 +189,9 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Action Buttons Cluster */}
           <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-            
+
             {/* 1. Vendor Add Listing Button (ONLY visible when a vendor is logged in AND activated) */}
-            {vendorUser && isVendorActivated && (
+            {activeVendorObj && isVendorActivated && (
               <button
                 onClick={() => setIsAdminDashboardOpen(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black text-slate-950 bg-amber-500 hover:bg-amber-400 shadow-md transition-all active:scale-95"
@@ -187,15 +202,15 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
-            {/* 2. Vendor Portal (ONLY visible if vendor is logged in or attempting vendor portal) */}
-            {vendorUser && (
+            {/* 2. Vendor Portal */}
+            {activeVendorObj && (
               <Link
                 href="/vendor/portal"
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-200 bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700"
                 title="بوابة التجار"
               >
                 <Store className="w-4 h-4 text-amber-400" />
-                <span className="hidden md:inline">{vendorUser.name.slice(0, 12)}</span>
+                <span className="hidden md:inline">{activeVendorObj.name.slice(0, 12)}</span>
               </Link>
             )}
 
@@ -207,10 +222,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                     onClick={() => setIsUserMenuOpen(v => !v)}
                     className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-200 bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700"
                   >
-                    {Boolean((currentUser as any)?.isSiteAdmin) && (
+                    {Boolean((currentUser as any)?.isSiteAdmin || currentUser.role === 'ADMIN') ? (
                       <Crown className="w-3.5 h-3.5 text-amber-400" />
+                    ) : (currentUser.role === 'VENDOR' || activeVendorObj) ? (
+                      <Store className="w-3.5 h-3.5 text-amber-400" />
+                    ) : (
+                      <User className="w-4 h-4 text-amber-400" />
                     )}
-                    <User className="w-4 h-4 text-amber-400" />
                     <span className="max-w-[90px] truncate">{currentUser.fullName}</span>
                     <ChevronDown className={`w-3 h-3 transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
                   </button>
@@ -227,15 +245,28 @@ export const Navbar: React.FC<NavbarProps> = ({
                         {currentUser.email && (
                           <p className="text-slate-400 text-xs truncate">{currentUser.email}</p>
                         )}
-                        {(currentUser as any).isSiteAdmin && (
+                        {(currentUser.isSiteAdmin || currentUser.role === 'ADMIN') ? (
                           <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-black">
                             <Crown className="w-3 h-3" /> مدير الموقع
                           </span>
-                        )}
+                        ) : (currentUser.role === 'VENDOR' || activeVendorObj) ? (
+                          <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-black">
+                            <Store className="w-3 h-3" /> تاجر معتمد ⚡
+                          </span>
+                        ) : null}
                       </div>
 
                       {/* Menu Items */}
                       <div className="py-1">
+                        {(currentUser.role === 'VENDOR' || activeVendorObj) && (
+                          <button
+                            onClick={() => { setIsUserMenuOpen(false); setIsAdminDashboardOpen(true); }}
+                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-300 font-bold hover:bg-white/5 transition-colors text-right"
+                          >
+                            <PlusCircle className="w-4 h-4 text-amber-400" />
+                            نشر بضاعة جديدة 📦
+                          </button>
+                        )}
                         <button
                           onClick={() => { setIsUserMenuOpen(false); setIsAuthModalOpen(true); }}
                           className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors text-right"
@@ -323,7 +354,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               ref={categoryScrollRef}
               className="flex-1 flex items-center gap-1.5 sm:gap-2 overflow-x-auto scrollbar-none whitespace-nowrap px-1"
             >
-              {INITIAL_CATEGORIES.map((cat) => {
+              {(categories.length > 0 ? categories : ['الكل']).map((cat) => {
                 const isActive = selectedCategory === cat;
                 return (
                   <button

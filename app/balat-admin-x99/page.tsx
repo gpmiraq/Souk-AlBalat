@@ -68,23 +68,29 @@ const MOCK_USERS: UserProfile[] = [
 
 // ─── Initial Tree Categories ─────────────────────────────────────────────────
 const INITIAL_TREE_CATEGORIES: TreeCategory[] = [
-  { id: 'c1', name: 'إلكترونيات', slug: 'electronics', icon: '💻', children: [
-    { id: 'c1_1', name: 'هواتف وأجهزة لوحية', slug: 'phones', parentId: 'c1' },
-    { id: 'c1_2', name: 'لابتوبات وحواسيب', slug: 'laptops', parentId: 'c1' },
-    { id: 'c1_3', name: 'سماعات وصوتيات', slug: 'audio', parentId: 'c1' },
-  ]},
-  { id: 'c2', name: 'ملابس', slug: 'clothes', icon: '👔', children: [
-    { id: 'c2_1', name: 'ملابس رجالية', slug: 'mens', parentId: 'c2' },
-    { id: 'c2_2', name: 'ملابس نسائية', slug: 'womens', parentId: 'c2' },
-    { id: 'c2_3', name: 'ملابس أطفال', slug: 'kids', parentId: 'c2' },
-    { id: 'c2_4', name: 'أحذية', slug: 'shoes', parentId: 'c2' },
-    { id: 'c2_5', name: 'اكسسوارات', slug: 'accessories', parentId: 'c2' },
-  ]},
-  { id: 'c3', name: 'عطور وكوزمتك', slug: 'perfumes', icon: '🌸', children: [
-    { id: 'c3_1', name: 'عطور', slug: 'perfumes_sub', parentId: 'c3' },
-    { id: 'c3_2', name: 'كوزمتك عناية', slug: 'skincare', parentId: 'c3' },
-    { id: 'c3_3', name: 'كوزمتك تجميل', slug: 'makeup', parentId: 'c3' },
-  ]},
+  {
+    id: 'c1', name: 'إلكترونيات', slug: 'electronics', icon: '💻', children: [
+      { id: 'c1_1', name: 'هواتف وأجهزة لوحية', slug: 'phones', parentId: 'c1' },
+      { id: 'c1_2', name: 'لابتوبات وحواسيب', slug: 'laptops', parentId: 'c1' },
+      { id: 'c1_3', name: 'سماعات وصوتيات', slug: 'audio', parentId: 'c1' },
+    ]
+  },
+  {
+    id: 'c2', name: 'ملابس', slug: 'clothes', icon: '👔', children: [
+      { id: 'c2_1', name: 'ملابس رجالية', slug: 'mens', parentId: 'c2' },
+      { id: 'c2_2', name: 'ملابس نسائية', slug: 'womens', parentId: 'c2' },
+      { id: 'c2_3', name: 'ملابس أطفال', slug: 'kids', parentId: 'c2' },
+      { id: 'c2_4', name: 'أحذية', slug: 'shoes', parentId: 'c2' },
+      { id: 'c2_5', name: 'اكسسوارات', slug: 'accessories', parentId: 'c2' },
+    ]
+  },
+  {
+    id: 'c3', name: 'عطور وكوزمتك', slug: 'perfumes', icon: '🌸', children: [
+      { id: 'c3_1', name: 'عطور', slug: 'perfumes_sub', parentId: 'c3' },
+      { id: 'c3_2', name: 'كوزمتك عناية', slug: 'skincare', parentId: 'c3' },
+      { id: 'c3_3', name: 'كوزمتك تجميل', slug: 'makeup', parentId: 'c3' },
+    ]
+  },
   { id: 'c4', name: 'أجهزة منزلية', slug: 'home', icon: '🏠', children: [] },
   { id: 'c5', name: 'مستلزمات DHL وطرد بريدي', slug: 'dhl', icon: '📦', children: [] },
   { id: 'c6', name: 'فحم - أدوات (SCRAP)', slug: 'scrap', icon: '🔧', children: [] },
@@ -185,7 +191,7 @@ const UserCardModal: React.FC<UserCardModalProps> = ({ user, onClose, onConvertT
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" />
       <div className="relative bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-        
+
         {/* Header */}
         <div className="p-5 flex items-center gap-4 border-b border-slate-800">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-slate-950 text-2xl font-black flex-shrink-0">
@@ -293,11 +299,13 @@ const VendorCardModal: React.FC<{
   isActive: boolean;
   onClose: () => void;
   onToggleActivation: (id: string) => void;
-}> = ({ vendor, products, isActive, onClose, onToggleActivation }) => {
+  onDemoteToUser?: (vendor: Vendor) => void;
+}> = ({ vendor, products, isActive, onClose, onToggleActivation, onDemoteToUser }) => {
   const vProds = products.filter(p => p.vendorId === vendor.id);
   const available = vProds.filter(p => p.status === 'AVAILABLE').length;
   const reserved = vProds.filter(p => p.status === 'RESERVED').length;
   const sold = vProds.filter(p => p.status === 'SOLD').length;
+  const archived = vProds.filter(p => p.status === 'ARCHIVED').length;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm" onClick={onClose}>
@@ -324,22 +332,26 @@ const VendorCardModal: React.FC<{
         </div>
 
         {/* Detailed Stats */}
-        <div className="p-5 grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-900/50 text-center text-xs">
-          <div className="p-3 bg-slate-950 rounded-2xl border border-slate-800">
-            <span className="text-slate-400 text-[11px] block font-bold mb-1">التقييم العام</span>
-            <span className="text-amber-400 font-black text-base">★ {vendor.rating}</span>
+        <div className="p-5 grid grid-cols-2 sm:grid-cols-5 gap-2 bg-slate-900/50 text-center text-xs">
+          <div className="p-2.5 bg-slate-950 rounded-2xl border border-slate-800">
+            <span className="text-slate-400 text-[10px] block font-bold mb-1">التقييم العام</span>
+            <span className="text-amber-400 font-black text-sm">★ {vendor.rating}</span>
           </div>
-          <div className="p-3 bg-slate-950 rounded-2xl border border-slate-800">
-            <span className="text-emerald-400 text-[11px] block font-bold mb-1">المتاحة للحجز</span>
-            <span className="text-emerald-400 font-black text-base">{available}</span>
+          <div className="p-2.5 bg-slate-950 rounded-2xl border border-slate-800">
+            <span className="text-emerald-400 text-[10px] block font-bold mb-1">المتاحة</span>
+            <span className="text-emerald-400 font-black text-sm">{available}</span>
           </div>
-          <div className="p-3 bg-slate-950 rounded-2xl border border-slate-800">
-            <span className="text-amber-400 text-[11px] block font-bold mb-1">محجوزة حالياً</span>
-            <span className="text-amber-400 font-black text-base">{reserved}</span>
+          <div className="p-2.5 bg-slate-950 rounded-2xl border border-slate-800">
+            <span className="text-amber-400 text-[10px] block font-bold mb-1">محجوزة</span>
+            <span className="text-amber-400 font-black text-sm">{reserved}</span>
           </div>
-          <div className="p-3 bg-slate-950 rounded-2xl border border-slate-800">
-            <span className="text-red-400 text-[11px] block font-bold mb-1">تم بيعها</span>
-            <span className="text-red-400 font-black text-base">{sold}</span>
+          <div className="p-2.5 bg-slate-950 rounded-2xl border border-slate-800">
+            <span className="text-red-400 text-[10px] block font-bold mb-1">تم بيعها</span>
+            <span className="text-red-400 font-black text-sm">{sold}</span>
+          </div>
+          <div className="p-2.5 bg-slate-950 rounded-2xl border border-slate-800">
+            <span className="text-purple-400 text-[10px] block font-bold mb-1">مؤرشفة</span>
+            <span className="text-purple-400 font-black text-sm">{archived}</span>
           </div>
         </div>
 
@@ -370,11 +382,11 @@ const VendorCardModal: React.FC<{
                       <span className="text-amber-400 font-mono text-[11px]">{prod.outletPrice.toLocaleString('en-US')} د.ع</span>
                     </div>
                   </div>
-                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-black ${
-                    prod.status === 'AVAILABLE' ? 'bg-emerald-500/20 text-emerald-400' :
-                    prod.status === 'RESERVED' ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'
-                  }`}>
-                    {prod.status === 'AVAILABLE' ? 'متاح' : prod.status === 'RESERVED' ? 'محجوز' : 'مباع'}
+                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-black ${prod.status === 'AVAILABLE' ? 'bg-emerald-500/20 text-emerald-400' :
+                      prod.status === 'RESERVED' ? 'bg-amber-500/20 text-amber-400' :
+                        prod.status === 'SOLD' ? 'bg-red-500/20 text-red-400' : 'bg-purple-500/20 text-purple-400'
+                    }`}>
+                    {prod.status === 'AVAILABLE' ? 'متاح' : prod.status === 'RESERVED' ? 'محجوز' : prod.status === 'SOLD' ? 'مباع' : 'مؤرشف 🔒'}
                   </span>
                 </div>
               ))
@@ -393,14 +405,15 @@ const VendorCardModal: React.FC<{
             <Phone className="w-4 h-4" />
             <span>مراسلة عبر واتساب</span>
           </a>
-          <button
-            onClick={() => onToggleActivation(vendor.id)}
-            className={`px-5 py-3 rounded-xl text-xs font-black transition-all ${
-              isActive ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-emerald-600 hover:bg-emerald-500 text-white'
-            }`}
-          >
-            {isActive ? 'إيقاف التاجر' : 'تفعيل التاجر'}
-          </button>
+          {!vendor.isSiteAdmin && onDemoteToUser && (
+            <button
+              onClick={() => { onDemoteToUser(vendor); onClose(); }}
+              className="px-5 py-3 bg-red-600 hover:bg-red-500 text-white font-black text-xs rounded-xl transition-all shadow-lg shadow-red-600/20 flex items-center gap-2"
+              title="إيقاف التاجر ونقله كزبون عادي لأرشيف المستخدمين مع تعطيل منشوراته"
+            >
+              <span>إيقاف التاجر وتحويله لمستخدم عادي 🛑</span>
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -409,7 +422,7 @@ const VendorCardModal: React.FC<{
 
 // ─── Main Admin Page ─────────────────────────────────────────────────────────
 export default function MasterAdminPage() {
-  const { siteSettings, updateSiteSettings, vendors, setVendors, toggleVendorActivation, activatedVendorIds, products: productList, setProducts: setProductList, publishProductToFirestore, deleteProductFromFirestore } = useCart();
+  const { siteSettings, updateSiteSettings, vendors, setVendors, toggleVendorActivation, activatedVendorIds, products: productList, setProducts: setProductList, publishProductToFirestore, deleteProductFromFirestore, publishCategoryToFirestore, publishVendorToFirestore } = useCart();
   const [activeTab, setActiveTab] = useState<AdminTab>('DASHBOARD');
 
   const [treeCategories, setTreeCategories] = useState<TreeCategory[]>(INITIAL_TREE_CATEGORIES);
@@ -424,10 +437,12 @@ export default function MasterAdminPage() {
 
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const [realUsers, setRealUsers] = useState<UserProfile[]>([]);
+  const [isFetchingData, setIsFetchingData] = useState(true);
 
   // Fetch real users from Firestore
   React.useEffect(() => {
     const fetchUsers = async () => {
+      setIsFetchingData(true);
       try {
         const { collection, getDocs } = await import('firebase/firestore');
         const { db } = await import('../../lib/firebase');
@@ -437,6 +452,8 @@ export default function MasterAdminPage() {
         setRealUsers(list);
       } catch (err) {
         console.error('Failed to fetch real users:', err);
+      } finally {
+        setIsFetchingData(false);
       }
     };
     fetchUsers();
@@ -445,15 +462,16 @@ export default function MasterAdminPage() {
   const { currentUser, logoutCustomer, loginCustomer } = useCart();
 
   const isMasterAdmin = useMemo(() => {
-    const isAuthedSession = typeof window !== 'undefined' ? sessionStorage.getItem('souk_admin_authed') === 'true' : false;
-    const isLoggedOutSession = typeof window !== 'undefined' ? sessionStorage.getItem('souk_admin_manual_logout') === 'true' : false;
-    if (isLoggedOutSession) return false;
-    return (
-      isAuthedSession ||
-      currentUser?.email === 'gpm.iraq@gmail.com' ||
-      (currentUser as any)?.isSiteAdmin ||
-      currentUser?.role === 'ADMIN'
-    );
+    if (!currentUser) {
+      const isAuthedSession = typeof window !== 'undefined' ? sessionStorage.getItem('souk_admin_authed') === 'true' : false;
+      const isLoggedOutSession = typeof window !== 'undefined' ? sessionStorage.getItem('souk_admin_manual_logout') === 'true' : false;
+      if (isLoggedOutSession) return false;
+      return isAuthedSession;
+    }
+
+    const isOfficialAdminEmail = currentUser.email?.toLowerCase() === 'gpm.iraq@gmail.com';
+    const isAdminRole = currentUser.role === 'ADMIN' || !!currentUser.isSiteAdmin;
+    return isOfficialAdminEmail || isAdminRole;
   }, [currentUser]);
 
   React.useEffect(() => {
@@ -461,7 +479,7 @@ export default function MasterAdminPage() {
   }, [isMasterAdmin]);
 
   const handleAdminLogout = async () => {
-    sessionStorage.setItem('souk_admin_authed', 'false');
+    sessionStorage.removeItem('souk_admin_authed');
     sessionStorage.setItem('souk_admin_manual_logout', 'true');
     setIsAdminAuth(false);
     await logoutCustomer();
@@ -495,29 +513,62 @@ export default function MasterAdminPage() {
 
   const handleGoogleAdminSignIn = async () => {
     try {
-      const { auth } = await import('../../lib/firebase');
+      const { auth, db } = await import('../../lib/firebase');
       const { signInWithPopup, GoogleAuthProvider } = await import('firebase/auth');
+      const { doc, getDoc, setDoc } = await import('firebase/firestore');
+
       const provider = new GoogleAuthProvider();
       const res = await signInWithPopup(auth, provider);
       const user = res.user;
       if (user) {
-        const adminProfile: UserProfile = {
+        let userRole: 'ADMIN' | 'CUSTOMER' | 'VENDOR' = 'CUSTOMER';
+        let isSiteAdmin = false;
+
+        const isMasterEmail = user.email?.toLowerCase() === 'gpm.iraq@gmail.com';
+
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (isMasterEmail) {
+          userRole = 'ADMIN';
+          isSiteAdmin = true;
+        } else if (userDocSnap.exists()) {
+          const data = userDocSnap.data();
+          if (data.role === 'ADMIN' || data.isSiteAdmin) {
+            userRole = 'ADMIN';
+            isSiteAdmin = true;
+          } else if (data.role === 'VENDOR') {
+            userRole = 'VENDOR';
+          }
+        }
+
+        const userProfile: UserProfile = {
           id: user.uid,
-          fullName: user.displayName || 'أبو وارث أمازون 👑',
-          email: user.email || 'gpm.iraq@gmail.com',
+          fullName: isMasterEmail ? (user.displayName || 'أبو وارث أمازون 👑') : (user.displayName || user.email || 'مستخدم مسجل'),
+          email: user.email || undefined,
           avatar: user.photoURL || undefined,
           phone: user.phoneNumber || '07701234567',
-          role: 'ADMIN',
-          isSiteAdmin: true,
+          role: userRole,
+          isSiteAdmin: isSiteAdmin,
           isMember: true,
           city: 'بغداد',
-          address: 'المقر الرئيسي للمدير',
+          registeredAt: new Date().toISOString(),
         };
-        loginCustomer(adminProfile);
-        setIsAdminAuth(true);
-        sessionStorage.setItem('souk_admin_authed', 'true');
-        sessionStorage.removeItem('souk_admin_manual_logout');
-        setAdminAuthError('');
+
+        await setDoc(userDocRef, userProfile, { merge: true });
+        loginCustomer(userProfile);
+
+        if (userRole === 'ADMIN' || isMasterEmail) {
+          setIsAdminAuth(true);
+          sessionStorage.setItem('souk_admin_authed', 'true');
+          sessionStorage.removeItem('souk_admin_manual_logout');
+          setAdminAuthError('');
+        } else {
+          setIsAdminAuth(false);
+          sessionStorage.removeItem('souk_admin_authed');
+          sessionStorage.setItem('souk_admin_manual_logout', 'true');
+          setAdminAuthError('عذراً! ليس لديك تصريح لدخول هذه الصفحة.');
+        }
       }
     } catch (err: any) {
       console.error('Google Admin Sign In Error:', err);
@@ -533,6 +584,12 @@ export default function MasterAdminPage() {
   const [newCategorySelect, setNewCategorySelect] = useState('إلكترونيات');
   const [newVendorId, setNewVendorId] = useState('v_admin');
   const [newCatName, setNewCatName] = useState('');
+
+  React.useEffect(() => {
+    if (currentUser?.id) {
+      setNewVendorId(currentUser.id);
+    }
+  }, [currentUser]);
   const [newUploadedImages, setNewUploadedImages] = useState<string[]>([]);
   const [driveImageUrl, setDriveImageUrl] = useState('');
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
@@ -598,23 +655,12 @@ export default function MasterAdminPage() {
               const rawDataUrl = reader.result as string;
               stampedUrl = await createStampedImage(rawDataUrl, { opacity: 0.38 });
 
-              // Direct Firebase Cloud Storage Upload (creates products/ folder in your Firebase console)
-              const { uploadToFirebaseStorage } = await import('../../lib/firebaseStorage');
-              const firestoreUrl = await uploadToFirebaseStorage(stampedUrl, file.name);
+              // Direct Firebase Cloud Storage Upload with API Fallback
+              const { uploadImageWithFallback } = await import('../../lib/firebaseStorage');
+              const firestoreUrl = await uploadImageWithFallback(stampedUrl, file.name);
               setNewUploadedImages(prev => [...prev, firestoreUrl]);
             } catch (err) {
-              console.error('Firebase direct storage error, trying API route fallback:', err);
-              try {
-                const res = await fetch('/api/upload', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ imageBase64: stampedUrl, filename: file.name }),
-                });
-                const data = await res.json();
-                if (data.url) setNewUploadedImages(prev => [...prev, data.url]);
-              } catch (apiErr) {
-                console.error('API upload fallback failed:', apiErr);
-              }
+              console.error('Image upload error:', err);
             } finally {
               setIsUploadingImage(false);
             }
@@ -732,11 +778,31 @@ export default function MasterAdminPage() {
     const addToTree = (nodes: TreeCategory[]): TreeCategory[] =>
       nodes.map(n => n.id === parentId ? { ...n, children: [...(n.children || []), newChild] } : { ...n, children: n.children ? addToTree(n.children) : [] });
     setTreeCategories(prev => addToTree(prev));
+    publishCategoryToFirestore(name);
   };
 
   const addRootCategory = (name: string) => {
     if (!name.trim()) return;
-    setTreeCategories(prev => [...prev, { id: `c_${Date.now()}`, name: name.trim(), slug: name.trim().replace(/\s+/g, '-'), icon: '📁', children: [] }]);
+    const cleanName = name.trim();
+    setTreeCategories(prev => [...prev, { id: `c_${Date.now()}`, name: cleanName, slug: cleanName.replace(/\s+/g, '-'), icon: '📁', children: [] }]);
+    publishCategoryToFirestore(cleanName);
+  };
+
+  const handleSyncAllCategoriesToFirestore = async () => {
+    try {
+      for (const cat of treeCategories) {
+        await publishCategoryToFirestore(cat.name);
+        if (cat.children) {
+          for (const child of cat.children) {
+            await publishCategoryToFirestore(child.name);
+          }
+        }
+      }
+      setCopiedNotice('✅ تم رفع ومزامنة كافة التصنيفات بنجاح إلى قاعدة بيانات Firestore!');
+      setTimeout(() => setCopiedNotice(''), 3500);
+    } catch (err: any) {
+      console.error('Failed to sync categories to Firestore:', err);
+    }
   };
 
   const deleteCategoryFromTree = (id: string) => {
@@ -745,15 +811,94 @@ export default function MasterAdminPage() {
     setTreeCategories(prev => remove(prev));
   };
 
-  const handleConvertUserToVendor = (user: UserProfile) => {
-    const newVendor: Vendor = {
-      id: `v_${Date.now()}`, name: user.fullName,
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
-      phone: user.phone, whatsappFormatted: user.phone, location: user.city || 'بغداد',
-      trustTier: 3, verifiedBadge: true, totalSales: 0, rating: 5.0, responseTime: 'سريع ⚡',
-    };
-    setVendors(prev => [...prev, newVendor]);
-    toggleVendorActivation(newVendor.id);
+  const handleConvertUserToVendor = async (user: UserProfile) => {
+    try {
+      const { doc, setDoc } = await import('firebase/firestore');
+      const { db } = await import('../../lib/firebase');
+
+      const updatedUser: UserProfile = { ...user, role: 'VENDOR' };
+      const newVendor: Vendor = {
+        id: user.id || `v_${Date.now()}`,
+        name: user.fullName,
+        avatar: user.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
+        phone: user.phone,
+        whatsappFormatted: user.phone,
+        location: user.city || 'بغداد',
+        trustTier: 3,
+        verifiedBadge: true,
+        totalSales: 0,
+        rating: 5.0,
+        responseTime: 'سريع ⚡',
+      };
+
+      await publishVendorToFirestore(newVendor);
+      await setDoc(doc(db, 'users', user.id), updatedUser, { merge: true });
+
+      setRealUsers((prev) => prev.map((u) => (u.id === user.id ? updatedUser : u)));
+      toggleVendorActivation(newVendor.id);
+
+      // Reactivate any archived products belonging to this vendor
+      const vendorProds = productList.filter((p) => p.vendorId === newVendor.id && p.status === 'ARCHIVED');
+      for (const prod of vendorProds) {
+        await publishProductToFirestore({ ...prod, status: 'AVAILABLE' });
+      }
+      setCopiedNotice('⚡ تم ترقية الحساب لتاجر واسترجاع كافة منشوراته بنجاح!');
+      setTimeout(() => setCopiedNotice(''), 3000);
+    } catch (err: any) {
+      console.error('Failed to convert user to vendor:', err);
+    }
+  };
+
+  const handleDemoteVendorToUser = async (vendor: Vendor) => {
+    if (confirm(`هل أنت متأكد من تحويل التاجر "${vendor.name}" إلى مستخدم عادي وأرشفة كافة منشوراته المتاحة؟`)) {
+      try {
+        const { doc, setDoc, deleteDoc } = await import('firebase/firestore');
+        const { db } = await import('../../lib/firebase');
+
+        // 1. Ensure user profile exists in realUsers with role 'CUSTOMER'
+        const existingUser = realUsers.find((u) => u.id === vendor.id || u.phone === vendor.phone);
+        const customerProfile: UserProfile = existingUser
+          ? { ...existingUser, role: 'CUSTOMER' }
+          : {
+            id: vendor.id,
+            fullName: vendor.name,
+            phone: vendor.phone,
+            role: 'CUSTOMER',
+            city: vendor.location.split('-')[0].trim() || 'بغداد',
+            address: vendor.location,
+            isMember: true,
+            registeredAt: new Date().toISOString(),
+          };
+
+        // Save updated user to Firestore 'users' collection
+        await setDoc(doc(db, 'users', customerProfile.id), customerProfile, { merge: true });
+
+        // Update local realUsers state
+        setRealUsers((prev) => {
+          const exists = prev.some((u) => u.id === customerProfile.id || u.phone === customerProfile.phone);
+          return exists
+            ? prev.map((u) => (u.id === customerProfile.id || u.phone === customerProfile.phone ? customerProfile : u))
+            : [...prev, customerProfile];
+        });
+
+        // 2. Remove vendor from Firestore 'vendors' collection & local state
+        await deleteDoc(doc(db, 'vendors', vendor.id));
+        setVendors((prev) => prev.filter((v) => v.id !== vendor.id));
+
+        // 3. Archive all products owned by this vendor in Firestore & local state
+        const vendorProds = productList.filter((p) => p.vendorId === vendor.id);
+        for (const prod of vendorProds) {
+          if (prod.status === 'AVAILABLE' || prod.status === 'RESERVED') {
+            await publishProductToFirestore({ ...prod, status: 'ARCHIVED' });
+          }
+        }
+
+        setCopiedNotice('🔒 تم تحويل التاجر إلى مستخدم عادي ونقله لجدول المستخدمين وأرشفة كافة منشوراته بنجاح!');
+        setTimeout(() => setCopiedNotice(''), 3500);
+      } catch (err: any) {
+        console.error('Failed to demote vendor:', err);
+      }
+    }
   };
 
   const handleExportExcel = () => {
@@ -791,17 +936,25 @@ export default function MasterAdminPage() {
     return matchSearch && matchFilter;
   }), [productList, searchTerm, productFilter]);
 
+  // Exclude users who are vendors/admins from the regular Users list
+  const userOnlyList = useMemo(() => {
+    return realUsers.filter((u) => {
+      const isVendorOrAdmin = u.role === 'VENDOR' || u.role === 'ADMIN' || u.isSiteAdmin || vendors.some((v) => v.id === u.id || v.phone === u.phone);
+      return !isVendorOrAdmin;
+    });
+  }, [realUsers, vendors]);
+
   const filteredUsers = useMemo(() =>
-    realUsers.filter(u => u.fullName.includes(userSearch) || u.phone.includes(userSearch) || (u.city || '').includes(userSearch)),
-    [realUsers, userSearch]);
+    userOnlyList.filter(u => u.fullName.includes(userSearch) || u.phone.includes(userSearch) || (u.city || '').includes(userSearch)),
+    [userOnlyList, userSearch]);
 
   // Nav items
   const navItems: { id: AdminTab; label: string; icon: React.ElementType; badge?: number | string }[] = [
     { id: 'DASHBOARD', label: 'الرئيسية', icon: LayoutDashboard },
     { id: 'PRODUCTS', label: `المنشورات والبضائع`, icon: ShoppingBag, badge: productList.length },
     { id: 'CATEGORIES', label: 'إدارة التصنيفات', icon: Layers },
-    { id: 'SALES', label: 'المبيعات والتجار', icon: BarChart3 },
-    { id: 'USERS', label: 'المستخدمون', icon: Users, badge: realUsers.length },
+    { id: 'SALES', label: 'المبيعات والتجار', icon: BarChart3, badge: vendors.length },
+    { id: 'USERS', label: 'المستخدمون', icon: Users, badge: userOnlyList.length },
     { id: 'REPORTS', label: 'البلاغات والشكاوي', icon: AlertOctagon, badge: reportsInbox.length },
     { id: 'BRANDING', label: 'إعدادات القالب', icon: Sliders },
   ];
@@ -816,7 +969,7 @@ export default function MasterAdminPage() {
               <Shield className="w-8 h-8" />
             </div>
             <h1 className="text-xl font-black text-white">دخول لوحة إدارة المدير 👑</h1>
-            <p className="text-xs text-slate-400">سوق البالات — حساب المدير الرسمي (أبو وارث أمازون)</p>
+            <p className="text-xs text-slate-400"></p>
           </div>
 
           {adminAuthError && (
@@ -832,10 +985,10 @@ export default function MasterAdminPage() {
             className="w-full py-3.5 bg-white hover:bg-slate-100 text-slate-900 font-extrabold rounded-xl text-xs flex items-center justify-center gap-2.5 shadow-lg transition-all active:scale-98"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
             </svg>
             <span>دخول سريع بحساب Google المدير الرسمـي 🔑</span>
           </button>
@@ -894,7 +1047,7 @@ export default function MasterAdminPage() {
 
       {/* ── SIDEBAR ─────────────────────────────────────────────────────────── */}
       <aside className="w-full md:w-64 bg-slate-900 border-b md:border-b-0 md:border-l border-slate-800 flex flex-col flex-shrink-0">
-        
+
         {/* Logo */}
         <div className="p-5 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -917,31 +1070,18 @@ export default function MasterAdminPage() {
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`w-full py-2.5 px-3 rounded-xl flex items-center gap-3 text-xs font-bold transition-all ${
-                activeTab === item.id ? 'bg-amber-500 text-slate-950 shadow-md font-black' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-              }`}
+              className={`w-full py-2.5 px-3 rounded-xl flex items-center gap-3 text-xs font-bold transition-all ${activeTab === item.id ? 'bg-amber-500 text-slate-950 shadow-md font-black' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                }`}
             >
               <item.icon className="w-4 h-4 flex-shrink-0" />
               <span className="flex-1 text-right">{item.label}</span>
               {item.badge !== undefined && (
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono font-black ${
-                  activeTab === item.id ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-slate-300'
-                }`}>{item.badge}</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono font-black ${activeTab === item.id ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-slate-300'
+                  }`}>{item.badge}</span>
               )}
             </button>
           ))}
         </nav>
-
-        {/* Admin badge */}
-        <div className="p-4 border-t border-slate-800">
-          <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl">
-            <div className="flex items-center gap-2">
-              <Award className="w-4 h-4 text-amber-400" />
-              <span className="font-black text-amber-300 text-xs">أبو وارث أمازون 👑</span>
-            </div>
-            <p className="text-[10px] text-slate-400 mt-1">حساب مدير الموقع الرسمي المعتمد</p>
-          </div>
-        </div>
       </aside>
 
       {/* ── MAIN CONTENT ─────────────────────────────────────────────────────── */}
@@ -973,48 +1113,57 @@ export default function MasterAdminPage() {
         {/* ── 1. DASHBOARD ─────────────────────────────────────────────────── */}
         {activeTab === 'DASHBOARD' && (
           <div className="space-y-6">
-            {/* KPI Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {[
-                {
-                  label: 'إجمالي المبيعات (المباع حقيقياً)',
-                  value: `${productList.filter(p => p.status === 'SOLD').reduce((sum, p) => sum + (p.outletPrice || 0), 0).toLocaleString('en-US')} د.ع`,
-                  gradient: 'from-amber-500 to-amber-600',
-                  icon: DollarSign,
-                  dark: true
-                },
-                {
-                  label: 'المنتجات النشطة (المتاحة)',
-                  value: `${productList.filter(p => p.status === 'AVAILABLE').length} مادة`,
-                  gradient: 'from-purple-600 to-indigo-700',
-                  icon: Package,
-                  dark: false
-                },
-                {
-                  label: 'التجار المفعلين',
-                  value: `${activatedVendorIds.length} تاجر`,
-                  gradient: 'from-pink-600 to-rose-700',
-                  icon: Store,
-                  dark: false
-                },
-                {
-                  label: 'إجمالي المشاهدات',
-                  value: `${productList.reduce((acc, p) => acc + (p.viewsCount || 0), 0).toLocaleString('en-US')} مشاهدة`,
-                  gradient: 'from-sky-600 to-blue-700',
-                  icon: Eye,
-                  dark: false
-                },
-              ].map((kpi, i) => (
-                <div key={i} className={`p-5 rounded-2xl bg-gradient-to-br ${kpi.gradient} ${kpi.dark ? 'text-slate-950' : 'text-white'} shadow-xl space-y-2`}>
-                  <div className="flex items-center justify-between">
-                    <kpi.icon className="w-5 h-5 opacity-80" />
-                    <TrendingUp className="w-4 h-4 opacity-60" />
-                  </div>
-                  <div className="text-xl font-black font-mono">{kpi.value}</div>
-                  <div className="text-xs font-bold opacity-80">{kpi.label}</div>
+            {isFetchingData ? (
+              <div className="flex flex-col items-center justify-center p-12 bg-slate-900 border border-slate-800 rounded-3xl space-y-3 shadow-xl">
+                <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
+                <span className="text-xs font-bold text-slate-300">جاري الاتصال وسحب البيانات الحية من قاعدة البيانات... ☁️</span>
+              </div>
+            ) : (
+              <>
+                {/* KPI Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[
+                    {
+                      label: 'إجمالي المبيعات (المباع حقيقياً)',
+                      value: `${productList.filter(p => p.status === 'SOLD').reduce((sum, p) => sum + (p.outletPrice || 0), 0).toLocaleString('en-US')} د.ع`,
+                      gradient: 'from-amber-500 to-amber-600',
+                      icon: DollarSign,
+                      dark: true
+                    },
+                    {
+                      label: 'المنتجات النشطة (المتاحة)',
+                      value: `${productList.filter(p => p.status === 'AVAILABLE').length} مادة`,
+                      gradient: 'from-purple-600 to-indigo-700',
+                      icon: Package,
+                      dark: false
+                    },
+                    {
+                      label: 'التجار المفعلين',
+                      value: `${vendors.filter(v => activatedVendorIds.includes(v.id)).length} تاجر`,
+                      gradient: 'from-pink-600 to-rose-700',
+                      icon: Store,
+                      dark: false
+                    },
+                    {
+                      label: 'إجمالي المشاهدات',
+                      value: `${productList.reduce((acc, p) => acc + (p.viewsCount || 0), 0).toLocaleString('en-US')} مشاهدة`,
+                      gradient: 'from-sky-600 to-blue-700',
+                      icon: Eye,
+                      dark: false
+                    },
+                  ].map((kpi, i) => (
+                    <div key={i} className={`p-5 rounded-2xl bg-gradient-to-br ${kpi.gradient} ${kpi.dark ? 'text-slate-950' : 'text-white'} shadow-xl space-y-2`}>
+                      <div className="flex items-center justify-between">
+                        <kpi.icon className="w-5 h-5 opacity-80" />
+                        <TrendingUp className="w-4 h-4 opacity-60" />
+                      </div>
+                      <div className="text-xl font-black font-mono">{kpi.value}</div>
+                      <div className="text-xs font-bold opacity-80">{kpi.label}</div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </>
+            )}
 
             {/* Quick Stats Row */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
@@ -1124,7 +1273,7 @@ export default function MasterAdminPage() {
               {/* Image Upload Picker Section (Studio / Camera - Automatic Google Drive Cloud Upload) */}
               <div className="p-3 bg-slate-950 border border-slate-800 rounded-2xl space-y-3">
                 <label className="block text-slate-300 font-bold">إضافة صور المنتج (رفع تلقائي إلى Google Drive) 📸☁️</label>
-                
+
                 <div className="flex flex-wrap items-center gap-3">
                   <label className="cursor-pointer px-4 py-2.5 bg-amber-500/20 border border-amber-500/40 hover:bg-amber-500/30 text-amber-300 font-bold rounded-xl flex items-center gap-2 transition-all">
                     <ImageIcon className="w-4 h-4" />
@@ -1169,13 +1318,12 @@ export default function MasterAdminPage() {
               </div>
 
               {publishNotice && (
-                <div className={`p-3.5 rounded-xl border text-xs font-black leading-relaxed ${
-                  publishNotice.includes('✅')
+                <div className={`p-3.5 rounded-xl border text-xs font-black leading-relaxed ${publishNotice.includes('✅')
                     ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
                     : publishNotice.includes('❌')
-                    ? 'bg-red-500/15 border-red-500/30 text-red-300'
-                    : 'bg-amber-500/15 border-amber-500/30 text-amber-300 animate-pulse'
-                }`}>
+                      ? 'bg-red-500/15 border-red-500/30 text-red-300'
+                      : 'bg-amber-500/15 border-amber-500/30 text-amber-300 animate-pulse'
+                  }`}>
                   {publishNotice}
                 </div>
               )}
@@ -1296,8 +1444,13 @@ export default function MasterAdminPage() {
 
             <div className="p-5 bg-slate-900 rounded-3xl border border-slate-800">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-black text-white">هيكل التصنيفات الشجري</h3>
-                <span className="text-xs text-slate-500">{treeCategories.length} تصنيف رئيسي</span>
+                <h3 className="text-sm font-black text-white">هيكل التصنيفات الشجري ({treeCategories.length})</h3>
+                <button
+                  onClick={handleSyncAllCategoriesToFirestore}
+                  className="px-3.5 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                >
+                  <span>مزامنة التصنيفات مع السحابة ☁️</span>
+                </button>
               </div>
               <div className="space-y-1">
                 {treeCategories.map(node => (
@@ -1318,6 +1471,7 @@ export default function MasterAdminPage() {
                 isActive={activatedVendorIds.includes(selectedVendor.id)}
                 onClose={() => setSelectedVendor(null)}
                 onToggleActivation={toggleVendorActivation}
+                onDemoteToUser={handleDemoteVendorToUser}
               />
             )}
             <h3 className="text-sm font-black text-white">إحصائيات المبيعات والتجار (اضغط للتفاصيل الكاملة)</h3>
@@ -1327,6 +1481,7 @@ export default function MasterAdminPage() {
                 const available = vProds.filter(p => p.status === 'AVAILABLE').length;
                 const sold = vProds.filter(p => p.status === 'SOLD').length;
                 const reserved = vProds.filter(p => p.status === 'RESERVED').length;
+                const archived = vProds.filter(p => p.status === 'ARCHIVED').length;
                 const isActive = activatedVendorIds.includes(v.id);
                 return (
                   <div
@@ -1344,10 +1499,11 @@ export default function MasterAdminPage() {
                         {isActive ? 'مفعّل ✅' : 'موقوف ⛔'}
                       </span>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 text-center text-xs font-mono">
+                    <div className="grid grid-cols-4 gap-1.5 text-center text-xs font-mono">
                       <div className="p-2 bg-slate-950 rounded-xl"><span className="text-emerald-400 font-bold block">{available}</span><span className="text-slate-500 text-[10px]">متاح</span></div>
                       <div className="p-2 bg-slate-950 rounded-xl"><span className="text-amber-400 font-bold block">{reserved}</span><span className="text-slate-500 text-[10px]">محجوز</span></div>
                       <div className="p-2 bg-slate-950 rounded-xl"><span className="text-red-400 font-bold block">{sold}</span><span className="text-slate-500 text-[10px]">مباع</span></div>
+                      <div className="p-2 bg-slate-950 rounded-xl"><span className="text-purple-400 font-bold block">{archived}</span><span className="text-slate-500 text-[10px]">مؤرشف</span></div>
                     </div>
                     <div className="flex items-center gap-2">
                       <button
@@ -1356,12 +1512,15 @@ export default function MasterAdminPage() {
                       >
                         عرض التفاصيل 🔍
                       </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); toggleVendorActivation(v.id); }}
-                        className={`px-3 py-2 rounded-xl text-xs font-black transition-all ${isActive ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}
-                      >
-                        {isActive ? 'إيقاف' : 'تفعيل'}
-                      </button>
+                      {!v.isSiteAdmin && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDemoteVendorToUser(v); }}
+                          className="px-3 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-black transition-all"
+                          title="إيقاف التاجر ونقله كزبون عادي لأرشيف المستخدمين"
+                        >
+                          إيقاف ونقل 🛑
+                        </button>
+                      )}
                     </div>
                   </div>
                 );

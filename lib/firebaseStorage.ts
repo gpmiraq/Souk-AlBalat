@@ -23,3 +23,28 @@ export async function uploadToFirebaseStorage(base64DataUrl: string, originalFil
     throw err;
   }
 }
+
+/**
+ * High-reliability upload helper: tries direct Firebase Storage SDK first,
+ * and falls back to server REST API /api/upload to guarantee a permanent HTTPS URL.
+ */
+export async function uploadImageWithFallback(base64DataUrl: string, originalFilename?: string): Promise<string> {
+  try {
+    return await uploadToFirebaseStorage(base64DataUrl, originalFilename);
+  } catch (sdkErr) {
+    console.warn('Firebase SDK storage error, falling back to /api/upload:', sdkErr);
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: base64DataUrl, filename: originalFilename }),
+      });
+      const data = await res.json();
+      if (data.url) return data.url;
+    } catch (apiErr) {
+      console.error('API upload fallback failed:', apiErr);
+    }
+    return base64DataUrl;
+  }
+}
+

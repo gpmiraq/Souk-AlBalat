@@ -1,5 +1,5 @@
 export type ConditionType = 'NEW' | 'OPEN_BOX' | 'USED' | 'SCRAP';
-export type ProductStatus = 'AVAILABLE' | 'RESERVED' | 'SOLD';
+export type ProductStatus = 'AVAILABLE' | 'RESERVED' | 'SOLD' | 'ARCHIVED';
 
 export interface Vendor {
   id: string;

@@ -62,6 +62,11 @@ interface CartContextType {
   // Reserve a product for 1 hour
   reserveProduct: (productId: string) => void;
 
+  // Categories & Vendors Database (Live Firestore)
+  categories: string[];
+  publishCategoryToFirestore: (categoryName: string) => Promise<void>;
+  publishVendorToFirestore: (vendor: Vendor) => Promise<void>;
+
   // Products Database
   products: Product[];
   setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
@@ -79,9 +84,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [isMasterAdminOpen, setIsMasterAdminOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   
-  const [vendors, setVendors] = useState<Vendor[]>(INITIAL_VENDORS);
+  const [categories, setCategories] = useState<string[]>(['الكل']);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
   const [vendorUser, setVendorUser] = useState<Vendor | null>(null);
-  const [activatedVendorIds, setActivatedVendorIds] = useState<string[]>(['v1', 'v2', 'v3']);
+  const [activatedVendorIds, setActivatedVendorIds] = useState<string[]>(['v_admin']);
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
 
   const [siteSettings, setSiteSettings] = useState<SiteSettings>({
@@ -101,27 +107,82 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     notes: '',
   });
 
-  // Load state from localStorage & parse Google OAuth Redirect Token
+  // Load live Firestore collections (Products, Categories, Vendors)
   useEffect(() => {
-    // 1. Fetch live products from Firestore Database
-    const fetchLiveProducts = async () => {
+    const fetchLiveFirestoreData = async () => {
+      // 1. Products
       try {
-        const querySnapshot = await getDocs(collection(db, 'products'));
+        const prodSnap = await getDocs(collection(db, 'products'));
         const liveProductsList: Product[] = [];
-        querySnapshot.forEach((docSnap) => {
+        prodSnap.forEach((docSnap) => {
           liveProductsList.push({ id: docSnap.id, ...docSnap.data() } as Product);
         });
-
-        // Always use live Firestore data (empty = empty, no mock seeding)
         setProducts(liveProductsList);
       } catch (err: any) {
-        console.error('Firestore Database Connection Error Details:', err?.message || err);
-        const savedProducts = localStorage.getItem('balat_iq_products');
-        if (savedProducts) setProducts(JSON.parse(savedProducts));
+        console.error('Firestore Products fetch error:', err?.message || err);
+      }
+
+      // 2. Categories
+      try {
+        const catSnap = await getDocs(collection(db, 'categories'));
+        if (!catSnap.empty) {
+          const list: string[] = [];
+          catSnap.forEach((d) => {
+            const data = d.data();
+            if (data.name) list.push(data.name);
+          });
+          if (list.length > 0) {
+            setCategories(Array.from(new Set(['الكل', ...list])));
+          }
+        } else {
+          // Seed initial categories once into Firestore
+          const defaultCats = [
+            'إلكترونيات', 'أجهزة منزلية', 'الملابس (رجالي، نسائي، أطفال، أحذية واكسسوارات)',
+            'ملابس رجالية', 'ملابس نسائية', 'ملابس أطفال', 'أحذية واكسسوارات',
+            'عطور وكوزمتك', 'عطور', 'كوزمتك عناية', 'كوزمتك تجميل',
+            'مستلزمات DHL وطرد بريدي', 'أجهزة كهربائية', 'أدوات مطبخ', 'هواتف واكسسوارات', 'كمبيوتر وملحقات'
+          ];
+          for (let i = 0; i < defaultCats.length; i++) {
+            await setDoc(doc(db, 'categories', `cat_${i + 1}`), { name: defaultCats[i], order: i + 1 });
+          }
+          setCategories(['الكل', ...defaultCats]);
+        }
+      } catch (err: any) {
+        console.error('Firestore Categories fetch error:', err?.message || err);
+      }
+
+      // 3. Vendors
+      try {
+        const vendorSnap = await getDocs(collection(db, 'vendors'));
+        if (!vendorSnap.empty) {
+          const list: Vendor[] = [];
+          vendorSnap.forEach((d) => list.push({ id: d.id, ...d.data() } as Vendor));
+          setVendors(list);
+        } else {
+          // Seed master vendor once into Firestore
+          const masterVendor: Vendor = {
+            id: 'v_admin',
+            name: 'أبو وارث أمازون',
+            avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
+            phone: '9647701234567',
+            whatsappFormatted: '0770 123 4567',
+            location: 'بغداد - المقر الرئيسي للمدير',
+            trustTier: 5,
+            verifiedBadge: true,
+            totalSales: 3500,
+            rating: 5.0,
+            responseTime: 'فوري ⚡',
+            isSiteAdmin: true,
+          };
+          await setDoc(doc(db, 'vendors', 'v_admin'), masterVendor);
+          setVendors([masterVendor]);
+        }
+      } catch (err: any) {
+        console.error('Firestore Vendors fetch error:', err?.message || err);
       }
     };
 
-    fetchLiveProducts();
+    fetchLiveFirestoreData();
 
     try {
       const savedCart = localStorage.getItem('balat_iq_cart');
@@ -146,6 +207,22 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       console.error('Error loading state:', e);
     }
   }, []);
+
+  const publishCategoryToFirestore = async (categoryName: string): Promise<void> => {
+    const cleanName = categoryName.trim();
+    if (!cleanName) return;
+    const catId = `cat_${Date.now()}`;
+    await setDoc(doc(db, 'categories', catId), { name: cleanName, createdAt: new Date().toISOString() });
+    setCategories((prev) => Array.from(new Set([...prev, cleanName])));
+  };
+
+  const publishVendorToFirestore = async (vendor: Vendor): Promise<void> => {
+    await setDoc(doc(db, 'vendors', vendor.id), vendor, { merge: true });
+    setVendors((prev) => {
+      const exists = prev.find((v) => v.id === vendor.id);
+      return exists ? prev.map((v) => (v.id === vendor.id ? vendor : v)) : [...prev, vendor];
+    });
+  };
 
   // Save products to localStorage as local cache only
   useEffect(() => {
@@ -218,18 +295,49 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [customerDetails]);
 
-  // Save user profile
+  // Save user profile & synchronize Vendor profile as ONE unified account
   useEffect(() => {
     try {
       if (currentUser) {
         localStorage.setItem('balat_iq_user', JSON.stringify(currentUser));
+
+        // Find if this currentUser is a registered vendor
+        const matchedVendor = vendors.find(
+          (v) => v.id === currentUser.id || (v.phone && currentUser.phone && v.phone === currentUser.phone)
+        );
+
+        if (currentUser.role === 'VENDOR' || matchedVendor || currentUser.role === 'ADMIN' || currentUser.isSiteAdmin) {
+          const vObj: Vendor = matchedVendor || {
+            id: currentUser.id,
+            name: currentUser.fullName,
+            avatar: currentUser.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
+            phone: currentUser.phone,
+            whatsappFormatted: currentUser.phone,
+            location: currentUser.city || 'بغداد',
+            trustTier: 3,
+            verifiedBadge: true,
+            totalSales: 0,
+            rating: 5.0,
+            responseTime: 'سريع ⚡',
+            isSiteAdmin: !!currentUser.isSiteAdmin || currentUser.role === 'ADMIN',
+          };
+
+          setVendorUser(vObj);
+          localStorage.setItem('balat_iq_vendor', JSON.stringify(vObj));
+          setActivatedVendorIds((prev) => Array.from(new Set([...prev, vObj.id])));
+        } else {
+          setVendorUser(null);
+          localStorage.removeItem('balat_iq_vendor');
+        }
       } else {
         localStorage.removeItem('balat_iq_user');
+        setVendorUser(null);
+        localStorage.removeItem('balat_iq_vendor');
       }
     } catch (e) {
       console.error('Error saving user profile:', e);
     }
-  }, [currentUser]);
+  }, [currentUser, vendors]);
 
   const updateSiteSettings = (updated: Partial<SiteSettings>) => {
     setSiteSettings((prev) => ({ ...prev, ...updated }));
@@ -289,7 +397,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('balat_iq_user');
     localStorage.removeItem('balat_iq_vendor');
     sessionStorage.removeItem('souk_admin_authed');
-    sessionStorage.removeItem('souk_admin_manual_logout');
+    sessionStorage.setItem('souk_admin_manual_logout', 'true');
   };
 
   const loginVendor = (user: string, pass: string): boolean => {
@@ -538,6 +646,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         logoutVendor,
         updateVendorProfile,
         reserveProduct,
+        categories,
+        publishCategoryToFirestore,
+        publishVendorToFirestore,
         products,
         setProducts,
         publishProductToFirestore,
