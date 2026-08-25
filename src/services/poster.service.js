@@ -339,4 +339,133 @@ export class PosterService {
       img.src = product.image;
     });
   }
+
+  /**
+   * Generates High-Definition Marketing Poster for Merchant Store Page
+   */
+  static async generateMerchantStorePoster(merchant, products = [], themeKey = 'dark_gold') {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://souk-al-balat.vercel.app';
+    const storeUrl = `${origin}/seller/${merchant.slug || merchant.id}`;
+    const qrDataUrl = await QRCode.toDataURL(storeUrl, {
+      margin: 1,
+      width: 400,
+      color: { dark: '#000000', light: '#ffffff' }
+    });
+
+    const theme = POSTER_THEMES[themeKey] || POSTER_THEMES.dark_gold;
+    const canvas = document.createElement('canvas');
+    canvas.width = 1080;
+    canvas.height = 1920;
+    const ctx = canvas.getContext('2d');
+
+    const qrImg = new Image();
+    qrImg.src = qrDataUrl;
+    await new Promise(r => { qrImg.onload = r; qrImg.onerror = r; });
+
+    // Background Gradient
+    const bgGrad = ctx.createLinearGradient(0, 0, 1080, 1920);
+    bgGrad.addColorStop(0, theme.bgStart);
+    bgGrad.addColorStop(1, theme.bgEnd);
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, 1080, 1920);
+
+    // Outer Border
+    ctx.strokeStyle = theme.border;
+    ctx.lineWidth = 14;
+    ctx.strokeRect(30, 30, 1020, 1860);
+
+    // Top Platform Badge
+    ctx.fillStyle = theme.priceBg;
+    ctx.beginPath();
+    ctx.roundRect(80, 80, 920, 100, 30);
+    ctx.fill();
+    ctx.strokeStyle = theme.border;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 44px Cairo, sans-serif';
+    ctx.fillStyle = theme.accentColor;
+    ctx.fillText(`⚡ ${APP_CONFIG.STORE_NAME}`, 540, 146);
+
+    // Merchant Profile Center Block
+    ctx.font = 'bold 64px Cairo, sans-serif';
+    ctx.fillStyle = theme.titleColor;
+    ctx.fillText(`🏪 ${merchant.name} ✓`, 540, 310);
+
+    ctx.font = 'bold 36px Cairo, sans-serif';
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillText('👑 مدير ومؤسس الموقع | حساب موثوق ومضمون', 540, 380);
+
+    ctx.font = '30px Cairo, sans-serif';
+    ctx.fillStyle = theme.subColor;
+    ctx.fillText(`📞 واتساب: ${merchant.phone} | 📦 معروض حالياً: ${products.length} قطعة بالة وأوتلت`, 540, 440);
+
+    // Products Highlight Grid (Draw 2 top products if available)
+    if (products.length > 0) {
+      ctx.font = 'bold 38px Cairo, sans-serif';
+      ctx.fillStyle = theme.accentColor;
+      ctx.fillText('✨ أبرز البضائع والطرود المتوفرة حالياً بالمتجر:', 540, 550);
+
+      const topProducts = products.slice(0, 3);
+      let pY = 620;
+      for (const p of topProducts) {
+        ctx.fillStyle = 'rgba(255,255,255,0.06)';
+        ctx.beginPath();
+        ctx.roundRect(100, pY, 880, 130, 24);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.textAlign = 'right';
+        ctx.font = 'bold 34px Cairo, sans-serif';
+        ctx.fillStyle = theme.textColor;
+        ctx.fillText(p.title.slice(0, 35) + (p.title.length > 35 ? '...' : ''), 940, pY + 55);
+
+        ctx.font = '26px Cairo, sans-serif';
+        ctx.fillStyle = theme.subColor;
+        ctx.fillText(p.conditionLabel || 'أوبن بوكس', 940, pY + 100);
+
+        ctx.textAlign = 'left';
+        ctx.font = 'bold 38px Outfit, sans-serif';
+        ctx.fillStyle = theme.priceColor;
+        ctx.fillText(`${Number(p.price).toLocaleString()} د.ع`, 130, pY + 80);
+
+        pY += 160;
+      }
+    }
+
+    // QR Code Large Box at Bottom
+    const qrBoxSize = 420;
+    const qrX = (1080 - qrBoxSize) / 2;
+    const qrY = 1180;
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.roundRect(qrX - 20, qrY - 20, qrBoxSize + 40, qrBoxSize + 40, 32);
+    ctx.fill();
+    ctx.strokeStyle = theme.border;
+    ctx.lineWidth = 6;
+    ctx.stroke();
+
+    ctx.drawImage(qrImg, qrX, qrY, qrBoxSize, qrBoxSize);
+
+    // Call to Action
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 44px Cairo, sans-serif';
+    ctx.fillStyle = theme.textColor;
+    ctx.fillText('📷 امسح الكود بكاميرا الموبايل لفتح متجري', 540, 1720);
+
+    ctx.font = 'bold 32px Outfit, sans-serif';
+    ctx.fillStyle = theme.accentColor;
+    ctx.fillText(storeUrl, 540, 1780);
+
+    // Download
+    const link = document.createElement('a');
+    link.download = `poster_store_${merchant.slug || merchant.id}_${themeKey}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    return true;
+  }
 }

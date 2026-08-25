@@ -481,9 +481,14 @@ class SoukApp {
   /* ==========================================================================
      Dedicated Seller Store Page (/seller/:id)
      ========================================================================== */
-  renderSellerStorePage(sellerId) {
+  async renderSellerStorePage(sellerId) {
+    if (ProductsService.getProducts().length === 0) {
+      await ProductsService.syncFromCloud();
+    }
+
     const merchant = AuthService.getMerchantById(sellerId) || {
       id: 'm-alwareth',
+      slug: 'alwareth',
       name: 'أبو وارث أمازون',
       phone: '07707188166',
       avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80',
@@ -542,9 +547,7 @@ class SoukApp {
         <!-- Seller Store Banner Card -->
         <div style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98)); border: 1.5px solid var(--border-strong); padding: 24px 20px; border-radius: var(--radius-lg); margin-bottom: 28px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; box-shadow: var(--card-shadow);">
           <div style="display: flex; align-items: center; gap: 16px;">
-            <div style="width: 68px; height: 68px; border-radius: 50%; background: #f59e0b; color: #000; font-size: 2.2rem; display: flex; align-items: center; justify-content: center; font-weight: 900; border: 3px solid #fff; box-shadow: 0 4px 15px rgba(245,158,11,0.4);">
-              👑
-            </div>
+            <img src="${merchant.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80'}" style="width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 3px solid #f59e0b; box-shadow: 0 4px 15px rgba(245,158,11,0.4);" alt="${merchant.name}">
             <div>
               <div style="font-size: 1.35rem; font-weight: 900; color: #ffffff; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                 <span>${merchant.name}</span>
@@ -555,12 +558,16 @@ class SoukApp {
                 <span>📞 واتساب: <strong>${merchant.phone}</strong></span>
                 <span>|</span>
                 <span>📦 المعروض: <strong>${sellerProducts.length} قطعة</strong></span>
+                ${merchant.slug ? `<span>|</span><span style="direction: ltr; font-family: var(--font-numbers); color: #f59e0b;">/seller/${merchant.slug}</span>` : ''}
               </div>
             </div>
           </div>
 
-          <!-- Social Links -->
+          <!-- Social Links & Store Poster Generator -->
           <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <button class="btn btn-secondary" id="btn-generate-seller-poster" style="padding: 8px 14px; font-size: 0.85rem; font-weight: 800; color: #d97706; border-color: #f59e0b; background: rgba(245, 158, 11, 0.12);">
+              📷 توليد بوستر المتجر 📱
+            </button>
             <a href="${merchant.socials?.facebook || 'https://www.facebook.com/gpm90'}" target="_blank" class="btn btn-secondary" style="padding: 8px 12px; font-size: 0.82rem; font-weight: 700; color: #1877f2;">
               ${SOCIAL_ICONS.FACEBOOK} فيسبوك
             </a>
@@ -593,6 +600,10 @@ class SoukApp {
     `;
 
     document.getElementById('btn-open-cart')?.addEventListener('click', () => this.openCartModal());
+    document.getElementById('btn-generate-seller-poster')?.addEventListener('click', async () => {
+      await PosterService.generateMerchantStorePoster(merchant, sellerProducts);
+      this.showToast('تم توليد وتحميل بوستر المتجر التسويقي بدقة فائقة! 📷', 'success');
+    });
     document.getElementById('btn-floating-support')?.addEventListener('click', () => this.openSupportInquiryModal());
   }
 
@@ -705,7 +716,12 @@ class SoukApp {
      2. Dedicated Full-Page Product View (/p/:id) with Official Brand Icons & Gallery
      ========================================================================== */
   async renderProductPage(productId) {
-    const product = ProductsService.getProductById(productId);
+    let product = ProductsService.getProductById(productId);
+    if (!product) {
+      await ProductsService.syncFromCloud();
+      product = ProductsService.getProductById(productId);
+    }
+
     if (!product || product.status === 'deleted') {
       this.renderProduct404Page();
       return;
@@ -2742,6 +2758,164 @@ class SoukApp {
       modalOverlay.remove();
       this.render();
       this.showToast('تم حفظ ونشر المنتج مع الصور السحابية بنجاح!', 'success');
+    });
+  }
+
+  /* ==========================================================================
+     Merchant Profile & Custom Store Settings Modal
+     ========================================================================== */
+  openMerchantSettingsModal(merchant) {
+    if (!merchant) merchant = AuthService.getCurrentMerchant();
+    if (!merchant) return;
+
+    const modalOverlay = document.createElement('div');
+    modalOverlay.className = 'modal-overlay active';
+    modalOverlay.innerHTML = `
+      <div class="modal-container" style="max-width: 620px; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header">
+          <div class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+            <span>⚙️</span>
+            <span>إعدادات المتجر والبروفايل الشخصي</span>
+          </div>
+          <div class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</div>
+        </div>
+
+        <div class="modal-body">
+          <!-- Profile Avatar Preview & Upload -->
+          <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 20px; padding: 14px; background: var(--bg-surface-subtle); border-radius: var(--radius-md); border: 1.5px solid var(--border-strong);">
+            <img src="${merchant.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80'}" id="setting-avatar-preview" style="width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2px solid var(--brand-primary);">
+            <div style="flex: 1;">
+              <label class="form-label" style="margin-bottom: 4px;">صورة اللوجو / البروفايل</label>
+              <input type="text" class="form-input" id="setting-m-avatar" value="${merchant.avatar || ''}" placeholder="رابط صورة اللوجو (أو اختر من المعرض)">
+              <div style="display: flex; gap: 8px; margin-top: 6px;">
+                <button type="button" class="btn btn-secondary" id="btn-pick-avatar-gallery" style="font-size: 0.75rem; padding: 4px 10px;">
+                  🖼️ اختيار من المعرض السحابي
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label class="form-label">اسم التاجر / المتجر *</label>
+              <input type="text" class="form-input" id="setting-m-name" value="${merchant.name || ''}" placeholder="مثال: أبو وارث أمازون">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">رقم هاتف الواتساب *</label>
+              <input type="tel" class="form-input" id="setting-m-phone" value="${merchant.phone || ''}" placeholder="077XXXXXXXX">
+            </div>
+          </div>
+
+          <!-- Custom Domain / Store Slug -->
+          <div class="form-group">
+            <label class="form-label">رابط ودومين صفحة المتجر المخصصة (/seller/...) *</label>
+            <div style="display: flex; align-items: center; gap: 6px; direction: ltr;">
+              <span style="font-size: 0.85rem; color: var(--text-tertiary); font-weight: 700; white-space: nowrap;">souk-al-balat.vercel.app/seller/</span>
+              <input type="text" class="form-input" id="setting-m-slug" value="${merchant.slug || merchant.id || 'alwareth'}" placeholder="alwareth" style="direction: ltr; font-weight: 800; font-family: var(--font-numbers);">
+            </div>
+            <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 4px;">
+              يمكنك كتابة معرفك الخاص مثل (alwareth أو store1) لمشاركته مع زبائنك لفتح متجرك المباشر.
+            </div>
+          </div>
+
+          <!-- Store Bio / Description -->
+          <div class="form-group">
+            <label class="form-label">نبذة عن المتجر وبضائعك:</label>
+            <textarea class="form-textarea" id="setting-m-bio" rows="2" placeholder="اكتب نبذة تعريفية لزبائنك...">${merchant.bio || ''}</textarea>
+          </div>
+
+          <!-- Social Links -->
+          <div style="margin-top: 10px;">
+            <label class="form-label">روابط التواصل الاجتماعي الرسمية:</label>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <input type="url" class="form-input" id="setting-m-fb" value="${merchant.socials?.facebook || ''}" placeholder="رابط الفيسبوك">
+              <input type="url" class="form-input" id="setting-m-tiktok" value="${merchant.socials?.tiktok || ''}" placeholder="رابط تيك توك">
+            </div>
+          </div>
+
+          <!-- Change Passcode -->
+          <div style="margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--border-subtle);">
+            <label class="form-label">تغيير رمز الدخول السري (اتركه فارغاً إذا لم ترغب بتغييره):</label>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <input type="password" class="form-input" id="setting-m-old-pass" placeholder="الرمز القديم">
+              <input type="password" class="form-input" id="setting-m-new-pass" placeholder="الرمز الجديد">
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer" style="display: flex; justify-content: space-between;">
+          <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">إلغاء</button>
+          <button class="btn btn-primary" id="btn-save-merchant-settings-act" style="font-weight: 800; padding: 10px 24px;">
+            💾 حفظ إعدادات المتجر
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modalOverlay);
+
+    // Pick avatar from gallery
+    modalOverlay.querySelector('#btn-pick-avatar-gallery')?.addEventListener('click', () => {
+      this.openMerchantGalleryModal(1, 'avatar', (selectedUrl) => {
+        document.getElementById('setting-m-avatar').value = selectedUrl;
+        document.getElementById('setting-avatar-preview').src = selectedUrl;
+      });
+    });
+
+    modalOverlay.querySelector('#setting-m-avatar')?.addEventListener('input', (e) => {
+      document.getElementById('setting-avatar-preview').src = e.target.value;
+    });
+
+    modalOverlay.querySelector('#btn-save-merchant-settings-act')?.addEventListener('click', async () => {
+      const name = document.getElementById('setting-m-name').value.trim();
+      const phone = document.getElementById('setting-m-phone').value.trim();
+      const slug = document.getElementById('setting-m-slug').value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+      const avatar = document.getElementById('setting-m-avatar').value.trim();
+      const bio = document.getElementById('setting-m-bio').value.trim();
+      const fb = document.getElementById('setting-m-fb').value.trim();
+      const tiktok = document.getElementById('setting-m-tiktok').value.trim();
+      const oldPass = document.getElementById('setting-m-old-pass').value.trim();
+      const newPass = document.getElementById('setting-m-new-pass').value.trim();
+
+      if (!name || !phone) {
+        this.showToast('يرجى كتابة الاسم ورقم الهاتف!', 'error');
+        return;
+      }
+
+      if (newPass) {
+        if (!oldPass) {
+          this.showToast('يرجى إدخال الرمز القديم لتأكيد تغييره!', 'error');
+          return;
+        }
+        const passRes = await AuthService.changeMerchantPasscode(merchant.id, oldPass, newPass);
+        if (!passRes.success) {
+          this.showToast(passRes.message, 'error');
+          return;
+        }
+      }
+
+      const updateData = {
+        name,
+        phone,
+        slug: slug || merchant.id,
+        avatar: avatar || merchant.avatar,
+        bio,
+        socials: {
+          facebook: fb,
+          tiktok: tiktok,
+          whatsapp: `https://api.whatsapp.com/send?phone=964${phone.replace(/[^0-9]/g,'').slice(-10)}`
+        }
+      };
+
+      const res = await AuthService.updateMerchant(merchant.id, updateData);
+      if (res.success) {
+        modalOverlay.remove();
+        this.render();
+        this.showToast('تم حفظ وتحديث إعدادات المتجر والبروفايل بنجاح! 💾', 'success');
+      } else {
+        this.showToast(res.message, 'error');
+      }
     });
   }
 
