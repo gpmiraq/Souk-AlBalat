@@ -314,8 +314,10 @@ class SoukApp {
         </div>
 
         <div class="product-card-body">
-          <div class="product-merchant-link">
-            🏪 ${p.merchantName} ${Number(p.quantity) > 1 ? `<span style="color: #10b981; font-weight: 800;">(متوفر: ${p.quantity} قطع)</span>` : ''}
+          <div class="product-merchant-link" style="cursor: pointer; display: flex; align-items: center; gap: 4px;" onclick="event.stopPropagation(); window.app.openMerchantStoreModal('${p.merchantId || 'm1'}')">
+            <span>🏪 ${p.merchantName}</span>
+            ${SOCIAL_ICONS.VERIFIED_BADGE}
+            ${Number(p.quantity) > 1 ? `<span style="color: #10b981; font-weight: 800;">(متوفر: ${p.quantity} قطع)</span>` : ''}
           </div>
 
           <h3 class="product-card-title" style="cursor:pointer;" onclick="window.app.navigate('/p/${p.id}')">
@@ -470,8 +472,9 @@ class SoukApp {
           <!-- 2. Middle Column: Product Details & Official Brand Social Icons -->
           <div class="product-middle-info">
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; background: var(--bg-surface-subtle); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
-              <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="display: flex; align-items: center; gap: 6px; cursor: pointer;" onclick="window.app.openMerchantStoreModal('${product.merchantId || 'm1'}')">
                 <span style="font-weight: 900; color: var(--text-primary); font-size: 0.95rem;">🏪 ${product.merchantName}</span>
+                ${SOCIAL_ICONS.VERIFIED_BADGE}
                 <span class="badge" style="background: #fef08a; color: #854d0e; font-weight: 800;">👑 مدير الموقع</span>
               </div>
 
@@ -513,7 +516,7 @@ class SoukApp {
             <!-- Delivery Trust Badge -->
             <div class="product-shipping-trust-pill">
               <span>🚚</span>
-              <span>توصيل سريع لكافة محافظات العراق (أجور الشحن: ${product.freeDelivery ? 'مجاني 🎁' : '5,000 د.ع فقط'})</span>
+              <span>توصيل سريع لكافة محافظات العراق (أجور التوصيل: ${product.freeDelivery ? 'مجاني 🎁' : '5,000 د.ع فقط'})</span>
             </div>
 
             <!-- Description Box -->
@@ -621,13 +624,27 @@ class SoukApp {
 
     const cleanPhone = (product.merchantPhone || '07707188166').replace(/[^0-9]/g, '');
     const origin = window.location.origin;
+    const itemPrice = Number(product.price) || 0;
+    const deliveryFee = APP_CONFIG.FIXED_DELIVERY_FEE;
+    const grandTotal = itemPrice + deliveryFee;
 
-    let msg = `السلام عليكم ورحمة الله،\nأود حجز هذا المنتج مباشرة:\n*${product.title}*\nالسعر: ${Number(product.price).toLocaleString()} د.ع\nرابط المنتج: ${origin}/p/${product.id}\n\n`;
+    let msg = `⚡ *طلب حجز بضاعة جديد من سوق البالات*\n\n`;
+    msg += `رقم المنتج : 1\n`;
+    msg += `اسم المنتج : ${product.title}\n`;
+    msg += `رابط المنتج : ${origin}/p/${product.id}\n`;
+    msg += `السعر : ${itemPrice.toLocaleString()} د.ع\n\n`;
+
     msg += `──────────────────────\n`;
-    msg += `👑 *خيارات التاجر (إدارة حالة المنتج):*\n`;
+    msg += `التوصيل : ${deliveryFee.toLocaleString()} د.ع لكافة محافظات العراق\n`;
+    msg += `*السعر الكلي : ${grandTotal.toLocaleString()} د.ع*\n\n`;
+    msg += `⚠️ *ملاحظة :* يجب فحص المنتج امام المندوب ولا يتحمل البائع مسؤولية سعر التوصيل في حال مغادرة المندوب.\n\n`;
+
+    msg += `──────────────────────\n`;
+    msg += `👑 *رابط خاص للتاجر:* (هنا رابط تفعيل المنتج في حال عدم الشراء او ختم المنتج انه مباع)\n`;
     msg += `👉 ${origin}/m-manage-order?pid=${product.id}`;
 
-    window.open(`https://api.whatsapp.com/send?phone=964${cleanPhone.startsWith('0') ? cleanPhone.slice(1) : cleanPhone}&text=${encodeURIComponent(msg)}`, '_blank');
+    const waPhone = cleanPhone.startsWith('0') ? '964' + cleanPhone.slice(1) : (cleanPhone.startsWith('964') ? cleanPhone : '964' + cleanPhone);
+    window.open(`https://api.whatsapp.com/send?phone=${waPhone}&text=${encodeURIComponent(msg)}`, '_blank');
     this.render();
   }
 
@@ -778,13 +795,14 @@ class SoukApp {
   }
 
   /* ==========================================================================
-     4. Poster Modal (Live Preview Morphing)
+     4. Poster Modal (Live Preview with Real Scannable QR Code)
      ========================================================================== */
-  openPosterModal(productId) {
+  async openPosterModal(productId) {
     const product = ProductsService.getProductById(productId);
     if (!product) return;
 
     let selectedFormat = 'vertical';
+    const qrDataUrl = await PosterService.generateProductQRCode(productId);
 
     const modalOverlay = document.createElement('div');
     modalOverlay.className = 'modal-overlay active';
@@ -801,7 +819,7 @@ class SoukApp {
           <div class="flyer-info-col">
             <div class="flyer-brand-header">
               <span>⚡ ${APP_CONFIG.STORE_NAME_SHORT}</span>
-              <span style="font-size: 0.75rem; color: #94a3b8;">| ${product.merchantName}</span>
+              <span style="font-size: 0.75rem; color: #38bdf8; display: flex; align-items: center;">| ${product.merchantName || 'أبو وارث'} ${SOCIAL_ICONS.VERIFIED_BADGE}</span>
             </div>
 
             <h2 class="flyer-product-title">${product.title}</h2>
@@ -812,13 +830,13 @@ class SoukApp {
               <span class="flyer-price-value">${Number(product.price).toLocaleString()} ${APP_CONFIG.CURRENCY}</span>
             </div>
 
-            <div class="flyer-qr-footer">
+            <div class="flyer-qr-footer" style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
               <div>
-                <div style="font-size: 0.85rem; font-weight: 700; color: #f59e0b;">امسح الكود للتسوق المباشر</div>
+                <div style="font-size: 0.85rem; font-weight: 700; color: #f59e0b;">امسح الكود بكاميرا الموبايل للتسوق</div>
                 <div style="font-size: 0.75rem; color: #94a3b8;">souk-al-balat.vercel.app</div>
               </div>
-              <div class="flyer-qr-box">
-                <div style="font-size: 1.8rem;">📱</div>
+              <div class="flyer-qr-box" style="background:#ffffff; padding:4px; border-radius:8px; display:flex; align-items:center; justify-content:center;">
+                ${qrDataUrl ? `<img src="${qrDataUrl}" style="width:48px; height:48px; object-fit:contain;" alt="QR Code">` : '📱'}
               </div>
             </div>
           </div>
@@ -907,6 +925,196 @@ class SoukApp {
         </div>
       </div>
     `;
+    document.body.appendChild(modalOverlay);
+  }
+
+  /* ==========================================================================
+     Merchant Media Gallery Modal (Browse, Upload to Firebase, Delete, Prevent Duplicates)
+     ========================================================================== */
+  openMerchantGalleryModal(slotIndex, productTitle, onSelect) {
+    const merchant = AuthService.getCurrentMerchant();
+    const merchantName = merchant?.name || 'أبو وارث أمازون';
+
+    const modalOverlay = document.createElement('div');
+    modalOverlay.className = 'modal-overlay active';
+
+    const renderGalleryBody = () => {
+      const currentGallery = StorageService.getMerchantGallery();
+      return `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <h3 style="font-weight: 900; font-size: 1.15rem; margin-bottom: 4px;">📁 مجلد صور التاجر: ${merchantName}</h3>
+            <p style="font-size: 0.82rem; color: var(--text-secondary);">اختر صورة مرفوعة مسبقاً لمنع التكرار، أو ارفع صورة جديدة مباشرة للسحابة.</p>
+          </div>
+          <button class="btn btn-primary" id="btn-upload-new-to-gallery" style="font-size: 0.85rem;">
+            📤 رفع صورة جديدة من الجهاز
+          </button>
+          <input type="file" id="gallery-file-input" accept="image/*" style="display: none;">
+        </div>
+
+        <div id="gallery-upload-status" style="margin-bottom: 10px; display: none; padding: 10px; border-radius: 8px; background: rgba(59, 130, 246, 0.1); color: #3b82f6; font-weight: 700;">
+          ⏳ جاري المعالجة والرفع لمجلد التاجر في Firebase...
+        </div>
+
+        ${currentGallery.length === 0 ? `
+          <div style="text-align: center; padding: 40px 20px; background: var(--bg-surface-subtle); border-radius: var(--radius-md); border: 2px dashed var(--border-subtle);">
+            <div style="font-size: 2.5rem; margin-bottom: 10px;">🖼️</div>
+            <p style="font-weight: 800; color: var(--text-primary);">لا توجد صور محفوظة في مجلدك حالياً</p>
+            <p style="font-size: 0.85rem; color: var(--text-secondary);">اضغط على زر (رفع صورة جديدة) أعلاه لإضافة صور إلى مجلدك السحابي.</p>
+          </div>
+        ` : `
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; max-height: 380px; overflow-y: auto; padding: 4px;">
+            ${currentGallery.map((img) => `
+              <div style="position: relative; border-radius: 10px; overflow: hidden; border: 2px solid var(--border-subtle); background: #000;">
+                <img src="${img.url}" style="width: 100%; height: 120px; object-fit: cover; display: block;">
+                <div style="padding: 6px; background: var(--bg-surface-elevated); display: flex; justify-content: space-between; align-items: center;">
+                  <button class="btn btn-secondary btn-select-gallery-img" data-url="${img.url}" style="font-size: 0.72rem; padding: 4px 8px; font-weight: 800;">
+                    اختيار
+                  </button>
+                  <button class="btn btn-danger btn-delete-gallery-img" data-url="${img.url}" style="font-size: 0.72rem; padding: 4px 8px;" title="حذف الصورة">
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `}
+      `;
+    };
+
+    modalOverlay.innerHTML = `
+      <div class="modal-container" style="max-width: 600px;">
+        <div class="modal-header">
+          <div class="modal-title">
+            <span>🖼️</span>
+            <span>معرض وسائط التاجر (${merchantName})</span>
+          </div>
+          <div class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</div>
+        </div>
+        <div class="modal-body" id="gallery-modal-body-wrapper">
+          ${renderGalleryBody()}
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modalOverlay);
+
+    const bindGalleryEvents = () => {
+      const fileInput = modalOverlay.querySelector('#gallery-file-input');
+      const uploadBtn = modalOverlay.querySelector('#btn-upload-new-to-gallery');
+      const statusBox = modalOverlay.querySelector('#gallery-upload-status');
+
+      uploadBtn?.addEventListener('click', () => fileInput?.click());
+
+      fileInput?.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          if (statusBox) statusBox.style.display = 'block';
+          try {
+            const url = await StorageService.processAndUploadImage(file, merchantName, productTitle || 'product', slotIndex);
+            modalOverlay.remove();
+            onSelect(url);
+          } catch (err) {
+            if (statusBox) statusBox.style.display = 'none';
+            this.showToast(err.message, 'error');
+          }
+        }
+      });
+
+      modalOverlay.querySelectorAll('.btn-select-gallery-img').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const url = btn.dataset.url;
+          modalOverlay.remove();
+          onSelect(url);
+        });
+      });
+
+      modalOverlay.querySelectorAll('.btn-delete-gallery-img').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const url = btn.dataset.url;
+          if (confirm('هل أنت متأكد من رغبتك بحذف هذه الصورة من معرض التاجر؟')) {
+            StorageService.deleteImageFromGallery(url);
+            modalOverlay.querySelector('#gallery-modal-body-wrapper').innerHTML = renderGalleryBody();
+            bindGalleryEvents();
+            this.showToast('تم حذف الصورة من المعرض', 'info');
+          }
+        });
+      });
+    };
+
+    bindGalleryEvents();
+  }
+
+  /* ==========================================================================
+     Merchant Public Store Modal (Profile, Verified Badge, Socials, Inventory)
+     ========================================================================== */
+  openMerchantStoreModal(merchantId) {
+    const merchant = AuthService.getMerchantById(merchantId) || {
+      name: 'أبو وارث أمازون',
+      phone: '07707188166',
+      socials: { facebook: 'https://www.facebook.com/gpm90', tiktok: 'https://www.tiktok.com/@alwareth_amazon', whatsapp: 'https://api.whatsapp.com/send?phone=9647707188166' }
+    };
+
+    const merchantProducts = ProductsService.getProducts().filter(p => p.merchantId === merchantId || p.merchantName?.includes('أبو وارث') || !p.merchantId);
+
+    const modalOverlay = document.createElement('div');
+    modalOverlay.className = 'modal-overlay active';
+    modalOverlay.innerHTML = `
+      <div class="modal-container" style="max-width: 860px; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header">
+          <div class="modal-title" style="display: flex; align-items: center; gap: 6px;">
+            <span>🏪</span>
+            <span>متجر ${merchant.name}</span>
+            ${SOCIAL_ICONS.VERIFIED_BADGE}
+          </div>
+          <div class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</div>
+        </div>
+
+        <div class="modal-body">
+          <!-- Merchant Hero Card -->
+          <div style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95)); border: 1px solid var(--border-strong); padding: 20px; border-radius: var(--radius-lg); margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; box-shadow: var(--card-shadow);">
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <div style="width: 64px; height: 64px; border-radius: 50%; background: #f59e0b; color: #000; font-size: 2rem; display: flex; align-items: center; justify-content: center; font-weight: 900; border: 3px solid #fff;">
+                👑
+              </div>
+              <div>
+                <div style="font-size: 1.3rem; font-weight: 900; color: #ffffff; display: flex; align-items: center; gap: 6px;">
+                  <span>${merchant.name}</span>
+                  ${SOCIAL_ICONS.VERIFIED_BADGE}
+                  <span class="badge" style="background: #fef08a; color: #854d0e; font-size: 0.72rem; font-weight: 800;">موثق رسمي</span>
+                </div>
+                <div style="color: #94a3b8; font-size: 0.85rem; margin-top: 4px;">📞 واتساب: ${merchant.phone || '07707188166'} | 📦 إجمالي البضائع: ${merchantProducts.length} قطعة</div>
+              </div>
+            </div>
+
+            <!-- Social Links -->
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <a href="${merchant.socials?.facebook || 'https://www.facebook.com/gpm90'}" target="_blank" class="btn btn-secondary" style="font-size: 0.85rem; padding: 6px 12px; display: flex; align-items: center; gap: 6px;">
+                ${SOCIAL_ICONS.FACEBOOK}
+                <span>فيسبوك</span>
+              </a>
+              <a href="${merchant.socials?.tiktok || 'https://www.tiktok.com/@alwareth_amazon'}" target="_blank" class="btn btn-secondary" style="font-size: 0.85rem; padding: 6px 12px; display: flex; align-items: center; gap: 6px;">
+                ${SOCIAL_ICONS.TIKTOK}
+                <span>تيك توك</span>
+              </a>
+              <a href="${merchant.socials?.whatsapp || 'https://api.whatsapp.com/send?phone=9647707188166'}" target="_blank" class="btn btn-whatsapp" style="font-size: 0.85rem; padding: 6px 12px; display: flex; align-items: center; gap: 6px;">
+                ${SOCIAL_ICONS.WHATSAPP}
+                <span>محادثة واتساب</span>
+              </a>
+            </div>
+          </div>
+
+          <h3 style="font-size: 1.15rem; font-weight: 900; margin-bottom: 14px;">بضائع ومنشورات التاجر (${merchantProducts.length}):</h3>
+
+          <div class="products-grid">
+            ${merchantProducts.length === 0 ? `
+              <p style="text-align: center; grid-column: 1/-1; padding: 30px; color: var(--text-secondary);">لا توجد بضائع منشورة حالياً لهذا التاجر.</p>
+            ` : merchantProducts.map(p => this.renderProductCard(p)).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+
     document.body.appendChild(modalOverlay);
   }
 
@@ -1364,11 +1572,18 @@ class SoukApp {
             </div>
           </div>
 
+          <!-- Category with Autocomplete & Custom Adder -->
           <div class="form-group">
-            <label class="form-label">القسم / التصنيف *</label>
-            <select class="form-select" id="new-prod-cat">
-              ${this.categories.filter(c => c.id !== 'all').map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
-            </select>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label class="form-label" style="margin-bottom:0;">القسم / التصنيف *</label>
+              <button type="button" class="btn btn-secondary" id="btn-add-custom-cat" style="font-size: 0.75rem; padding: 4px 8px; font-weight: 800;">
+                ➕ إضافة تصنيف جديد
+              </button>
+            </div>
+            <input list="categories-datalist" class="form-input" id="new-prod-cat" placeholder="اكتب للبحث أو اختر من القائمة..." value="إلكترونيات">
+            <datalist id="categories-datalist">
+              ${this.categories.filter(c => c.id !== 'all').map(c => `<option value="${c.name}"></option>`).join('')}
+            </datalist>
           </div>
 
           <!-- AI Generator Action Button -->
@@ -1380,7 +1595,7 @@ class SoukApp {
           </div>
 
           <div class="form-group">
-            <textarea class="form-textarea" id="new-prod-desc" rows="6" placeholder="اكتب العنوان أعلاه واضغط زر التوليد بالذكاء الاصطناعي لكتابة شرح ومواصفات احترافية تلقائياً..."></textarea>
+            <textarea class="form-textarea" id="new-prod-desc" rows="6" placeholder="اكتب ملاحظاتك اليدوية أو اضغط زر التوليد بالذكاء الاصطناعي لكتابة شرح ومواصفات احترافية تلقائياً..."></textarea>
           </div>
         </div>
 
@@ -1393,38 +1608,41 @@ class SoukApp {
 
     document.body.appendChild(modalOverlay);
 
-    // Setup 3 upload slots
+    // Custom Category Adder
+    modalOverlay.querySelector('#btn-add-custom-cat')?.addEventListener('click', () => {
+      const newCatName = prompt('أدخل اسم التصنيف الجديد:');
+      if (newCatName && newCatName.trim()) {
+        const cleanName = newCatName.trim();
+        const catId = 'cat_' + Date.now();
+        this.categories.push({ id: catId, name: cleanName, icon: '📦' });
+        localStorage.setItem('souk_categories', JSON.stringify(this.categories));
+        document.getElementById('new-prod-cat').value = cleanName;
+        const datalist = modalOverlay.querySelector('#categories-datalist');
+        if (datalist) {
+          datalist.innerHTML = this.categories.filter(c => c.id !== 'all').map(c => `<option value="${c.name}"></option>`).join('');
+        }
+        this.showToast(`تمت إضافة التصنيف الجديد (${cleanName}) بنجاح!`, 'success');
+      }
+    });
+
+    // Setup 3 upload slots connected to Merchant Cloud Gallery
     [1, 2, 3].forEach(slot => {
       const dropZone = modalOverlay.querySelector(`#upload-slot-${slot}`);
-      const fileInput = modalOverlay.querySelector(`#file-slot-input-${slot}`);
       const previewBox = modalOverlay.querySelector(`#preview-slot-${slot}`);
       const slotLabel = modalOverlay.querySelector(`#slot-label-${slot}`);
 
-      dropZone.addEventListener('click', () => fileInput.click());
-
-      fileInput.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (file) {
-          slotLabel.innerHTML = `⏳ جاري الرفع لـ Firebase...`;
-          dropZone.style.opacity = '0.6';
-          try {
-            const cloudUrl = await StorageService.processAndUploadImage(file, `p_slot_${slot}_${Date.now()}`);
-            uploadedImagesList[slot - 1] = cloudUrl;
-            dropZone.style.opacity = '1';
-            slotLabel.innerHTML = `✅ تم الرفع لـ Firebase`;
-            previewBox.style.display = 'block';
-            previewBox.innerHTML = `
-              <img src="${cloudUrl}" style="width:100%; height:100%; object-fit:cover;">
-              <div style="font-size: 0.65rem; color: #10b981; font-weight: 800; padding: 2px 4px; background: rgba(15, 23, 42, 0.85); color: #fff; text-align: center; border-top: 1px solid var(--border-subtle);">Google Firebase ☁️</div>
-            `;
-            this.showToast(`تم رفع الصورة ${slot} إلى Firebase Cloud Storage بنجاح!`, 'success');
-          } catch (err) {
-            slotLabel.innerHTML = `❌ فشل الرفع لفايربيس`;
-            dropZone.style.opacity = '1';
-            previewBox.style.display = 'none';
-            this.showToast(err.message, 'error');
-          }
-        }
+      dropZone.addEventListener('click', () => {
+        const prodTitle = document.getElementById('new-prod-title')?.value.trim() || 'product';
+        this.openMerchantGalleryModal(slot, prodTitle, (selectedUrl) => {
+          uploadedImagesList[slot - 1] = selectedUrl;
+          slotLabel.innerHTML = `✅ تم اختيار الصورة`;
+          previewBox.style.display = 'block';
+          previewBox.innerHTML = `
+            <img src="${selectedUrl}" style="width:100%; height:100%; object-fit:cover;">
+            <div style="font-size: 0.65rem; color: #10b981; font-weight: 800; padding: 2px 4px; background: rgba(15, 23, 42, 0.85); color: #fff; text-align: center; border-top: 1px solid var(--border-subtle);">Google Firebase ☁️</div>
+          `;
+          this.showToast(`تم تعيين الصورة ${slot} بنجاح!`, 'success');
+        });
       });
     });
 

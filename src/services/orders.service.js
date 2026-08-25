@@ -1,5 +1,6 @@
 /* ==========================================================================
-   Orders & WhatsApp Dispatch Engine with Merchant Inventory Action Links
+   Orders & WhatsApp Dispatch Engine
+   Structured Multi-Line WhatsApp Invoices with Delivery & Merchant Action Links
    ========================================================================== */
 
 import { APP_CONFIG } from '../config/constants.js';
@@ -7,7 +8,7 @@ import { ProductsService } from './products.service.js';
 
 export class OrdersService {
   /**
-   * Processes cart items and generates grouped WhatsApp orders with secret action links
+   * Processes cart items and generates structured multi-line WhatsApp orders
    */
   static processOrderAndGenerateWhatsApp(cartItems, customerInfo) {
     // Group items by merchant
@@ -37,33 +38,32 @@ export class OrdersService {
       const deliveryFee = APP_CONFIG.FIXED_DELIVERY_FEE;
       const grandTotal = itemsTotal + deliveryFee;
 
-      let msg = `⚡ *فاتورة حجز بضاعة من منصة سوق البالات* 📦\n\n`;
+      let msg = `⚡ *طلب حجز بضاعة جديد من سوق البالات*\n\n`;
       msg += `👤 *معلومات الزبون والتوصيل:*\n`;
-      msg += `• الاسم: ${customerInfo.name}\n`;
-      msg += `• الهاتف: ${customerInfo.phone}\n`;
-      msg += `• العنوان: ${customerInfo.address}\n`;
+      msg += `الاسم : ${customerInfo.name}\n`;
+      msg += `الهاتف : ${customerInfo.phone}\n`;
+      msg += `العنوان : ${customerInfo.address}\n`;
       if (customerInfo.notes) {
-        msg += `• ملاحظات إضافية: ${customerInfo.notes}\n`;
+        msg += `ملاحظات الزبون : ${customerInfo.notes}\n`;
       }
-      msg += `\n🛒 *البضائع المحجوزة:*\n`;
+      msg += `\n📦 *تفاصيل المنتجات المحجوزة:*\n\n`;
 
       group.items.forEach((it, idx) => {
-        msg += `${idx + 1}. *${it.title}*\n`;
-        msg += `   - السعر: ${Number(it.price).toLocaleString()} ${APP_CONFIG.CURRENCY}\n`;
-        msg += `   - الحالة: ${it.conditionLabel || 'أوبن بوكس'}\n`;
-        msg += `   - رابط المنتج: ${origin}/p/${it.id}\n`;
+        msg += `رقم المنتج : ${idx + 1}\n`;
+        msg += `اسم المنتج : ${it.title}\n`;
+        msg += `رابط المنتج : ${origin}/p/${it.id}\n`;
+        msg += `السعر : ${Number(it.price).toLocaleString()} د.ع\n\n`;
       });
 
-      msg += `\n💵 *الحساب الإجمالي:*\n`;
-      msg += `• مجموع البضائع: ${itemsTotal.toLocaleString()} د.ع\n`;
-      msg += `• أجور التوصيل: ${deliveryFee.toLocaleString()} د.ع\n`;
-      msg += `• *المبلغ الكلي المطلوب: ${grandTotal.toLocaleString()} د.ع*\n\n`;
+      msg += `──────────────────────\n`;
+      msg += `التوصيل : ${deliveryFee.toLocaleString()} د.ع لكافة محافظات العراق\n`;
+      msg += `*السعر الكلي : ${grandTotal.toLocaleString()} د.ع*\n\n`;
+      msg += `⚠️ *ملاحظة :* يجب فحص المنتج امام المندوب ولا يتحمل البائع مسؤولية سعر التوصيل في حال مغادرة المندوب.\n\n`;
 
       msg += `──────────────────────\n`;
-      msg += `👑 *خيارات التاجر السريعة (إدارة المخزون):*\n`;
+      msg += `👑 *رابط خاص للتاجر:* (هنا رابط تفعيل المنتج في حال عدم الشراء او ختم المنتج انه مباع)\n`;
       group.items.forEach(it => {
-        msg += `⚙️ لإعادة تفعيل أو تأكيد بيع (${it.title}):\n`;
-        msg += `👉 ${origin}/m-manage-order?pid=${it.id}\n\n`;
+        msg += `👉 ${origin}/m-manage-order?pid=${it.id}\n`;
       });
 
       const cleanPhone = phone.replace(/[^0-9]/g, '');

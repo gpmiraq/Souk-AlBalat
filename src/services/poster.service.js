@@ -1,11 +1,34 @@
 /* ==========================================================================
    Marketing Flyer & Poster Generator Service
    Supports Horizontal (1200x630) and Vertical Story (1080x1920) Formats
+   Integrated with Real Scannable Product QR Codes
    ========================================================================== */
 
 import { APP_CONFIG } from '../config/constants.js';
+import QRCode from 'qrcode';
 
 export class PosterService {
+  /**
+   * Generates real scannable QR Code DataURL for a product
+   */
+  static async generateProductQRCode(productId) {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://souk-al-balat.vercel.app';
+    const productUrl = `${origin}/p/${productId}`;
+    try {
+      return await QRCode.toDataURL(productUrl, {
+        margin: 1,
+        width: 300,
+        color: {
+          dark: '#000000',
+          light: '#ffffff'
+        }
+      });
+    } catch (e) {
+      console.warn('QR Code generation fallback:', e);
+      return '';
+    }
+  }
+
   /**
    * Generates and downloads the flyer card as an image in selected format
    * @param {Object} product 
@@ -33,6 +56,14 @@ export class PosterService {
     ctx.strokeStyle = '#f59e0b';
     ctx.lineWidth = isVertical ? 8 : 4;
     ctx.strokeRect(isVertical ? 24 : 16, isVertical ? 24 : 16, width - (isVertical ? 48 : 32), height - (isVertical ? 48 : 32));
+
+    // Generate real QR code image
+    const qrDataUrl = await this.generateProductQRCode(product.id);
+    const qrImg = new Image();
+    if (qrDataUrl) {
+      qrImg.src = qrDataUrl;
+      await new Promise(r => { qrImg.onload = r; qrImg.onerror = r; });
+    }
 
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -83,7 +114,7 @@ export class PosterService {
 
           // Product Title
           ctx.textAlign = 'right';
-          ctx.font = 'bold 54px Cairo, sans-serif';
+          ctx.font = 'bold 52px Cairo, sans-serif';
           ctx.fillStyle = '#ffffff';
           const words = product.title.split(' ');
           let line1 = words.slice(0, 5).join(' ');
@@ -93,10 +124,10 @@ export class PosterService {
             ctx.fillText(line2, width - 70, 1320);
           }
 
-          // Merchant
+          // Merchant with Verified Badge
           ctx.font = '34px Cairo, sans-serif';
-          ctx.fillStyle = '#cbd5e1';
-          ctx.fillText(`🏪 التاجر: ${product.merchantName}`, width - 70, 1400);
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillText(`🏪 التاجر: ${product.merchantName || 'أبو وارث أمازون'} ✓`, width - 70, 1400);
 
           // Price Highlight Box
           ctx.fillStyle = 'rgba(245, 158, 11, 0.15)';
@@ -116,25 +147,20 @@ export class PosterService {
           ctx.textAlign = 'left';
           ctx.fillText(`${Number(product.price).toLocaleString()} د.ع`, 120, 1560);
 
-          // Footer QR & Link
+          // Footer Real QR Code & Link
           ctx.textAlign = 'right';
           ctx.font = 'bold 32px Cairo, sans-serif';
           ctx.fillStyle = '#f8fafc';
-          ctx.fillText('امسح الكود للتسوق والطلب الفوري', width - 280, 1730);
+          ctx.fillText('امسح الكود بكاميرا الهاتف للطلب الفوري', width - 260, 1730);
 
           ctx.font = '26px Outfit, sans-serif';
           ctx.fillStyle = '#94a3b8';
-          ctx.fillText('souk-al-balat.vercel.app', width - 280, 1780);
+          ctx.fillText('souk-al-balat.vercel.app', width - 260, 1780);
 
-          // Mini QR Box
-          ctx.fillStyle = '#ffffff';
-          ctx.beginPath();
-          ctx.roundRect(width - 240, 1670, 140, 140, 16);
-          ctx.fill();
-          ctx.fillStyle = '#000000';
-          ctx.fillRect(width - 225, 1685, 40, 40);
-          ctx.fillRect(width - 150, 1685, 40, 40);
-          ctx.fillRect(width - 225, 1755, 40, 40);
+          // Draw Real Scannable QR Code
+          if (qrImg.complete && qrImg.naturalWidth > 0) {
+            ctx.drawImage(qrImg, width - 230, 1660, 160, 160);
+          }
 
         } else {
           // --- 🖥️ HORIZONTAL BANNER (1200 x 630) ---
@@ -164,7 +190,7 @@ export class PosterService {
           ctx.fillStyle = '#ffffff';
           const words = product.title.split(' ');
           let line1 = words.slice(0, 5).join(' ');
-          let line2 = words.slice(5).join(' ');
+          let line2 = words.slice(5, 10).join(' ');
           ctx.fillText(line1, 600, 170);
           if (line2) {
             ctx.fillText(line2, 600, 220);
@@ -172,8 +198,8 @@ export class PosterService {
 
           // Condition & Seller
           ctx.font = '20px Outfit, Cairo, sans-serif';
-          ctx.fillStyle = '#94a3b8';
-          ctx.fillText(`الحالة: ${product.conditionLabel || 'ممتاز'} | التاجر: ${product.merchantName}`, 600, 270);
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillText(`الحالة: ${product.conditionLabel || 'ممتاز'} | التاجر: ${product.merchantName || 'أبو وارث'} ✓`, 600, 270);
 
           // Price Box
           ctx.fillStyle = 'rgba(245, 158, 11, 0.15)';
@@ -193,24 +219,19 @@ export class PosterService {
           ctx.textAlign = 'left';
           ctx.fillText(`${Number(product.price).toLocaleString()} د.ع`, 90, 380);
 
-          // Footer
+          // Footer with Real QR
           ctx.textAlign = 'right';
           ctx.font = 'bold 18px Cairo, sans-serif';
           ctx.fillStyle = '#94a3b8';
-          ctx.fillText('امسح الكود للتسوق والطلب المباشر', 450, 510);
+          ctx.fillText('امسح الكود بكاميرا الموبايل للتسوق', 460, 510);
 
           ctx.font = '14px Outfit, sans-serif';
           ctx.fillStyle = '#64748b';
-          ctx.fillText('souk-al-balat.vercel.app', 450, 540);
+          ctx.fillText('souk-al-balat.vercel.app', 460, 540);
 
-          ctx.fillStyle = '#ffffff';
-          ctx.beginPath();
-          ctx.roundRect(470, 470, 90, 90, 10);
-          ctx.fill();
-          ctx.fillStyle = '#000000';
-          ctx.fillRect(480, 480, 24, 24);
-          ctx.fillRect(526, 480, 24, 24);
-          ctx.fillRect(480, 526, 24, 24);
+          if (qrImg.complete && qrImg.naturalWidth > 0) {
+            ctx.drawImage(qrImg, 480, 465, 100, 100);
+          }
         }
 
         // Trigger Download
