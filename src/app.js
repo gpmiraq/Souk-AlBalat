@@ -399,7 +399,10 @@ class SoukApp {
             ${isSold ? `
               <button class="btn btn-secondary" disabled>❌ مباعة بالكامل</button>
             ` : isReserved ? `
-              <button class="btn btn-secondary" disabled>⏳ قيد الحجز</button>
+              <button class="btn btn-secondary" style="background: #fffbeb; color: #b45309; border: 1.5px solid #fde68a; font-weight: 800;" onclick="event.stopPropagation(); window.app.openReservedProductInquiryModal('${p.id}')">
+                ⏳ قيد الحجز (استفسر من البائع)
+              </button>
+              <button class="btn btn-secondary" onclick="window.app.navigate('/p/${p.id}')">تفاصيل القطعة</button>
             ` : `
               <button class="btn btn-primary" onclick="window.app.addToCart('${p.id}')">🛒 أضف للسلة</button>
               <button class="btn btn-secondary" onclick="window.app.navigate('/p/${p.id}')">تفاصيل القطعة</button>
@@ -591,6 +594,71 @@ class SoukApp {
 
     document.getElementById('btn-open-cart')?.addEventListener('click', () => this.openCartModal());
     document.getElementById('btn-floating-support')?.addEventListener('click', () => this.openSupportInquiryModal());
+  }
+
+  /* ==========================================================================
+     Reserved Product Customer Inquiry Modal
+     ========================================================================== */
+  openReservedProductInquiryModal(productId) {
+    const product = ProductsService.getProductById(productId);
+    if (!product) return;
+
+    const modalOverlay = document.createElement('div');
+    modalOverlay.className = 'modal-overlay active';
+    modalOverlay.innerHTML = `
+      <div class="modal-container" style="max-width: 480px; text-align: center;">
+        <div class="modal-header">
+          <div class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+            <span>⏳</span>
+            <span>تنبيه: القطعة قيد الحجز حالياً</span>
+          </div>
+          <div class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</div>
+        </div>
+
+        <div class="modal-body" style="padding: 20px;">
+          <div style="font-size: 3rem; margin-bottom: 8px;">⏳🛍️</div>
+          <h3 style="font-size: 1.15rem; font-weight: 900; color: var(--text-primary); margin-bottom: 8px;">
+            هذه القطعة تم حجزها مؤقتاً لزبون آخر!
+          </h3>
+          <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.7; margin-bottom: 16px;">
+            مرحباً بك! هذه القطعة تم طلب حجزها قبل قليل وهي قيد تأكيد الدفع أو الفحص. في حال عدم إتمام الشراء، قد تصبح متوفرة مرة أخرى. يمكنك الاستفسار المباشر من التاجر عبر الواتساب لمعرفة حالة توفرها الآن.
+          </p>
+
+          <!-- Product Mini Card -->
+          <div style="background: var(--bg-surface-subtle); border: 1.5px solid var(--border-strong); border-radius: var(--radius-md); padding: 12px; display: flex; gap: 12px; align-items: center; text-align: right; margin-bottom: 20px;">
+            <img src="${product.image}" style="width: 56px; height: 56px; border-radius: 8px; object-fit: cover;" alt="${product.title}">
+            <div style="flex: 1;">
+              <h4 style="font-size: 0.9rem; font-weight: 800; color: var(--text-primary); line-height: 1.3;">${product.title}</h4>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; font-size: 0.82rem;">
+                <span style="font-weight: 900; color: #dc2626;">${Number(product.price).toLocaleString()} د.ع</span>
+                <span style="color: var(--text-secondary);">🏪 ${product.merchantName || 'أبو وارث أمازون'}</span>
+              </div>
+            </div>
+          </div>
+
+          <button class="btn btn-whatsapp" id="btn-inquire-reserved-wa" style="width: 100%; padding: 14px; font-size: 1.02rem; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            ${SOCIAL_ICONS.WHATSAPP}
+            <span>مراسلة التاجر للاستفسار عن توفر القطعة 💬</span>
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modalOverlay);
+
+    modalOverlay.querySelector('#btn-inquire-reserved-wa')?.addEventListener('click', () => {
+      modalOverlay.remove();
+      const cleanPhone = (product.merchantPhone || '07707188166').replace(/[^0-9]/g, '');
+      const origin = window.location.origin;
+      let msg = `السلام عليكم ورحمة الله،\n`;
+      msg += `بخصوص المنتج: *${product.title}*\n`;
+      msg += `رابط المنتج: ${origin}/p/${product.id}\n`;
+      msg += `السعر: ${Number(product.price).toLocaleString()} د.ع\n\n`;
+      msg += `هل ما زال المنتج متوفراً لديكم أم تم تأكيد بيعه للزبون السابق؟`;
+
+      const waPhone = cleanPhone.startsWith('0') ? '964' + cleanPhone.slice(1) : (cleanPhone.startsWith('964') ? cleanPhone : '964' + cleanPhone);
+      window.open(`https://api.whatsapp.com/send?phone=${waPhone}&text=${encodeURIComponent(msg)}`, '_blank');
+    });
   }
 
   /* ==========================================================================
@@ -792,14 +860,26 @@ class SoukApp {
 
             <!-- Buy Box Action Buttons -->
             <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
-              <button class="btn btn-primary" style="width: 100%; padding: 14px; font-size: 1.05rem; font-weight: 900;" onclick="window.app.addToCart('${product.id}')">
-                🛒 أضف إلى السلة
-              </button>
+              ${product.status === 'sold' ? `
+                <button class="btn btn-secondary" style="width: 100%; padding: 14px; font-size: 1.05rem;" disabled>❌ هذه القطعة مباعة بالكامل</button>
+              ` : (product.status === 'reserved' || Number(product.quantity) === 0) ? `
+                <div style="background: #fffbeb; border: 1.5px solid #fde68a; border-radius: var(--radius-md); padding: 10px 14px; color: #92400e; font-weight: 800; font-size: 0.88rem; text-align: center;">
+                  ⏳ هذه القطعة قيد الحجز مؤقتاً لزبون آخر
+                </div>
+                <button class="btn btn-whatsapp" style="width: 100%; padding: 12px; font-size: 1rem; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="window.app.openReservedProductInquiryModal('${product.id}')">
+                  ${SOCIAL_ICONS.WHATSAPP}
+                  <span>💬 استفسار عن توفر القطعة عبر واتساب</span>
+                </button>
+              ` : `
+                <button class="btn btn-primary" style="width: 100%; padding: 14px; font-size: 1.05rem; font-weight: 900;" onclick="window.app.addToCart('${product.id}')">
+                  🛒 أضف إلى السلة
+                </button>
 
-              <button class="btn btn-whatsapp" style="width: 100%; padding: 12px; font-size: 1rem; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="window.app.openWhatsAppDirectOrder('${product.id}')">
-                ${SOCIAL_ICONS.WHATSAPP}
-                <span>اشترِ الآن عبر واتساب</span>
-              </button>
+                <button class="btn btn-whatsapp" style="width: 100%; padding: 12px; font-size: 1rem; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="window.app.openWhatsAppDirectOrder('${product.id}')">
+                  ${SOCIAL_ICONS.WHATSAPP}
+                  <span>اشترِ الآن عبر واتساب</span>
+                </button>
+              `}
 
               <button class="btn btn-secondary" style="width: 100%; padding: 10px; font-weight: 800;" onclick="window.app.openPosterModal('${product.id}')">
                 📷 بطاقة بوستر تسويقي 📱
