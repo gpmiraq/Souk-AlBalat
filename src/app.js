@@ -788,13 +788,14 @@ class SoukApp {
   }
 
   /* ==========================================================================
-     4. Poster Modal (Live Preview with Real Scannable QR Code)
+     4. Poster Modal (Ultra-HD QR Code, Multi-Theme & Fixed Badges)
      ========================================================================== */
   async openPosterModal(productId) {
     const product = ProductsService.getProductById(productId);
     if (!product) return;
 
     let selectedFormat = 'vertical';
+    let selectedTheme = 'dark_gold';
     const qrDataUrl = await PosterService.generateProductQRCode(productId);
 
     const modalOverlay = document.createElement('div');
@@ -803,10 +804,12 @@ class SoukApp {
     const updatePreviewHTML = () => {
       const isVertical = selectedFormat === 'vertical';
       return `
-        <div class="${isVertical ? 'flyer-preview-vertical' : 'flyer-preview-horizontal'}" id="flyer-render-target">
-          <div class="flyer-image-col">
-            <img src="${product.image}" alt="${product.title}">
-            <span class="badge badge-new" style="position: absolute; top: 10px; right: 10px;">${PRODUCT_CONDITIONS[product.condition?.toUpperCase()]?.label || product.conditionLabel || 'أوبن بوكس'}</span>
+        <div class="${isVertical ? 'flyer-preview-vertical' : 'flyer-preview-horizontal'} flyer-theme-${selectedTheme}" id="flyer-render-target">
+          <div class="flyer-image-col" style="position: relative; overflow: hidden; border-radius: 14px;">
+            <img src="${product.image}" alt="${product.title}" style="width:100%; height:100%; object-fit:cover; display:block;">
+            <span class="badge badge-new" style="position: absolute; top: 12px; right: 12px; z-index: 5; font-size: 0.82rem; padding: 5px 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
+              ${PRODUCT_CONDITIONS[product.condition?.toUpperCase()]?.label || product.conditionLabel || 'أوبن بوكس'}
+            </span>
           </div>
 
           <div class="flyer-info-col">
@@ -823,13 +826,13 @@ class SoukApp {
               <span class="flyer-price-value">${Number(product.price).toLocaleString()} ${APP_CONFIG.CURRENCY}</span>
             </div>
 
-            <div class="flyer-qr-footer" style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+            <div class="flyer-qr-footer" style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
               <div>
                 <div style="font-size: 0.85rem; font-weight: 700; color: #f59e0b;">امسح الكود بكاميرا الموبايل للتسوق</div>
                 <div style="font-size: 0.75rem; color: #94a3b8;">souk-al-balat.vercel.app</div>
               </div>
-              <div class="flyer-qr-box" style="background:#ffffff; padding:4px; border-radius:8px; display:flex; align-items:center; justify-content:center;">
-                ${qrDataUrl ? `<img src="${qrDataUrl}" style="width:48px; height:48px; object-fit:contain;" alt="QR Code">` : '📱'}
+              <div class="flyer-qr-box" style="background:#ffffff; padding:4px; border-radius:10px; display:flex; align-items:center; justify-content:center; width:80px; height:80px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); border:2px solid #f59e0b;">
+                ${qrDataUrl ? `<img src="${qrDataUrl}" style="width:72px; height:72px; object-fit:contain; display:block;" alt="QR Code">` : '📱'}
               </div>
             </div>
           </div>
@@ -838,7 +841,7 @@ class SoukApp {
     };
 
     modalOverlay.innerHTML = `
-      <div class="modal-container marketing-poster-modal">
+      <div class="modal-container marketing-poster-modal" style="max-width: 680px;">
         <div class="modal-header">
           <div class="modal-title">
             <span>✨</span>
@@ -848,6 +851,17 @@ class SoukApp {
         </div>
 
         <div class="modal-body">
+          <!-- Theme Selector Bar -->
+          <div style="margin-bottom: 14px; text-align: center;">
+            <div style="font-size: 0.82rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 6px;">🎨 اختر مظهر وألوان البوستر:</div>
+            <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+              <button class="btn btn-secondary btn-poster-theme-pill active" data-theme="dark_gold" style="font-size: 0.78rem; padding: 5px 12px; font-weight: 800;">🌙 داكن ذهبي</button>
+              <button class="btn btn-secondary btn-poster-theme-pill" data-theme="light_modern" style="font-size: 0.78rem; padding: 5px 12px; font-weight: 800;">☀️ فاتح مودرن</button>
+              <button class="btn btn-secondary btn-poster-theme-pill" data-theme="neon_cyber" style="font-size: 0.78rem; padding: 5px 12px; font-weight: 800;">⚡ نيون أزرق</button>
+              <button class="btn btn-secondary btn-poster-theme-pill" data-theme="royal_purple" style="font-size: 0.78rem; padding: 5px 12px; font-weight: 800;">💎 ملكي بنفسجي</button>
+            </div>
+          </div>
+
           <div id="dynamic-poster-preview-box">
             ${updatePreviewHTML()}
           </div>
@@ -883,8 +897,17 @@ class SoukApp {
       previewBox.innerHTML = updatePreviewHTML();
     });
 
+    modalOverlay.querySelectorAll('.btn-poster-theme-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        modalOverlay.querySelectorAll('.btn-poster-theme-pill').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedTheme = btn.dataset.theme;
+        previewBox.innerHTML = updatePreviewHTML();
+      });
+    });
+
     modalOverlay.querySelector('#btn-download-poster-action')?.addEventListener('click', async () => {
-      await PosterService.exportFlyerAsImage(product, selectedFormat);
+      await PosterService.exportFlyerAsImage(product, selectedFormat, selectedTheme);
       this.showToast(`تم تحميل البوستر (${selectedFormat === 'vertical' ? 'العمودي 📱' : 'الأفقي 🖥️'}) بنجاح!`, 'success');
     });
   }
@@ -1357,7 +1380,7 @@ class SoukApp {
   }
 
   /* ==========================================================================
-     5. Merchant Isolated Portal (/v-space-k90) with Official Brand Vectors
+     5. Merchant Isolated Portal (/v-space-k90) with Active & Archive Tabs
      ========================================================================== */
   renderMerchantPortal() {
     const merchant = AuthService.getCurrentMerchant();
@@ -1366,7 +1389,12 @@ class SoukApp {
       return;
     }
 
-    const myProducts = ProductsService.getProducts().filter(p => p.merchantId === merchant.id);
+    if (!this.merchantActiveTab) {
+      this.merchantActiveTab = 'active'; // 'active' or 'deleted'
+    }
+
+    const myActiveProducts = ProductsService.getProducts().filter(p => p.merchantId === merchant.id);
+    const myDeletedProducts = ProductsService.getDeletedProducts(merchant.id);
 
     this.appEl.innerHTML = `
       <div class="merchant-portal-view">
@@ -1379,6 +1407,7 @@ class SoukApp {
               <div>
                 <div style="display: flex; align-items: center; gap: 8px;">
                   <h2 style="font-size: 1.25rem; font-weight: 900;">${merchant.name}</h2>
+                  ${SOCIAL_ICONS.VERIFIED_BADGE}
                   <span class="badge" style="background: #fef08a; color: #854d0e;">👑 مدير ومؤسس الموقع</span>
                 </div>
                 <div style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 6px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
@@ -1397,7 +1426,7 @@ class SoukApp {
 
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
               <button class="btn btn-secondary" id="btn-merchant-settings">
-                ⚙️ إعدادات الحساب وكلمة المرور
+                ⚙️ إعدادات الحساب
               </button>
               <button class="btn btn-primary" id="btn-merchant-add-product">
                 ➕ نشر بضاعة جديدة
@@ -1410,76 +1439,359 @@ class SoukApp {
 
           <div class="merchant-stats-grid">
             <div class="merchant-stat-card">
-              <span class="stat-label">📦 البضائع المعروضة</span>
-              <span class="stat-value">${myProducts.filter(p => p.status === 'available').length}</span>
+              <span class="stat-label">📦 البضائع النشطة المعروضة</span>
+              <span class="stat-value">${myActiveProducts.filter(p => p.status === 'available').length}</span>
             </div>
             <div class="merchant-stat-card">
               <span class="stat-label">⏳ طلبات قيد الحجز</span>
-              <span class="stat-value">${myProducts.filter(p => p.status === 'reserved').length}</span>
+              <span class="stat-value">${myActiveProducts.filter(p => p.status === 'reserved').length}</span>
             </div>
             <div class="merchant-stat-card">
-              <span class="stat-label">✅ بضائع تم بيعها</span>
-              <span class="stat-value">${myProducts.filter(p => p.status === 'sold').length}</span>
+              <span class="stat-label">🗑️ سلة المحذوفات والأرشيف</span>
+              <span class="stat-value" style="color: #ef4444;">${myDeletedProducts.length}</span>
             </div>
           </div>
 
-          <div class="admin-table-container">
-            <div style="padding: 16px 20px; font-weight: 800; font-size: 1.1rem; border-bottom: 1px solid var(--border-subtle);">
-              إدارة بضائع متجرك المعروضة
-            </div>
+          <!-- Merchant Tabs Selector -->
+          <div style="display: flex; gap: 10px; margin-bottom: 14px; border-bottom: 2px solid var(--border-subtle); padding-bottom: 8px;">
+            <button class="btn ${this.merchantActiveTab === 'active' ? 'btn-primary' : 'btn-secondary'}" id="tab-merchant-active" style="font-weight: 800;">
+              📦 البضائع النشطة المعروضة (${myActiveProducts.length})
+            </button>
+            <button class="btn ${this.merchantActiveTab === 'deleted' ? 'btn-danger' : 'btn-secondary'}" id="tab-merchant-deleted" style="font-weight: 800;">
+              🗑️ سلة المحذوفات والأرشيف (${myDeletedProducts.length})
+            </button>
+          </div>
 
-            <table class="admin-data-table">
-              <thead>
-                <tr>
-                  <th>الصورة</th>
-                  <th>عنوان المنتج</th>
-                  <th>السعر</th>
-                  <th>الكمية</th>
-                  <th>الحالة</th>
-                  <th>الخصم والتوصيل</th>
-                  <th>إجراءات سريعة</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${myProducts.length === 0 ? `
-                  <tr><td colspan="7" style="text-align: center; padding: 40px; font-weight: 700; color: var(--text-secondary);">
-                    المتجر فارغ حالياً. اضغط على زر <strong>"➕ نشر بضاعة جديدة"</strong> أعلاه لبدء إضافة أولى بضائعك!
-                  </td></tr>
-                ` : myProducts.map(p => `
+          <div class="admin-table-container">
+            ${this.merchantActiveTab === 'active' ? `
+              <table class="admin-data-table">
+                <thead>
                   <tr>
-                    <td><img src="${p.image}" style="width: 44px; height: 44px; border-radius: 6px; object-fit: cover;"></td>
-                    <td style="font-weight: 800; max-width: 260px;">${p.title}</td>
-                    <td style="font-family: var(--font-numbers); font-weight: 800;">${Number(p.price).toLocaleString()} د.ع</td>
-                    <td style="font-weight: 800; color: #10b981;">${p.quantity || 1} قطعة</td>
-                    <td>
-                      <select class="form-select" style="padding: 4px 8px; font-size: 0.8rem;" onchange="window.app.changeProductStatus('${p.id}', this.value)">
-                        <option value="available" ${p.status === 'available' ? 'selected' : ''}>متوفر 🟢</option>
-                        <option value="reserved" ${p.status === 'reserved' ? 'selected' : ''}>قيد الحجز ⏳</option>
-                        <option value="sold" ${p.status === 'sold' ? 'selected' : ''}>تم البيع 🔴</option>
-                      </select>
-                    </td>
-                    <td>
-                      <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;" onclick="window.app.openDiscountModal('${p.id}')">
-                        ${p.discountPercent > 0 ? `خصم ${p.discountPercent}%` : 'تفعيل خصم / توصيل مجاني'}
-                      </button>
-                    </td>
-                    <td>
-                      <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;" onclick="window.app.openPosterModal('${p.id}')">📷 بوستر</button>
-                    </td>
+                    <th>الصورة</th>
+                    <th>عنوان المنتج</th>
+                    <th>السعر</th>
+                    <th>الكمية</th>
+                    <th>الحالة</th>
+                    <th>الخصم</th>
+                    <th>إجراءات وتعديل</th>
                   </tr>
-                `).join('')}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  ${myActiveProducts.length === 0 ? `
+                    <tr><td colspan="7" style="text-align: center; padding: 40px; font-weight: 700; color: var(--text-secondary);">
+                      لا توجد بضائع نشطة حالياً. اضغط على زر <strong>"➕ نشر بضاعة جديدة"</strong> أعلاه لنشر أول منتج!
+                    </td></tr>
+                  ` : myActiveProducts.map(p => `
+                    <tr>
+                      <td><img src="${p.image}" style="width: 44px; height: 44px; border-radius: 6px; object-fit: cover;"></td>
+                      <td style="font-weight: 800; max-width: 240px;">${p.title}</td>
+                      <td style="font-family: var(--font-numbers); font-weight: 800;">${Number(p.price).toLocaleString()} د.ع</td>
+                      <td style="font-weight: 800; color: #10b981;">${p.quantity || 1} قطعة</td>
+                      <td>
+                        <select class="form-select" style="padding: 4px 8px; font-size: 0.8rem;" onchange="window.app.changeProductStatus('${p.id}', this.value)">
+                          <option value="available" ${p.status === 'available' ? 'selected' : ''}>متوفر 🟢</option>
+                          <option value="reserved" ${p.status === 'reserved' ? 'selected' : ''}>قيد الحجز ⏳</option>
+                          <option value="sold" ${p.status === 'sold' ? 'selected' : ''}>تم البيع 🔴</option>
+                        </select>
+                      </td>
+                      <td>
+                        <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;" onclick="window.app.openDiscountModal('${p.id}')">
+                          ${p.discountPercent > 0 ? `خصم ${p.discountPercent}%` : 'خصم / توصيل'}
+                        </button>
+                      </td>
+                      <td>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                          <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem; font-weight: 800;" onclick="window.app.openEditProductModal('${p.id}')">✏️ تعديل</button>
+                          <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;" onclick="window.app.openPosterModal('${p.id}')">📷 بوستر</button>
+                          <button class="btn btn-danger" style="padding: 4px 8px; font-size: 0.75rem;" onclick="window.app.softDeleteMerchantProduct('${p.id}')" title="نقل للمحذوفات">🗑️ حذف</button>
+                        </div>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            ` : `
+              <table class="admin-data-table">
+                <thead>
+                  <tr>
+                    <th>الصورة</th>
+                    <th>عنوان المنتج المحذوف</th>
+                    <th>السعر</th>
+                    <th>تاريخ الحذف</th>
+                    <th>خيارات الاستعادة</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${myDeletedProducts.length === 0 ? `
+                    <tr><td colspan="5" style="text-align: center; padding: 40px; font-weight: 700; color: var(--text-secondary);">
+                      سلة المحذوفات فارغة حالياً. لا توجد أي بضائع محذوفة.
+                    </td></tr>
+                  ` : myDeletedProducts.map(p => `
+                    <tr>
+                      <td><img src="${p.image}" style="width: 44px; height: 44px; border-radius: 6px; object-fit: cover; opacity: 0.6;"></td>
+                      <td style="font-weight: 800; max-width: 280px; color: var(--text-secondary); text-decoration: line-through;">${p.title}</td>
+                      <td style="font-family: var(--font-numbers); font-weight: 800;">${Number(p.price).toLocaleString()} د.ع</td>
+                      <td style="font-size: 0.8rem; color: var(--text-tertiary);">${p.deletedAt ? new Date(p.deletedAt).toLocaleDateString('ar-IQ') : 'مؤرشف'}</td>
+                      <td>
+                        <div style="display: flex; gap: 8px;">
+                          <button class="btn btn-primary" style="padding: 4px 10px; font-size: 0.75rem; font-weight: 800;" onclick="window.app.restoreMerchantProduct('${p.id}')">♻️ استعادة للمتجر</button>
+                          <button class="btn btn-danger" style="padding: 4px 10px; font-size: 0.75rem;" onclick="window.app.hardDeleteMerchantProduct('${p.id}')">❌ حذف نهائي</button>
+                        </div>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            `}
           </div>
         </div>
       </div>
     `;
+
+    document.getElementById('tab-merchant-active')?.addEventListener('click', () => {
+      this.merchantActiveTab = 'active';
+      this.renderMerchantPortal();
+    });
+
+    document.getElementById('tab-merchant-deleted')?.addEventListener('click', () => {
+      this.merchantActiveTab = 'deleted';
+      this.renderMerchantPortal();
+    });
 
     document.getElementById('btn-merchant-add-product')?.addEventListener('click', () => this.openAddProductModal());
     document.getElementById('btn-merchant-settings')?.addEventListener('click', () => this.openMerchantSettingsModal(merchant));
     document.getElementById('btn-merchant-logout')?.addEventListener('click', () => {
       AuthService.logoutMerchant();
       this.render();
+    });
+  }
+
+  softDeleteMerchantProduct(productId) {
+    if (confirm('هل ترغب بنقل هذا المنشور إلى سلة المحذوفات؟ (يمكنك استعادته في أي وقت)')) {
+      ProductsService.softDeleteProduct(productId);
+      this.render();
+      this.showToast('تم نقل المنشور إلى سلة المحذوفات بنجاح 🗑️', 'info');
+    }
+  }
+
+  restoreMerchantProduct(productId) {
+    ProductsService.restoreProduct(productId);
+    this.render();
+    this.showToast('تمت استعادة المنشور وتفعيله في المتجر بنجاح! ♻️', 'success');
+  }
+
+  hardDeleteMerchantProduct(productId) {
+    if (confirm('تحذير: هل أنت متأكد من رغبتك بحذف هذا المنشور نهائياً من السيرفر؟ لن يمكن التراجع بعد ذلك.')) {
+      ProductsService.hardDeleteProduct(productId);
+      this.render();
+      this.showToast('تم حذف المنشور نهائياً', 'info');
+    }
+  }
+
+  /* ==========================================================================
+     Edit Product Modal
+     ========================================================================== */
+  openEditProductModal(productId) {
+    const product = ProductsService.getProductById(productId);
+    if (!product) return;
+
+    let uploadedImagesList = product.images && product.images.length > 0 ? [...product.images] : [product.image];
+    while (uploadedImagesList.length < 3) uploadedImagesList.push(null);
+
+    const modalOverlay = document.createElement('div');
+    modalOverlay.className = 'modal-overlay active';
+    modalOverlay.innerHTML = `
+      <div class="modal-container" style="max-width: 680px; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header">
+          <div class="modal-title">
+            <span>✏️</span>
+            <span>تعديل بيانات المنشور (#${product.id})</span>
+          </div>
+          <div class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</div>
+        </div>
+
+        <div class="modal-body">
+          <!-- 3 Photo Slots -->
+          <div class="form-group">
+            <label class="form-label">صور المنتج (اختر صورة واحدة على الأقل):</label>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+              ${[1, 2, 3].map(slot => `
+                <div class="image-upload-dropzone" id="edit-upload-slot-${slot}" style="padding: 10px; cursor: pointer; text-align: center; border: 2px dashed var(--border-strong); border-radius: 8px;">
+                  <div id="edit-preview-slot-${slot}" style="width: 100%; height: 90px; margin-bottom: 6px; ${uploadedImagesList[slot-1] ? 'display:block;' : 'display:none;'}">
+                    ${uploadedImagesList[slot-1] ? `<img src="${uploadedImagesList[slot-1]}" style="width:100%; height:100%; object-fit:cover; border-radius:6px;">` : ''}
+                  </div>
+                  <span id="edit-slot-label-${slot}" style="font-size: 0.72rem; font-weight: 800; color: var(--text-secondary);">
+                    ${uploadedImagesList[slot-1] ? `✅ الصورة ${slot}` : `📷 اختيار صورة ${slot}`}
+                  </span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">عنوان وموديل المنتج *</label>
+            <input type="text" class="form-input" id="edit-prod-title" value="${product.title}">
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+            <div class="form-group">
+              <label class="form-label">السعر (د.ع) *</label>
+              <input type="number" class="form-input" id="edit-prod-price" value="${product.price}">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">الكمية المتوفرة بالمخزون *</label>
+              <input type="number" class="form-input" id="edit-prod-qty" value="${product.quantity || 1}" min="0">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">حالة القطعة *</label>
+              <select class="form-select" id="edit-prod-condition">
+                <option value="new" ${product.condition === 'new' ? 'selected' : ''}>✨ جديد غير مفتوح (NEW)</option>
+                <option value="open_box" ${product.condition === 'open_box' ? 'selected' : ''}>📦 أوبن بوكس (Open Box)</option>
+                <option value="used" ${product.condition === 'used' ? 'selected' : ''}>🔍 مستخدم (Used)</option>
+                <option value="scrap" ${product.condition === 'scrap' ? 'selected' : ''}>🔧 عاطل - أدوات (SCRAP)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Category Selection -->
+          <div class="form-group">
+            <label class="form-label">القسم / التصنيف *</label>
+            <div class="form-input" id="edit-category-trigger" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface-subtle); border: 1.5px solid var(--border-strong);">
+              <span style="font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                <span id="edit-cat-icon">📦</span>
+                <span id="edit-cat-name">${product.category || 'إلكترونيات'}</span>
+              </span>
+              <span class="btn btn-secondary" style="font-size: 0.75rem; padding: 3px 8px; pointer-events: none;">🔍 بحث / اختيار قسم</span>
+            </div>
+            <input type="hidden" id="edit-prod-cat" value="${product.category || 'إلكترونيات'}">
+          </div>
+
+          <!-- Merchant Manual Notes -->
+          <div class="form-group">
+            <label class="form-label">وصف وتفاصيل المنتج (ملاحظات التاجر اليدوية):</label>
+            <textarea class="form-textarea" id="edit-prod-desc" rows="3">${product.description || ''}</textarea>
+          </div>
+
+          <!-- AI Details Box -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
+            <label class="form-label" style="margin-bottom: 0;">تفاصيل ومواصفات مولدة بالذكاء الاصطناعي:</label>
+            <button type="button" class="btn btn-secondary" id="btn-edit-generate-ai-desc" style="font-size: 0.78rem; padding: 6px 12px; font-weight: 800; color: #d97706; border-color: #f59e0b; background: rgba(245, 158, 11, 0.08);">
+              ✨ إعادة توليد التفاصيل بالذكاء الاصطناعي 🤖
+            </button>
+          </div>
+
+          <div class="form-group">
+            <textarea class="form-textarea" id="edit-prod-ai-details" rows="5">${product.aiDetails || ''}</textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">إلغاء</button>
+          <button class="btn btn-primary" id="btn-save-edit-product">💾 حفظ التعديلات</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modalOverlay);
+
+    // Edit Category Trigger
+    modalOverlay.querySelector('#edit-category-trigger')?.addEventListener('click', () => {
+      const currentVal = document.getElementById('edit-prod-cat')?.value || 'إلكترونيات';
+      this.openCategoryPickerModal(currentVal, (chosenName, chosenIcon) => {
+        document.getElementById('edit-prod-cat').value = chosenName;
+        const iconEl = modalOverlay.querySelector('#edit-cat-icon');
+        const nameEl = modalOverlay.querySelector('#edit-cat-name');
+        if (iconEl) iconEl.textContent = chosenIcon || '📦';
+        if (nameEl) nameEl.textContent = chosenName;
+      });
+    });
+
+    // 3 upload slots for edit modal
+    [1, 2, 3].forEach(slot => {
+      const dropZone = modalOverlay.querySelector(`#edit-upload-slot-${slot}`);
+      const previewBox = modalOverlay.querySelector(`#edit-preview-slot-${slot}`);
+      const slotLabel = modalOverlay.querySelector(`#edit-slot-label-${slot}`);
+
+      dropZone.addEventListener('click', () => {
+        const prodTitle = document.getElementById('edit-prod-title')?.value.trim() || 'product';
+        this.openMerchantGalleryModal(slot, prodTitle, (selectedUrl) => {
+          uploadedImagesList[slot - 1] = selectedUrl;
+          slotLabel.innerHTML = `✅ تم اختيار الصورة ${slot}`;
+          previewBox.style.display = 'block';
+          previewBox.innerHTML = `<img src="${selectedUrl}" style="width:100%; height:100%; object-fit:cover; border-radius:6px;">`;
+          this.showToast(`تم تحديث الصورة ${slot} بنجاح!`, 'success');
+        });
+      });
+    });
+
+    // AI Re-generator Button
+    modalOverlay.querySelector('#btn-edit-generate-ai-desc')?.addEventListener('click', async () => {
+      const title = document.getElementById('edit-prod-title').value.trim();
+      const cat = document.getElementById('edit-prod-cat').value;
+      const cond = document.getElementById('edit-prod-condition').value;
+
+      if (!title) {
+        this.showToast('يرجى كتابة عنوان وموديل المنتج أولاً!', 'error');
+        return;
+      }
+
+      const btn = modalOverlay.querySelector('#btn-edit-generate-ai-desc');
+      btn.innerHTML = `⏳ جاري استخراج المواصفات...`;
+      btn.disabled = true;
+
+      try {
+        const aiDesc = await AIService.generateProductDescription(title, cat, cond);
+        document.getElementById('edit-prod-ai-details').value = aiDesc;
+        btn.innerHTML = `✅ تم توليد المواصفات بنجاح`;
+        btn.disabled = true;
+        this.showToast(`تم استخراج مواصفات (${title}) بنجاح!`, 'success');
+      } catch (err) {
+        btn.innerHTML = `✨ إعادة توليد التفاصيل بالذكاء الاصطناعي 🤖`;
+        btn.disabled = false;
+        this.showToast(err.message, 'error');
+      }
+    });
+
+    // Save Edit
+    modalOverlay.querySelector('#btn-save-edit-product')?.addEventListener('click', () => {
+      const title = document.getElementById('edit-prod-title').value.trim();
+      const price = Number(document.getElementById('edit-prod-price').value);
+      const quantity = Number(document.getElementById('edit-prod-qty').value);
+      const condition = document.getElementById('edit-prod-condition').value;
+      const category = document.getElementById('edit-prod-cat').value;
+      const description = document.getElementById('edit-prod-desc').value.trim();
+      const aiDetails = document.getElementById('edit-prod-ai-details').value.trim();
+
+      const validImages = uploadedImagesList.filter(Boolean);
+
+      if (!title || !price) {
+        this.showToast('يرجى إدخال العنوان والسعر', 'error');
+        return;
+      }
+
+      if (validImages.length === 0) {
+        this.showToast('يرجى اختيار صورة واحدة على الأقل للمنتج', 'error');
+        return;
+      }
+
+      ProductsService.updateProduct(product.id, {
+        title,
+        price,
+        quantity,
+        condition,
+        conditionLabel: PRODUCT_CONDITIONS[condition.toUpperCase()]?.label || condition,
+        category,
+        description,
+        aiDetails,
+        images: validImages,
+        image: validImages[0]
+      });
+
+      modalOverlay.remove();
+      this.render();
+      this.showToast('تم حفظ وتحديث بيانات المنشور بنجاح! 💾', 'success');
     });
   }
 
@@ -1812,7 +2124,12 @@ class SoukApp {
       }
 
       const validImages = uploadedImagesList.filter(Boolean);
-      const primaryImage = validImages[0] || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80';
+      if (validImages.length === 0) {
+        this.showToast('يرجى اختيار صورة واحدة على الأقل للمنتج', 'error');
+        return;
+      }
+
+      const primaryImage = validImages[0];
 
       ProductsService.addProduct({
         title,

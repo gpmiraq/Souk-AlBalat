@@ -764,6 +764,7 @@
 }
 
 .flyer-preview-horizontal .flyer-image-col {
+  position: relative;
   aspect-ratio: 1 / 1;
   border-radius: var(--radius-md);
   overflow: hidden;
@@ -789,6 +790,7 @@
 }
 
 .flyer-preview-vertical .flyer-image-col {
+  position: relative;
   width: 100%;
   aspect-ratio: 1 / 1;
   border-radius: var(--radius-md);
@@ -801,6 +803,60 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
+}
+
+/* Flyer Color Themes */
+.flyer-theme-light_modern {
+  background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%) !important;
+  color: #0f172a !important;
+  border-color: #2563eb !important;
+}
+.flyer-theme-light_modern .flyer-image-col {
+  border-color: #2563eb !important;
+}
+.flyer-theme-light_modern .flyer-product-title {
+  color: #0f172a !important;
+}
+.flyer-theme-light_modern .flyer-price-container {
+  background: rgba(37, 99, 235, 0.08) !important;
+  border-color: #2563eb !important;
+}
+.flyer-theme-light_modern .flyer-price-value {
+  color: #1d4ed8 !important;
+}
+.flyer-theme-light_modern .flyer-price-label {
+  color: #475569 !important;
+}
+
+.flyer-theme-neon_cyber {
+  background: linear-gradient(135deg, #090d16 0%, #020617 100%) !important;
+  border-color: #06b6d4 !important;
+}
+.flyer-theme-neon_cyber .flyer-image-col {
+  border-color: #06b6d4 !important;
+}
+.flyer-theme-neon_cyber .flyer-price-container {
+  background: rgba(6, 182, 212, 0.15) !important;
+  border-color: #06b6d4 !important;
+}
+.flyer-theme-neon_cyber .flyer-price-value {
+  color: #06b6d4 !important;
+}
+
+.flyer-theme-royal_purple {
+  background: linear-gradient(135deg, #1e112a 0%, #0d0517 100%) !important;
+  border-color: #c084fc !important;
+}
+.flyer-theme-royal_purple .flyer-image-col {
+  border-color: #c084fc !important;
+}
+.flyer-theme-royal_purple .flyer-price-container {
+  background: rgba(192, 132, 252, 0.15) !important;
+  border-color: #c084fc !important;
+}
+.flyer-theme-royal_purple .flyer-price-value {
+  color: #c084fc !important;
 }
 
 .flyer-info-col {
@@ -852,18 +908,21 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   margin-top: 6px;
   padding-top: 10px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .flyer-qr-box {
-  width: 60px;
-  height: 60px;
+  width: 80px;
+  height: 80px;
   background: #ffffff;
   padding: 4px;
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
+  border: 2px solid #f59e0b;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
