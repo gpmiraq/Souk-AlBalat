@@ -6,6 +6,7 @@
 
 import { APP_CONFIG, DEFAULT_CATEGORIES, PRODUCT_CONDITIONS, SOCIAL_ICONS } from './config/constants.js';
 import { ProductsService } from './services/products.service.js';
+import { CategoriesService } from './services/categories.service.js';
 import { OrdersService, IRAQI_GOVERNORATES, isValidIraqiPhone } from './services/orders.service.js';
 import { StorageService } from './services/storage.service.js';
 import { PosterService } from './services/poster.service.js';
@@ -35,14 +36,21 @@ class SoukApp {
       supportPhone: "07707188166"
     }));
 
-    // Dynamic Categories
-    this.categories = JSON.parse(localStorage.getItem('souk_custom_categories') || JSON.stringify(DEFAULT_CATEGORIES));
+    // Dynamic Categories with live Firebase Sync
+    this.categories = CategoriesService.getCategories();
 
     this.initTheme();
     this.initRouter();
 
     // Live Cloud Sync from Google Firebase Firestore
-    ProductsService.syncFromCloud().then(() => this.render());
+    Promise.all([
+      ProductsService.syncFromCloud(),
+      CategoriesService.syncFromCloud()
+    ]).then(([products, cats]) => {
+      this.categories = cats;
+      this.render();
+    });
+
     window.addEventListener('focus', () => {
       ProductsService.syncFromCloud().then(() => this.render());
     });
@@ -781,42 +789,34 @@ class SoukApp {
                 </div>
               </div>
             ` : ''}
-          </div>
 
-          <!-- 3. Left Column: Sticky Buy Box Card -->
-          <div class="product-sticky-buybox">
-            <div class="buybox-badge-header">
-              ⚡ متاح بالمخزون: ${Number(product.quantity) || 1} قطع فقط
+            <!-- Buy Box Action Buttons -->
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+              <button class="btn btn-primary" style="width: 100%; padding: 14px; font-size: 1.05rem; font-weight: 900;" onclick="window.app.addToCart('${product.id}')">
+                🛒 أضف إلى السلة
+              </button>
+
+              <button class="btn btn-whatsapp" style="width: 100%; padding: 12px; font-size: 1rem; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="window.app.openWhatsAppDirectOrder('${product.id}')">
+                ${SOCIAL_ICONS.WHATSAPP}
+                <span>اشترِ الآن عبر واتساب</span>
+              </button>
+
+              <button class="btn btn-secondary" style="width: 100%; padding: 10px; font-weight: 800;" onclick="window.app.openPosterModal('${product.id}')">
+                📷 بطاقة بوستر تسويقي 📱
+              </button>
             </div>
-
-            <div style="font-size: 1.6rem; font-weight: 900; color: #dc2626; font-family: var(--font-numbers);">
-              <span style="font-size: 1rem; color: var(--text-secondary);">السعر: </span>${Number(product.price).toLocaleString()} <span style="font-size: 0.9rem; color: var(--text-secondary);">${APP_CONFIG.CURRENCY}</span>
-            </div>
-
-            <button class="btn btn-primary" style="width: 100%; padding: 14px; font-size: 1.05rem;" onclick="window.app.addToCart('${product.id}')">
-              🛒 أضف إلى السلة
-            </button>
-
-            <button class="btn btn-whatsapp" style="width: 100%; padding: 12px; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="window.app.openWhatsAppDirectOrder('${product.id}')">
-              ${SOCIAL_ICONS.WHATSAPP}
-              <span>اشترِ الآن عبر واتساب</span>
-            </button>
-
-            <button class="btn btn-secondary" style="width: 100%;" onclick="window.app.openPosterModal('${product.id}')">
-              📷 حفظ بوستر تسويقي 📱
-            </button>
 
             <!-- Trust Icons -->
-            <div class="buybox-trust-list">
-              <div class="trust-item">
+            <div style="display: flex; justify-content: space-around; gap: 12px; padding: 14px 10px; background: var(--bg-surface-subtle); border-radius: var(--radius-md); margin-top: 10px; flex-wrap: wrap; border: 1px solid var(--border-subtle); font-size: 0.85rem; font-weight: 700; color: var(--text-secondary);">
+              <div style="display: flex; align-items: center; gap: 6px;">
                 <span>🛡️</span>
                 <span>فحص وضمان الجودة 100%</span>
               </div>
-              <div class="trust-item">
+              <div style="display: flex; align-items: center; gap: 6px;">
                 <span>🚚</span>
-                <span>توصيل مباشر لباب منزلك</span>
+                <span>توصيل لكافة محافظات العراق</span>
               </div>
-              <div class="trust-item">
+              <div style="display: flex; align-items: center; gap: 6px;">
                 <span>🔒</span>
                 <span>دائماً موثوقة ومضمونة</span>
               </div>
