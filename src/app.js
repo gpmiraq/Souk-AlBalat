@@ -1410,19 +1410,24 @@ class SoukApp {
       fileInput.addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (file) {
-          slotLabel.innerHTML = `⏳ جاري الرفع للسحابة...`;
+          slotLabel.innerHTML = `⏳ جاري الرفع لـ Firebase...`;
           dropZone.style.opacity = '0.6';
           try {
             const cloudUrl = await StorageService.processAndUploadImage(file, `p_slot_${slot}_${Date.now()}`);
             uploadedImagesList[slot - 1] = cloudUrl;
             dropZone.style.opacity = '1';
-            slotLabel.innerHTML = `✅ تم الرفع للسحابة`;
+            slotLabel.innerHTML = `✅ تم الرفع لـ Firebase`;
             previewBox.style.display = 'block';
-            previewBox.innerHTML = `<img src="${cloudUrl}" style="width:100%; height:100%; object-fit:cover;">`;
+            previewBox.innerHTML = `
+              <img src="${cloudUrl}" style="width:100%; height:100%; object-fit:cover;">
+              <div style="font-size: 0.65rem; color: #10b981; font-weight: 800; padding: 2px 4px; background: rgba(15, 23, 42, 0.85); color: #fff; text-align: center; border-top: 1px solid var(--border-subtle);">Google Firebase ☁️</div>
+            `;
+            this.showToast(`تم رفع الصورة ${slot} إلى Firebase Cloud Storage بنجاح!`, 'success');
           } catch (err) {
-            slotLabel.innerHTML = `صورة ${slot}`;
+            slotLabel.innerHTML = `❌ فشل الرفع لفايربيس`;
             dropZone.style.opacity = '1';
-            this.showToast('تعذر رفع الصورة للسحابة، جاري المحاولة مرة أخرى', 'error');
+            previewBox.style.display = 'none';
+            this.showToast(err.message, 'error');
           }
         }
       });
@@ -1436,23 +1441,36 @@ class SoukApp {
       const cond = document.getElementById('new-prod-condition').value;
 
       if (!title) {
-        this.showToast('يرجى كتابة عنوان المنتج أولاً ليقوم الذكاء الاصطناعي بتحليله وكتابة شرحه!', 'error');
+        this.showToast('يرجى كتابة عنوان المنتج أولاً ليقوم الذكاء الاصطناعي بتحليله!', 'error');
         document.getElementById('new-prod-title').focus();
         return;
       }
 
       const btn = modalOverlay.querySelector('#btn-generate-ai-desc');
-      btn.innerHTML = `⏳ جاري تحليل المنتج وتوليد المواصفات...`;
+      btn.innerHTML = `⏳ جاري الاتصال بالذكاء الاصطناعي...`;
       btn.disabled = true;
 
-      // Generative AI Analysis based on title, category, condition
-      const aiDesc = await AIService.generateProductDescription(title, cat, cond, price);
-      document.getElementById('new-prod-desc').value = aiDesc;
-      document.getElementById('toggle-ai-insights').checked = true;
+      try {
+        const aiDesc = await AIService.generateProductDescription(title, cat, cond, price);
+        document.getElementById('new-prod-desc').value = aiDesc;
+        document.getElementById('toggle-ai-insights').checked = true;
 
-      btn.innerHTML = `✨ تم توليد الشرح بنجاح 🤖`;
-      btn.disabled = false;
-      this.showToast(`تم تحليل ومطابقة مواصفات (${title}) بنجاح!`, 'success');
+        btn.innerHTML = `✨ تم توليد الشرح بنجاح 🤖`;
+        btn.disabled = false;
+        this.showToast(`تم توليد شرح ومواصفات (${title}) بنجاح!`, 'success');
+      } catch (err) {
+        btn.innerHTML = `✨ توليد شرح ومواصفات بالذكاء الاصطناعي 🤖`;
+        btn.disabled = false;
+        this.showToast(err.message, 'error');
+
+        if (err.message.includes('Gemini API')) {
+          const userKey = prompt('للحصول على توليد مباشر بالذكاء الاصطناعي الحقيقي (Google Gemini)، ألصق مفتاح Gemini API المجاني الخاص بك هنا:');
+          if (userKey) {
+            localStorage.setItem('souk_gemini_api_key', userKey.trim());
+            this.showToast('تم حفظ مفتاح Gemini API بنجاح! اضغط زر التوليد الآن.', 'success');
+          }
+        }
+      }
     });
 
     modalOverlay.querySelector('#btn-save-new-product')?.addEventListener('click', () => {

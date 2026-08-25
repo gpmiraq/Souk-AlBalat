@@ -1,13 +1,14 @@
 /* ==========================================================================
-   Image Processing & Firebase Cloud Storage Pipeline
-   Crops 1:1, Inlays Watermark & QR Code, and Uploads Directly to Cloud
+   Image Processing & Strict Firebase Cloud Storage Pipeline
+   Crops 1:1, Inlays Watermark & Uploads Directly to Google Firebase
    ========================================================================== */
 
 import { CloudStorageProvider } from '../config/firebase.config.js';
 
 export class StorageService {
   /**
-   * Processes an image file: crops to 1:1, burns watermark, and uploads to Firebase
+   * Processes an image file: crops to 1:1, burns watermark, and uploads strictly to Google Firebase.
+   * Throws an error if upload fails.
    * @param {File} file 
    * @param {string} customId
    * @returns {Promise<string>} Public Firebase Cloud Storage URL
@@ -56,12 +57,18 @@ export class StorageService {
 
             // Convert to high-quality compressed WebP Blob
             canvas.toBlob(async (blob) => {
-              if (blob) {
+              if (!blob) {
+                reject(new Error('فشل معالجة وضغط الصورة كملف WebP'));
+                return;
+              }
+
+              try {
                 const fileName = `${customId}_${Date.now()}.webp`;
-                const cloudUrl = await CloudStorageProvider.uploadBlobToFirebase(blob, fileName);
-                resolve(cloudUrl);
-              } else {
-                resolve(canvas.toDataURL('image/webp', 0.85));
+                const firebaseCloudUrl = await CloudStorageProvider.uploadBlobToFirebase(blob, fileName);
+                resolve(firebaseCloudUrl);
+              } catch (cloudErr) {
+                console.error('Firebase Upload Error:', cloudErr);
+                reject(new Error(`فشل الرفع إلى فايربيس: ${cloudErr.message || 'خطأ في الاتصال بالخادم'}`));
               }
             }, 'image/webp', 0.88);
           } catch (err) {

@@ -1,53 +1,41 @@
 /* ==========================================================================
-   Firebase Cloud Storage Direct Service
+   Official Google Firebase Cloud Storage Service
    Project: Souk-AlBalat-Drive
-   Verified Active Bucket: souk-albalat-drive.firebasestorage.app
+   Bucket: souk-albalat-drive.firebasestorage.app
+   Strict Real-Cloud Upload (Throws error on failure - Zero Base64 Fallback)
    ========================================================================== */
+
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 export const firebaseConfig = {
   projectId: "souk-albalat-drive",
-  projectNumber: "277858300469",
-  storageBucket: "souk-albalat-drive.firebasestorage.app",
-  authDomain: "souk-albalat-drive.firebaseapp.com",
+  storageBucket: "souk-albalat-drive.firebasestorage.app"
 };
+
+// Initialize Firebase App singleton
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+const storage = getStorage(app);
 
 export class CloudStorageProvider {
   /**
-   * Uploads an image blob to Firebase Cloud Storage via REST API
-   * Returns a direct, high-speed public CDN URL from Google Cloud.
+   * Uploads an image blob directly to Google Firebase Cloud Storage using the official SDK.
+   * Throws an error if Firebase upload fails.
+   * @param {Blob} blob WebP or image blob
+   * @param {string} fileName Destination file name
+   * @returns {Promise<string>} Direct public Google Firebase Cloud Storage URL
    */
   static async uploadBlobToFirebase(blob, fileName) {
-    try {
-      const bucketName = firebaseConfig.storageBucket;
-      const cleanPath = encodeURIComponent(`products/${fileName}`);
-      const uploadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o?uploadType=media&name=${cleanPath}`;
-
-      const response = await fetch(uploadUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'image/webp',
-        },
-        body: blob
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const downloadToken = data.downloadTokens || '';
-        const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${cleanPath}?alt=media${downloadToken ? '&token=' + downloadToken : ''}`;
-        console.log('Firebase Cloud Storage Direct Upload Success:', publicUrl);
-        return publicUrl;
-      } else {
-        console.warn('Firebase Storage upload failed with status:', response.status);
-      }
-    } catch (e) {
-      console.warn('Firebase Storage upload error:', e);
-    }
-
-    // Fallback to local DataURL if network is unavailable
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.readAsDataURL(blob);
+    const storageRef = ref(storage, `products/${fileName}`);
+    
+    // Upload bytes directly via official SDK
+    const snapshot = await uploadBytes(storageRef, blob, {
+      contentType: 'image/webp'
     });
+
+    // Obtain the official public download URL
+    const downloadUrl = await getDownloadURL(snapshot.ref);
+    console.log('Firebase Cloud Storage SDK Upload Success:', downloadUrl);
+    return downloadUrl;
   }
 }
