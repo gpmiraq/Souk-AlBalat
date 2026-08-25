@@ -1,0 +1,90 @@
+/* ==========================================================================
+   Design Tokens - Clean, High-Contrast Modern E-Commerce (Ardunic & Noon Style)
+   ========================================================================== */
+
+:root {
+  /* Vibrant Accents */
+  --brand-primary: #f59e0b; /* Amber / Noon Yellow */
+  --brand-primary-hover: #d97706;
+  --brand-primary-text: #000000;
+  
+  --brand-blue: #2563eb;
+  --brand-purple: #7c3aed;
+  --brand-accent: #ef4444; /* Discount red */
+  --brand-green: #10b981;
+  --whatsapp-color: #25d366;
+  --whatsapp-hover: #128c7e;
+
+  /* Typography */
+  --font-arabic: 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-numbers: 'Outfit', 'Cairo', sans-serif;
+
+  /* Transitions & Radii */
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-full: 9999px;
+
+  /* ☀️ Clean Crisp Light Mode (Primary Default) */
+  --bg-app: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-surface-elevated: #ffffff;
+  --bg-surface-subtle: #f1f5f9;
+  --bg-overlay: rgba(15, 23, 42, 0.7);
+
+  --text-primary: #0f172a; /* Deep bold black-slate for maximum readability */
+  --text-secondary: #334155;
+  --text-tertiary: #64748b;
+  --text-inverse: #ffffff;
+
+  --border-subtle: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --border-focus: #f59e0b;
+
+  --card-shadow: 0 4px 15px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.03);
+  --card-shadow-hover: 0 12px 28px rgba(0, 0, 0, 0.1), 0 4px 10px rgba(0, 0, 0, 0.04);
+  --modal-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.25);
+
+  --badge-bg-new: #ecfdf5;
+  --badge-text-new: #065f46;
+  --badge-bg-used: #fffbeb;
+  --badge-text-used: #92400e;
+  --badge-bg-scrap: #fef2f2;
+  --badge-text-scrap: #991b1b;
+
+  --hero-gradient: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  --hero-text: #ffffff;
+}
+
+/* 🌙 High-Contrast Dark Mode (Optional Toggle, Clean & Sharp) */
+:root[data-theme="dark"] {
+  --bg-app: #0f172a;
+  --bg-surface: #1e293b;
+  --bg-surface-elevated: #334155;
+  --bg-surface-subtle: #1e293b;
+  --bg-overlay: rgba(0, 0, 0, 0.8);
+
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-tertiary: #94a3b8;
+  --text-inverse: #0f172a;
+
+  --border-subtle: #334155;
+  --border-strong: #475569;
+  --border-focus: #fbbf24;
+
+  --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  --card-shadow-hover: 0 14px 30px rgba(0, 0, 0, 0.5);
+
+  --badge-bg-new: rgba(16, 185, 129, 0.2);
+  --badge-text-new: #34d399;
+  --badge-bg-used: rgba(245, 158, 11, 0.2);
+  --badge-text-used: #fbbf24;
+  --badge-bg-scrap: rgba(239, 68, 68, 0.2);
+  --badge-text-scrap: #f87171;
+
+  --hero-gradient: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  --hero-text: #ffffff;
+}
