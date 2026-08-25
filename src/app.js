@@ -1382,11 +1382,6 @@ class SoukApp {
           <div class="form-group">
             <textarea class="form-textarea" id="new-prod-desc" rows="6" placeholder="اكتب العنوان أعلاه واضغط زر التوليد بالذكاء الاصطناعي لكتابة شرح ومواصفات احترافية تلقائياً..."></textarea>
           </div>
-
-          <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
-            <input type="checkbox" id="toggle-ai-insights" style="width: 18px; height: 18px;">
-            <label for="toggle-ai-insights" style="font-weight: 700; font-size: 0.85rem; cursor: pointer;">🤖 تفعيل وإظهار بطاقة تقييم وتخمين السعر بالذكاء الاصطناعي للزبائن داخل صفحة المنتج</label>
-          </div>
         </div>
 
         <div class="modal-footer">
@@ -1447,29 +1442,24 @@ class SoukApp {
       }
 
       const btn = modalOverlay.querySelector('#btn-generate-ai-desc');
-      btn.innerHTML = `⏳ جاري الاتصال بالذكاء الاصطناعي...`;
+      btn.innerHTML = `⏳ جاري توليد الوصف بالذكاء الاصطناعي...`;
       btn.disabled = true;
 
       try {
         const aiDesc = await AIService.generateProductDescription(title, cat, cond, price);
-        document.getElementById('new-prod-desc').value = aiDesc;
-        document.getElementById('toggle-ai-insights').checked = true;
+        const descField = document.getElementById('new-prod-desc');
+        const manualText = descField.value.trim();
+        
+        // If merchant already entered notes, append AI sheet below it
+        descField.value = manualText ? `${manualText}\n\n${aiDesc}` : aiDesc;
 
         btn.innerHTML = `✨ تم توليد الشرح بنجاح 🤖`;
         btn.disabled = false;
-        this.showToast(`تم توليد شرح ومواصفات (${title}) بنجاح!`, 'success');
+        this.showToast(`تم توليد مواصفات (${title}) بنجاح!`, 'success');
       } catch (err) {
         btn.innerHTML = `✨ توليد شرح ومواصفات بالذكاء الاصطناعي 🤖`;
         btn.disabled = false;
         this.showToast(err.message, 'error');
-
-        if (err.message.includes('Gemini API')) {
-          const userKey = prompt('للحصول على توليد مباشر بالذكاء الاصطناعي الحقيقي (Google Gemini)، ألصق مفتاح Gemini API المجاني الخاص بك هنا:');
-          if (userKey) {
-            localStorage.setItem('souk_gemini_api_key', userKey.trim());
-            this.showToast('تم حفظ مفتاح Gemini API بنجاح! اضغط زر التوليد الآن.', 'success');
-          }
-        }
       }
     });
 
@@ -1480,7 +1470,7 @@ class SoukApp {
       const condition = document.getElementById('new-prod-condition').value;
       const category = document.getElementById('new-prod-cat').value;
       const description = document.getElementById('new-prod-desc').value.trim();
-      const aiEnabled = document.getElementById('toggle-ai-insights').checked;
+      const aiEnabled = true; // Always permanently enabled for all products
 
       if (!title || !price) {
         this.showToast('يرجى إدخال العنوان والسعر', 'error');

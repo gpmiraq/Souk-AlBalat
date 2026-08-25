@@ -18,12 +18,12 @@ export const GEMINI_CONFIG = {
 
 export class AIService {
   /**
-   * Calls Google Gemini Live LLM API to generate a real, customized product description
+   * Calls Google Gemini Live LLM API to generate a simplified, 4-line structured product sheet
    * @param {string} title Product title
    * @param {string} category Category
    * @param {string} condition Product condition
    * @param {number} price Price
-   * @returns {Promise<string>} Generated text from Google Gemini
+   * @returns {Promise<string>} Clean structured text
    */
   static async generateProductDescription(title = '', category = 'electronics', condition = 'open_box', price = 0) {
     const cleanTitle = title.trim();
@@ -33,19 +33,16 @@ export class AIService {
 
     const apiKey = localStorage.getItem('souk_gemini_api_key') || GEMINI_CONFIG.GLOBAL_API_KEY;
 
-    const conditionLabel = condition === 'open_box' ? 'أوبن بوكس مفحوصة ونظيفة (استوكات أمازون)' : condition === 'new' ? 'جديد بالكرتون المصنعي مغلق' : condition === 'used' ? 'مستخدم نظيف ومفحوص 100%' : 'عاطل / قطع غيار';
+    const conditionLabel = condition === 'open_box' ? 'أوبن بوكس (استوكات أمازون)' : condition === 'new' ? 'جديد كرتون مغلق' : condition === 'used' ? 'مستخدم نظيف مفحوص' : 'عاطل قطع غيار';
 
-    const promptText = `أنت خبير فني وتقني متخصص في بضائع أمازون والبالات الأوروبية في العراق. اكتب تقريراً ومواصفات فنية تسويقية باللغة العربية الفصحى للمنتج التالي:
-العنوان: "${cleanTitle}"
-الحالة: "${conditionLabel}"
-القسم: "${category}"
+    const promptText = `أنت خبير فني في بضائع أمازون والبالات الأوروبية في العراق. اكتب ملخصاً مبسطاً ودقيقاً جداً للمنتج: "${cleanTitle}" (الحالة: ${conditionLabel}، السعر المعروض: ${price} د.ع).
 
-المطلوب:
-1. اذكر اسم الشركة المصنعة الحقيقية للقطعة وموديلها.
-2. اكتب 4 إلى 5 نقاط فنية دقيقة عن مواصفات هذا الموديل تحديداً (مثل المايكروفون، البطارية، المعالج، العزل، خامات التصنيع، الترددات، قوة المحرك إن وجد).
-3. وضح حالة القطعة (${conditionLabel}).
-4. بين الملحقات وطريقة الفحص والشحن في العراق.
-اكتب النص بتنسيق منظم واحترافي بنقاط وإيموجيات دون مقدمات فلسفية.`;
+المطلوب حصراً الالتزام التام بالهيكل التالي فقط وبدون أي مقدمات أو خاتمة:
+
+اسم المنتج : [اكتب اسم المنتج والموديل والماركة بدقة في حدود 10 إلى 15 كلمة]
+وصف المنتج : [اكتب وصفاً ومواصفات فنية لأهم المزايا والتقنيات والمحرك أو البطارية وخامات الصنع في حدود 40 إلى 50 كلمة بشكل مكثف ومفيد]
+سعر المنتج التقريبي : [اكتب السعر التقديري في السوق العراقي بالدينار مثل: 35,000 - 45,000 د.ع]
+سعر المنتج العالمي : [اكتب السعر التقديري في المتاجر العالمية بالدولار مثل: $25 - $35 دولار تقريباً]`;
 
     let lastError = null;
 
@@ -64,7 +61,7 @@ export class AIService {
         if (response.ok) {
           const data = await response.json();
           const generatedText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (generatedText && generatedText.length > 30) {
+          if (generatedText && generatedText.length > 20) {
             console.log(`Gemini Generation Success via model: ${model}`);
             return generatedText.trim();
           }
@@ -89,9 +86,9 @@ export class AIService {
     const numPrice = Number(price) || 35000;
     const usdEquivalent = Math.max(15, Math.round(numPrice / 1500));
 
-    const minLocal = Math.round((numPrice * 1.18) / 250) * 250;
-    const maxLocal = Math.round((numPrice * 1.55) / 250) * 250;
-    const globalEstimate = Math.round(usdEquivalent * 1.35);
+    const minLocal = Math.round((numPrice * 1.15) / 250) * 250;
+    const maxLocal = Math.round((numPrice * 1.45) / 250) * 250;
+    const globalEstimate = Math.round(usdEquivalent * 1.3);
 
     return {
       availabilityInIraq: "متوفر بكميات محدودة في أسواق الأوتلت والبالات الأوروبية",
