@@ -40,27 +40,10 @@
 
 .header-main {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 10px 0;
-}
-
-@media (min-width: 860px) {
-  .header-main {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 14px 0;
-  }
-}
-
-.header-top-row {
-  display: flex;
   align-items: center;
   justify-content: space-between;
-  width: 100%;
-  gap: 8px;
+  gap: 16px;
+  padding: 14px 0;
 }
 
 .header-brand {
@@ -72,15 +55,16 @@
 .brand-logo-badge {
   background: #0f172a;
   color: #f59e0b;
-  padding: 6px 14px;
+  padding: 8px 16px;
   border-radius: var(--radius-md);
-  font-size: 1.2rem;
+  font-size: 1.35rem;
   font-weight: 900;
   display: flex;
   align-items: center;
   gap: 6px;
   letter-spacing: -0.5px;
   border: 1px solid #f59e0b;
+  white-space: nowrap;
 }
 
 .brand-tagline {
@@ -99,12 +83,11 @@
 /* Header Search */
 .header-search-box {
   flex: 1;
-  width: 100%;
   max-width: 650px;
   display: flex;
   align-items: center;
   background: var(--bg-surface-subtle);
-  border: 1.5px solid var(--border-strong);
+  border: 2px solid var(--border-strong);
   border-radius: var(--radius-md);
   transition: var(--transition-fast);
   position: relative;
@@ -115,21 +98,29 @@
   background: var(--bg-surface);
 }
 
+.search-category-select {
+  padding: 8px 14px;
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  border-left: 1px solid var(--border-strong);
+  cursor: pointer;
+  background: transparent;
+}
+
 .search-input {
   flex: 1;
   padding: 10px 14px;
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   color: var(--text-primary);
   font-weight: 600;
-  width: 100%;
 }
 
 .search-submit-btn {
   background: var(--brand-primary);
   color: #0f172a;
-  padding: 10px 16px;
+  padding: 10px 20px;
   font-weight: 900;
-  font-size: 0.88rem;
   border-radius: var(--radius-md) 0 0 var(--radius-md);
   display: flex;
   align-items: center;
@@ -141,7 +132,7 @@
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
 }
 
 .btn-hamburger-menu {
@@ -158,9 +149,29 @@
   cursor: pointer;
 }
 
-@media (min-width: 992px) {
+@media (min-width: 860px) {
   .btn-hamburger-menu {
     display: none;
+  }
+}
+
+@media (max-width: 859px) {
+  .header-main {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px 0;
+  }
+  .header-search-box {
+    order: 3;
+    width: 100%;
+    max-width: 100%;
+  }
+  .search-category-select {
+    display: none;
+  }
+  .brand-logo-badge {
+    font-size: 1.15rem;
+    padding: 6px 12px;
   }
 }
 

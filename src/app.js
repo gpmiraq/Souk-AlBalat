@@ -144,39 +144,40 @@ class SoukApp {
       <header class="site-header">
         <div class="container">
           <div class="header-main">
-            <!-- Top Row: Hamburger + Brand Logo + Actions -->
-            <div class="header-top-row">
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <button class="btn-hamburger-menu" id="btn-toggle-mobile-drawer" title="القائمة والأقسام">
-                  <span>☰</span>
-                  <span>الأقسام</span>
-                </button>
-                <div class="header-brand" style="cursor:pointer;" id="nav-brand-logo">
-                  <div class="brand-logo-badge">
-                    <span>⚡</span>
-                    <span>سوق البالات</span>
-                  </div>
-                  <span class="brand-tagline">AMAZON & DHL OUTLET IQ</span>
+            <!-- Brand -->
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <button class="btn-hamburger-menu" id="btn-toggle-mobile-drawer" title="القائمة والأقسام">
+                <span>☰</span>
+                <span>الأقسام</span>
+              </button>
+              <div class="header-brand" style="cursor:pointer;" id="nav-brand-logo">
+                <div class="brand-logo-badge">
+                  <span>⚡</span>
+                  <span>سوق البالات</span>
                 </div>
-              </div>
-
-              <!-- Header Actions -->
-              <div class="header-actions">
-                <button class="btn-icon" id="btn-theme-toggle" title="تبديل المظهر">
-                  ${this.currentTheme === 'dark' ? '☀️' : '🌙'}
-                </button>
-
-                <button class="btn btn-primary cart-btn-indicator" id="btn-open-cart">
-                  <span>🛒 السلة</span>
-                  ${this.cart.length > 0 ? `<span class="cart-badge-count">${this.cart.length}</span>` : ''}
-                </button>
+                <span class="brand-tagline">AMAZON & DHL OUTLET IQ</span>
               </div>
             </div>
 
-            <!-- Bottom Row / Center: Search Bar -->
+            <!-- Search Bar -->
             <div class="header-search-box">
-              <input type="text" class="search-input" id="search-keyword-input" placeholder="🔍 ابحث عن موديل، ماركة، أو كود..." value="${this.searchQuery}">
-              <button class="search-submit-btn" id="btn-search-trigger">بحث</button>
+              <select class="search-category-select" id="search-cat-dropdown">
+                ${activeCategories.map(c => `<option value="${c.id}" ${this.activeCategory === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}
+              </select>
+              <input type="text" class="search-input" id="search-keyword-input" placeholder="ابحث عن موديل، ماركة، أو كود..." value="${this.searchQuery}">
+              <button class="search-submit-btn" id="btn-search-trigger">🔍 بحث</button>
+            </div>
+
+            <!-- Actions -->
+            <div class="header-actions">
+              <button class="btn-icon" id="btn-theme-toggle" title="تبديل المظهر">
+                ${this.currentTheme === 'dark' ? '☀️' : '🌙'}
+              </button>
+
+              <button class="btn btn-primary cart-btn-indicator" id="btn-open-cart">
+                <span>🛒 السلة</span>
+                ${this.cart.length > 0 ? `<span class="cart-badge-count">${this.cart.length}</span>` : ''}
+              </button>
             </div>
           </div>
         </div>
@@ -241,6 +242,47 @@ class SoukApp {
           </div>
         </section>
 
+        <!-- Product Conditions 4 Main Cards (Placed at the TOP) -->
+        <section style="margin-bottom: 24px;">
+          <h3 style="font-weight: 900; font-size: 1.15rem; margin-bottom: 14px; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+            <span>📖</span>
+            <span>دليل وتصنيف حالات القطع في سوق البالات:</span>
+          </h3>
+          <div class="feature-filters-row">
+            <div class="feature-card ${this.activeCondition === 'new' ? 'active' : ''}" data-cond="new" style="${this.activeCondition === 'new' ? 'border-color: var(--brand-primary); background: var(--bg-surface-subtle);' : ''}">
+              <div class="feature-card-icon">✨</div>
+              <div class="feature-card-info">
+                <h4>جديد غير مفتوح (NEW)</h4>
+                <p>بضائع جديدة كلياً بالكرتون ولم تفتح</p>
+              </div>
+            </div>
+
+            <div class="feature-card ${this.activeCondition === 'open_box' ? 'active' : ''}" data-cond="open_box" style="${this.activeCondition === 'open_box' ? 'border-color: var(--brand-primary); background: var(--bg-surface-subtle);' : ''}">
+              <div class="feature-card-icon">📦</div>
+              <div class="feature-card-info">
+                <h4>أوبن بوكس (Open Box)</h4>
+                <p>جديد بالكرتون لكن مفتوح لغرض الفحص</p>
+              </div>
+            </div>
+
+            <div class="feature-card ${this.activeCondition === 'used' ? 'active' : ''}" data-cond="used" style="${this.activeCondition === 'used' ? 'border-color: var(--brand-primary); background: var(--bg-surface-subtle);' : ''}">
+              <div class="feature-card-icon">🔍</div>
+              <div class="feature-card-info">
+                <h4>مستخدم (Used)</h4>
+                <p>بضائع مستخدمة خاضعة للفحص والتجربة</p>
+              </div>
+            </div>
+
+            <div class="feature-card ${this.activeCondition === 'scrap' ? 'active' : ''}" data-cond="scrap" style="${this.activeCondition === 'scrap' ? 'border-color: var(--brand-primary); background: var(--bg-surface-subtle);' : ''}">
+              <div class="feature-card-icon">🔧</div>
+              <div class="feature-card-info">
+                <h4>عاطل - أدوات (SCRAP)</h4>
+                <p>بضاعة عاطلة تباع كأدوات وقطع غيار للمصلحين</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <!-- Marketplace Main Layout (Products Front & Center) -->
         <div class="main-marketplace-layout">
           <!-- Sidebar Filters (Desktop Only) -->
@@ -297,47 +339,6 @@ class SoukApp {
             `}
           </section>
         </div>
-
-        <!-- Product Conditions 4 Main Cards (Placed at the very BOTTOM of page) -->
-        <section style="margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--border-subtle);">
-          <h3 style="font-weight: 900; font-size: 1.15rem; margin-bottom: 16px; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
-            <span>📖</span>
-            <span>دليل وتصنيف حالات القطع في سوق البالات:</span>
-          </h3>
-          <div class="feature-filters-row">
-            <div class="feature-card ${this.activeCondition === 'new' ? 'active' : ''}" data-cond="new" style="${this.activeCondition === 'new' ? 'border-color: var(--brand-primary); background: var(--bg-surface-subtle);' : ''}">
-              <div class="feature-card-icon">✨</div>
-              <div class="feature-card-info">
-                <h4>جديد غير مفتوح (NEW)</h4>
-                <p>بضائع جديدة كلياً بالكرتون ولم تفتح</p>
-              </div>
-            </div>
-
-            <div class="feature-card ${this.activeCondition === 'open_box' ? 'active' : ''}" data-cond="open_box" style="${this.activeCondition === 'open_box' ? 'border-color: var(--brand-primary); background: var(--bg-surface-subtle);' : ''}">
-              <div class="feature-card-icon">📦</div>
-              <div class="feature-card-info">
-                <h4>أوبن بوكس (Open Box)</h4>
-                <p>جديد بالكرتون لكن مفتوح لغرض الفحص</p>
-              </div>
-            </div>
-
-            <div class="feature-card ${this.activeCondition === 'used' ? 'active' : ''}" data-cond="used" style="${this.activeCondition === 'used' ? 'border-color: var(--brand-primary); background: var(--bg-surface-subtle);' : ''}">
-              <div class="feature-card-icon">🔍</div>
-              <div class="feature-card-info">
-                <h4>مستخدم (Used)</h4>
-                <p>بضائع مستخدمة خاضعة للفحص والتجربة</p>
-              </div>
-            </div>
-
-            <div class="feature-card ${this.activeCondition === 'scrap' ? 'active' : ''}" data-cond="scrap" style="${this.activeCondition === 'scrap' ? 'border-color: var(--brand-primary); background: var(--bg-surface-subtle);' : ''}">
-              <div class="feature-card-icon">🔧</div>
-              <div class="feature-card-info">
-                <h4>عاطل - أدوات (SCRAP)</h4>
-                <p>بضاعة عاطلة تباع كأدوات وقطع غيار للمصلحين</p>
-              </div>
-            </div>
-          </div>
-        </section>
       </main>
 
       <!-- Floating Green WhatsApp Button (Icon Only) -->

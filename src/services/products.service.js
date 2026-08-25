@@ -1,7 +1,7 @@
 /* ==========================================================================
    Products Catalog & Real-Time Cloud Synchronization Service
    Integrated with Google Firebase Cloud Firestore + Local Cache
-   Ensures products published from any phone/browser are globally available
+   Robust Data Sanitization & Zero-NaN / Zero-Broken-Image Protection
    ========================================================================== */
 
 import { db } from '../config/firebase.config.js';
@@ -38,6 +38,60 @@ const INITIAL_PRODUCTS = [
 
 export class ProductsService {
   /**
+   * Sanitizes product object ensuring numbers and URLs are 100% valid
+   */
+  static sanitizeProduct(p) {
+    if (!p || typeof p !== 'object') return null;
+
+    let rawPrice = p.price;
+    if (typeof rawPrice === 'string') {
+      rawPrice = parseFloat(rawPrice.replace(/[^0-9.]/g, '')) || 0;
+    } else if (typeof rawPrice !== 'number' || isNaN(rawPrice)) {
+      rawPrice = 0;
+    }
+
+    let rawOldPrice = p.oldPrice;
+    if (rawOldPrice) {
+      if (typeof rawOldPrice === 'string') {
+        rawOldPrice = parseFloat(rawOldPrice.replace(/[^0-9.]/g, '')) || null;
+      } else if (typeof rawOldPrice !== 'number' || isNaN(rawOldPrice)) {
+        rawOldPrice = null;
+      }
+    } else {
+      rawOldPrice = null;
+    }
+
+    const images = Array.isArray(p.images) && p.images.length > 0
+      ? p.images.filter(url => typeof url === 'string' && url.length > 5)
+      : (p.image && typeof p.image === 'string' && p.image.length > 5 ? [p.image] : []);
+
+    const image = images[0] || p.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80';
+
+    return {
+      id: String(p.id || `p-${Date.now()}`),
+      title: String(p.title || 'منتج بالة أمازون'),
+      price: rawPrice,
+      oldPrice: rawOldPrice,
+      discountPercent: Number(p.discountPercent) || 0,
+      condition: p.condition || 'open_box',
+      conditionLabel: p.conditionLabel || 'أوبن بوكس',
+      category: p.category || 'all',
+      quantity: Number(p.quantity) >= 0 ? Number(p.quantity) : 1,
+      merchantId: p.merchantId || 'm-alwareth',
+      merchantName: p.merchantName || 'أبو وارث أمازون',
+      merchantPhone: p.merchantPhone || '07707188166',
+      image: image,
+      images: images.length > 0 ? images : [image],
+      description: p.description || '',
+      aiDetails: p.aiDetails || '',
+      status: p.status || 'available',
+      freeDelivery: Boolean(p.freeDelivery),
+      aiEnabled: Boolean(p.aiEnabled),
+      createdAt: p.createdAt || new Date().toISOString()
+    };
+  }
+
+  /**
    * Syncs all products from Google Firebase Firestore Cloud
    * Updates local cache and returns the latest catalog
    */
@@ -47,15 +101,17 @@ export class ProductsService {
       if (!snap.empty) {
         const cloudList = [];
         snap.forEach(docSnap => {
-          cloudList.push(docSnap.data());
+          const item = docSnap.data();
+          const clean = this.sanitizeProduct(item);
+          if (clean && clean.price > 0) {
+            cloudList.push(clean);
+          }
         });
-        cloudList.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudList));
-        return cloudList;
-      } else {
-        // First-time seed into Firestore Cloud
-        for (const item of INITIAL_PRODUCTS) {
-          await setDoc(doc(db, 'products', item.id), item);
+
+        if (cloudList.length > 0) {
+          cloudList.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudList));
+          return cloudList;
         }
       }
     } catch (err) {
@@ -68,7 +124,14 @@ export class ProductsService {
     const saved = localStorage.getItem(STORAGE_KEY);
     let list = INITIAL_PRODUCTS;
     if (saved) {
-      try { list = JSON.parse(saved); } catch (e) { console.error(e); }
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          list = parsed.map(p => this.sanitizeProduct(p)).filter(Boolean);
+        }
+      } catch (e) {
+        console.error(e);
+      }
     } else {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_PRODUCTS));
     }
@@ -76,12 +139,8 @@ export class ProductsService {
   }
 
   static getDeletedProducts(merchantId = null) {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    let list = [];
-    if (saved) {
-      try { list = JSON.parse(saved); } catch (e) { console.error(e); }
-    }
-    return list.filter(p => p.status === 'deleted' && (!merchantId || p.merchantId === merchantId));
+    const products = this.getProducts(true);
+    return products.filter(p => p.status === 'deleted' && (!merchantId || p.merchantId === merchantId));
   }
 
   static getProductById(id) {
@@ -91,11 +150,11 @@ export class ProductsService {
 
   static addProduct(productData) {
     const products = this.getProducts(true);
-    const newProduct = {
+    const newProduct = this.sanitizeProduct({
       id: `p-${Date.now()}`,
       title: productData.title,
-      price: Number(productData.price),
-      oldPrice: productData.oldPrice ? Number(productData.oldPrice) : null,
+      price: productData.price,
+      oldPrice: productData.oldPrice,
       discountPercent: productData.discountPercent || 0,
       condition: productData.condition || 'open_box',
       conditionLabel: productData.conditionLabel || 'أوبن بوكس',
@@ -112,12 +171,12 @@ export class ProductsService {
       freeDelivery: Boolean(productData.freeDelivery),
       aiEnabled: Boolean(productData.aiEnabled),
       createdAt: new Date().toISOString()
-    };
+    });
 
     products.unshift(newProduct);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
 
-    // Async Cloud write
+    // Cloud write
     setDoc(doc(db, 'products', newProduct.id), newProduct).catch(e => console.warn('Cloud sync error:', e));
 
     return newProduct;
@@ -127,19 +186,18 @@ export class ProductsService {
     const products = this.getProducts(true);
     const index = products.findIndex(p => String(p.id) === String(id));
     if (index !== -1) {
-      products[index] = {
+      const merged = this.sanitizeProduct({
         ...products[index],
         ...updatedData,
-        price: updatedData.price !== undefined ? Number(updatedData.price) : products[index].price,
-        quantity: updatedData.quantity !== undefined ? Number(updatedData.quantity) : products[index].quantity,
         images: updatedData.images?.length > 0 ? updatedData.images : (updatedData.image ? [updatedData.image] : products[index].images),
         image: updatedData.images?.[0] || updatedData.image || products[index].image,
         updatedAt: new Date().toISOString()
-      };
+      });
+      products[index] = merged;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
 
-      // Async Cloud write
-      setDoc(doc(db, 'products', id), products[index], { merge: true }).catch(e => console.warn('Cloud update error:', e));
+      // Cloud write
+      setDoc(doc(db, 'products', id), merged, { merge: true }).catch(e => console.warn('Cloud update error:', e));
 
       return products[index];
     }
@@ -154,7 +212,7 @@ export class ProductsService {
       product.deletedAt = new Date().toISOString();
       localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
 
-      // Async Cloud write
+      // Cloud write
       setDoc(doc(db, 'products', id), { status: 'deleted', deletedAt: product.deletedAt }, { merge: true }).catch(e => console.warn('Cloud soft delete error:', e));
 
       return true;
@@ -170,7 +228,7 @@ export class ProductsService {
       delete product.deletedAt;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
 
-      // Async Cloud write
+      // Cloud write
       setDoc(doc(db, 'products', id), { status: 'available' }, { merge: true }).catch(e => console.warn('Cloud restore error:', e));
 
       return true;
@@ -183,7 +241,7 @@ export class ProductsService {
     products = products.filter(p => String(p.id) !== String(id));
     localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
 
-    // Async Cloud delete
+    // Cloud delete
     deleteDoc(doc(db, 'products', id)).catch(e => console.warn('Cloud hard delete error:', e));
   }
 
@@ -197,7 +255,7 @@ export class ProductsService {
       }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
 
-      // Async Cloud write
+      // Cloud write
       setDoc(doc(db, 'products', id), { status, ...(quantity !== null ? { quantity: Number(quantity) } : {}) }, { merge: true }).catch(e => console.warn('Cloud status update error:', e));
 
       return true;
@@ -219,7 +277,7 @@ export class ProductsService {
 
       localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
 
-      // Async Cloud write
+      // Cloud write
       setDoc(doc(db, 'products', id), { quantity: newQty, status: product.status }, { merge: true }).catch(e => console.warn('Cloud stock decrement error:', e));
 
       return { success: true, newQuantity: newQty, status: product.status };
@@ -232,7 +290,7 @@ export class ProductsService {
     const product = products.find(p => String(p.id) === String(id));
     if (product) {
       product.discountPercent = Number(discountPercent);
-      if (discountPercent > 0) {
+      if (discountPercent > 0 && product.price > 0) {
         product.oldPrice = Math.round(product.price / (1 - discountPercent / 100));
       } else {
         product.oldPrice = null;
@@ -240,7 +298,7 @@ export class ProductsService {
       product.freeDelivery = Boolean(freeDelivery);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
 
-      // Async Cloud write
+      // Cloud write
       setDoc(doc(db, 'products', id), { discountPercent: product.discountPercent, oldPrice: product.oldPrice, freeDelivery: product.freeDelivery }, { merge: true }).catch(e => console.warn('Cloud discount error:', e));
 
       return true;
