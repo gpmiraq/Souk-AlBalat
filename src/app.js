@@ -1588,9 +1588,14 @@ class SoukApp {
           <!-- AI Generator Section -->
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
             <label class="form-label" style="margin-bottom: 0;">تفاصيل ومواصفات مولدة بالذكاء الاصطناعي:</label>
-            <button type="button" class="btn btn-secondary" id="btn-generate-ai-desc" style="font-size: 0.78rem; padding: 6px 12px; font-weight: 800; color: #d97706; border-color: #f59e0b; background: rgba(245, 158, 11, 0.08);">
-              ✨ توليد تفاصيل بالذكاء الاصطناعي 🤖
-            </button>
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <button type="button" class="btn btn-secondary" id="btn-config-gemini-key" style="font-size: 0.72rem; padding: 5px 8px;" title="إدخال أو تغيير مفتاح Gemini API">
+                ⚙️ مفتاح Gemini API
+              </button>
+              <button type="button" class="btn btn-secondary" id="btn-generate-ai-desc" style="font-size: 0.78rem; padding: 6px 12px; font-weight: 800; color: #d97706; border-color: #f59e0b; background: rgba(245, 158, 11, 0.08);">
+                ✨ توليد تفاصيل بالذكاء الاصطناعي 🤖
+              </button>
+            </div>
           </div>
 
           <div class="form-group">
@@ -1606,6 +1611,16 @@ class SoukApp {
     `;
 
     document.body.appendChild(modalOverlay);
+
+    // Gemini API Key Configurator
+    modalOverlay.querySelector('#btn-config-gemini-key')?.addEventListener('click', () => {
+      const currentKey = localStorage.getItem('souk_gemini_api_key') || '';
+      const newKey = prompt('أدخل مفتاح Google Gemini API الجديد الخاص بك من (https://aistudio.google.com/app/apikey):', currentKey);
+      if (newKey !== null) {
+        localStorage.setItem('souk_gemini_api_key', newKey.trim());
+        this.showToast('تم حفظ وتحديث مفتاح Google Gemini API بنجاح!', 'success');
+      }
+    });
 
     // Custom Category Adder
     modalOverlay.querySelector('#btn-add-custom-cat')?.addEventListener('click', () => {
@@ -1659,7 +1674,7 @@ class SoukApp {
       }
 
       const btn = modalOverlay.querySelector('#btn-generate-ai-desc');
-      btn.innerHTML = `⏳ جاري توليد التفاصيل...`;
+      btn.innerHTML = `⏳ جاري الاتصال بمحرك الذكاء الاصطناعي...`;
       btn.disabled = true;
 
       try {
@@ -1668,11 +1683,18 @@ class SoukApp {
 
         btn.innerHTML = `✨ تم توليد التفاصيل بنجاح 🤖`;
         btn.disabled = false;
-        this.showToast(`تم توليد مواصفات (${title}) بنجاح!`, 'success');
+        this.showToast(`تم استخراج مواصفات (${title}) بنجاح!`, 'success');
       } catch (err) {
         btn.innerHTML = `✨ توليد تفاصيل بالذكاء الاصطناعي 🤖`;
         btn.disabled = false;
         this.showToast(err.message, 'error');
+
+        // Prompt user to enter new API key if key issue
+        const newKey = prompt(`تنبيه: ${err.message}\n\nيرجى إدخال مفتاح Google Gemini API الجديد الخاص بك من (https://aistudio.google.com/app/apikey):`);
+        if (newKey && newKey.trim()) {
+          localStorage.setItem('souk_gemini_api_key', newKey.trim());
+          this.showToast('تم حفظ المفتاح الجديد! اضغط زر التوليد الآن.', 'success');
+        }
       }
     });
 
