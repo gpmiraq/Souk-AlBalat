@@ -341,129 +341,248 @@ export class PosterService {
   }
 
   /**
-   * Generates High-Definition Marketing Poster for Merchant Store Page
+   * Generates High-Resolution scannable QR Code DataURL for Merchant Store
    */
-  static async generateMerchantStorePoster(merchant, products = [], themeKey = 'dark_gold') {
+  static async generateStoreQRCode(merchantIdOrSlug) {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://souk-al-balat.vercel.app';
+    const storeUrl = `${origin}/seller/${merchantIdOrSlug}`;
+    try {
+      return await QRCode.toDataURL(storeUrl, {
+        margin: 1,
+        width: 400,
+        errorCorrectionLevel: 'H',
+        color: { dark: '#000000', light: '#ffffff' }
+      });
+    } catch (e) {
+      console.warn('Store QR Code generation fallback:', e);
+      return '';
+    }
+  }
+
+  /**
+   * Generates High-Definition Marketing Poster for Merchant Store Page (Horizontal & Vertical)
+   */
+  static async exportMerchantStorePosterAsImage(merchant, products = [], format = 'vertical', themeKey = 'dark_gold') {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://souk-al-balat.vercel.app';
     const storeUrl = `${origin}/seller/${merchant.slug || merchant.id}`;
-    const qrDataUrl = await QRCode.toDataURL(storeUrl, {
-      margin: 1,
-      width: 400,
-      color: { dark: '#000000', light: '#ffffff' }
-    });
+    const qrDataUrl = await this.generateStoreQRCode(merchant.slug || merchant.id);
 
     const theme = POSTER_THEMES[themeKey] || POSTER_THEMES.dark_gold;
     const canvas = document.createElement('canvas');
-    canvas.width = 1080;
-    canvas.height = 1920;
     const ctx = canvas.getContext('2d');
 
+    const isVertical = format === 'vertical';
+    canvas.width = isVertical ? 1080 : 1200;
+    canvas.height = isVertical ? 1920 : 630;
+
+    const width = canvas.width;
+    const height = canvas.height;
+
     const qrImg = new Image();
-    qrImg.src = qrDataUrl;
-    await new Promise(r => { qrImg.onload = r; qrImg.onerror = r; });
+    if (qrDataUrl) {
+      qrImg.src = qrDataUrl;
+      await new Promise(r => { qrImg.onload = r; qrImg.onerror = r; });
+    }
+
+    const avatarImg = new Image();
+    avatarImg.crossOrigin = 'anonymous';
+    if (merchant.avatar) {
+      avatarImg.src = merchant.avatar;
+      await new Promise(r => { avatarImg.onload = r; avatarImg.onerror = r; });
+    }
 
     // Background Gradient
-    const bgGrad = ctx.createLinearGradient(0, 0, 1080, 1920);
+    const bgGrad = ctx.createLinearGradient(0, 0, width, height);
     bgGrad.addColorStop(0, theme.bgStart);
     bgGrad.addColorStop(1, theme.bgEnd);
     ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, 1080, 1920);
+    ctx.fillRect(0, 0, width, height);
 
     // Outer Border
     ctx.strokeStyle = theme.border;
-    ctx.lineWidth = 14;
-    ctx.strokeRect(30, 30, 1020, 1860);
-
-    // Top Platform Badge
-    ctx.fillStyle = theme.priceBg;
-    ctx.beginPath();
-    ctx.roundRect(80, 80, 920, 100, 30);
-    ctx.fill();
-    ctx.strokeStyle = theme.border;
-    ctx.lineWidth = 3;
-    ctx.stroke();
+    ctx.lineWidth = isVertical ? 12 : 6;
+    ctx.strokeRect(isVertical ? 24 : 16, isVertical ? 24 : 16, width - (isVertical ? 48 : 32), height - (isVertical ? 48 : 32));
 
     ctx.textAlign = 'center';
-    ctx.font = 'bold 44px Cairo, sans-serif';
-    ctx.fillStyle = theme.accentColor;
-    ctx.fillText(`⚡ ${APP_CONFIG.STORE_NAME}`, 540, 146);
+    ctx.direction = 'rtl';
 
-    // Merchant Profile Center Block
-    ctx.font = 'bold 64px Cairo, sans-serif';
-    ctx.fillStyle = theme.titleColor;
-    ctx.fillText(`🏪 ${merchant.name} ✓`, 540, 310);
+    if (isVertical) {
+      // Top Platform Badge
+      ctx.fillStyle = theme.priceBg;
+      ctx.beginPath();
+      ctx.roundRect(80, 70, 920, 90, 24);
+      ctx.fill();
+      ctx.strokeStyle = theme.border;
+      ctx.lineWidth = 3;
+      ctx.stroke();
 
-    ctx.font = 'bold 36px Cairo, sans-serif';
-    ctx.fillStyle = '#f59e0b';
-    ctx.fillText('👑 مدير ومؤسس الموقع | حساب موثوق ومضمون', 540, 380);
-
-    ctx.font = '30px Cairo, sans-serif';
-    ctx.fillStyle = theme.subColor;
-    ctx.fillText(`📞 واتساب: ${merchant.phone} | 📦 معروض حالياً: ${products.length} قطعة بالة وأوتلت`, 540, 440);
-
-    // Products Highlight Grid (Draw 2 top products if available)
-    if (products.length > 0) {
-      ctx.font = 'bold 38px Cairo, sans-serif';
+      ctx.font = 'bold 42px Cairo, sans-serif';
       ctx.fillStyle = theme.accentColor;
-      ctx.fillText('✨ أبرز البضائع والطرود المتوفرة حالياً بالمتجر:', 540, 550);
+      ctx.fillText(`⚡ ${APP_CONFIG.STORE_NAME_SHORT} | المتجر الرسمي`, 540, 132);
 
-      const topProducts = products.slice(0, 3);
-      let pY = 620;
-      for (const p of topProducts) {
-        ctx.fillStyle = 'rgba(255,255,255,0.06)';
+      // Circular Merchant Avatar DIRECTLY ABOVE Name
+      const avatarSize = 200;
+      const avatarX = (width - avatarSize) / 2;
+      const avatarY = 200;
+
+      if (avatarImg.complete && avatarImg.naturalWidth > 0) {
+        ctx.save();
         ctx.beginPath();
-        ctx.roundRect(100, pY, 880, 130, 24);
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-        ctx.lineWidth = 2;
+        ctx.arc(540, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.drawImage(avatarImg, avatarX, avatarY, avatarSize, avatarSize);
+        ctx.restore();
+
+        // Border around Avatar
+        ctx.beginPath();
+        ctx.arc(540, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+        ctx.strokeStyle = theme.border;
+        ctx.lineWidth = 8;
         ctx.stroke();
-
-        ctx.textAlign = 'right';
-        ctx.font = 'bold 34px Cairo, sans-serif';
-        ctx.fillStyle = theme.textColor;
-        ctx.fillText(p.title.slice(0, 35) + (p.title.length > 35 ? '...' : ''), 940, pY + 55);
-
-        ctx.font = '26px Cairo, sans-serif';
-        ctx.fillStyle = theme.subColor;
-        ctx.fillText(p.conditionLabel || 'أوبن بوكس', 940, pY + 100);
-
-        ctx.textAlign = 'left';
-        ctx.font = 'bold 38px Outfit, sans-serif';
-        ctx.fillStyle = theme.priceColor;
-        ctx.fillText(`${Number(p.price).toLocaleString()} د.ع`, 130, pY + 80);
-
-        pY += 160;
       }
+
+      // Merchant Name
+      ctx.font = 'bold 56px Cairo, sans-serif';
+      ctx.fillStyle = theme.titleColor;
+      ctx.fillText(`🏪 ${merchant.name} ✓`, 540, 470);
+
+      ctx.font = 'bold 32px Cairo, sans-serif';
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillText('👑 مدير ومؤسس الموقع | حساب معتمد وموثوق', 540, 525);
+
+      ctx.font = '28px Cairo, sans-serif';
+      ctx.fillStyle = theme.subColor;
+      ctx.fillText(`📞 واتساب: ${merchant.phone} | 📦 معروض حالياً: ${products.length} قطعة بالة`, 540, 575);
+
+      // Highlighted Products
+      if (products.length > 0) {
+        ctx.font = 'bold 36px Cairo, sans-serif';
+        ctx.fillStyle = theme.accentColor;
+        ctx.fillText('✨ عينات من بضائع المتجر المتوفرة:', 540, 665);
+
+        const topProducts = products.slice(0, 3);
+        let pY = 720;
+        for (const p of topProducts) {
+          ctx.fillStyle = 'rgba(255,255,255,0.06)';
+          ctx.beginPath();
+          ctx.roundRect(80, pY, 920, 125, 20);
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          ctx.textAlign = 'right';
+          ctx.font = 'bold 32px Cairo, sans-serif';
+          ctx.fillStyle = theme.textColor;
+          ctx.fillText(p.title.slice(0, 35) + (p.title.length > 35 ? '...' : ''), 960, pY + 52);
+
+          ctx.font = '24px Cairo, sans-serif';
+          ctx.fillStyle = theme.subColor;
+          ctx.fillText(p.conditionLabel || 'أوبن بوكس', 960, pY + 95);
+
+          ctx.textAlign = 'left';
+          ctx.font = 'bold 36px Outfit, sans-serif';
+          ctx.fillStyle = theme.priceColor;
+          ctx.fillText(`${Number(p.price).toLocaleString()} د.ع`, 110, pY + 75);
+
+          pY += 150;
+        }
+      }
+
+      // QR Code Box
+      const qrBoxSize = 380;
+      const qrX = (1080 - qrBoxSize) / 2;
+      const qrY = 1250;
+
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.roundRect(qrX - 16, qrY - 16, qrBoxSize + 32, qrBoxSize + 32, 28);
+      ctx.fill();
+      ctx.strokeStyle = theme.border;
+      ctx.lineWidth = 6;
+      ctx.stroke();
+
+      if (qrImg.complete && qrImg.naturalWidth > 0) {
+        ctx.drawImage(qrImg, qrX, qrY, qrBoxSize, qrBoxSize);
+      }
+
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 40px Cairo, sans-serif';
+      ctx.fillStyle = theme.textColor;
+      ctx.fillText('📷 امسح الكود بكاميرا الموبايل لزيارة متجري', 540, 1740);
+
+      ctx.font = 'bold 30px Outfit, sans-serif';
+      ctx.fillStyle = theme.accentColor;
+      ctx.fillText(storeUrl, 540, 1795);
+    } else {
+      // --- 🖥️ HORIZONTAL BANNER (1200 x 630) ---
+      // Left side: QR Code Box
+      const qrBoxSize = 260;
+      const qrX = 80;
+      const qrY = 185;
+
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.roundRect(qrX - 12, qrY - 12, qrBoxSize + 24, qrBoxSize + 24, 20);
+      ctx.fill();
+      ctx.strokeStyle = theme.border;
+      ctx.lineWidth = 4;
+      ctx.stroke();
+
+      if (qrImg.complete && qrImg.naturalWidth > 0) {
+        ctx.drawImage(qrImg, qrX, qrY, qrBoxSize, qrBoxSize);
+      }
+
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 22px Cairo, sans-serif';
+      ctx.fillStyle = theme.textColor;
+      ctx.fillText('امسح لزيارة المتجر 📷', qrX + qrBoxSize / 2, qrY + qrBoxSize + 45);
+
+      // Right side: Avatar directly above Name + Info
+      const avatarSize = 130;
+      const avatarX = 750;
+      const avatarY = 65;
+
+      if (avatarImg.complete && avatarImg.naturalWidth > 0) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.drawImage(avatarImg, avatarX, avatarY, avatarSize, avatarSize);
+        ctx.restore();
+
+        ctx.beginPath();
+        ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+        ctx.strokeStyle = theme.border;
+        ctx.lineWidth = 6;
+        ctx.stroke();
+      }
+
+      ctx.textAlign = 'right';
+      ctx.font = 'bold 44px Cairo, sans-serif';
+      ctx.fillStyle = theme.titleColor;
+      ctx.fillText(`🏪 ${merchant.name} ✓`, 1120, 260);
+
+      ctx.font = 'bold 26px Cairo, sans-serif';
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillText('👑 مدير ومؤسس الموقع | حساب موثوق ومضمون', 1120, 310);
+
+      ctx.font = '24px Cairo, sans-serif';
+      ctx.fillStyle = theme.subColor;
+      ctx.fillText(`📞 واتساب: ${merchant.phone} | 📦 المعروض: ${products.length} قطعة`, 1120, 360);
+
+      ctx.font = 'bold 28px Cairo, sans-serif';
+      ctx.fillStyle = theme.accentColor;
+      ctx.fillText(`⚡ ${APP_CONFIG.STORE_NAME}`, 1120, 440);
+
+      ctx.font = '22px Outfit, sans-serif';
+      ctx.fillStyle = theme.subColor;
+      ctx.fillText(storeUrl, 1120, 480);
     }
 
-    // QR Code Large Box at Bottom
-    const qrBoxSize = 420;
-    const qrX = (1080 - qrBoxSize) / 2;
-    const qrY = 1180;
-
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.roundRect(qrX - 20, qrY - 20, qrBoxSize + 40, qrBoxSize + 40, 32);
-    ctx.fill();
-    ctx.strokeStyle = theme.border;
-    ctx.lineWidth = 6;
-    ctx.stroke();
-
-    ctx.drawImage(qrImg, qrX, qrY, qrBoxSize, qrBoxSize);
-
-    // Call to Action
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 44px Cairo, sans-serif';
-    ctx.fillStyle = theme.textColor;
-    ctx.fillText('📷 امسح الكود بكاميرا الموبايل لفتح متجري', 540, 1720);
-
-    ctx.font = 'bold 32px Outfit, sans-serif';
-    ctx.fillStyle = theme.accentColor;
-    ctx.fillText(storeUrl, 540, 1780);
-
-    // Download
+    // Trigger Download
     const link = document.createElement('a');
-    link.download = `poster_store_${merchant.slug || merchant.id}_${themeKey}.png`;
+    link.download = `poster_store_${merchant.slug || merchant.id}_${format}_${themeKey}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
     return true;

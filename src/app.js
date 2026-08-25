@@ -491,6 +491,7 @@ class SoukApp {
       slug: 'alwareth',
       name: 'أبو وارث أمازون',
       phone: '07707188166',
+      bio: 'الوكيل الحصري لبضائع أمازون والبالات وطرود DHL في العراق. فحص وتجربة وضمان حقيقي.',
       avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80',
       socials: {
         facebook: 'https://www.facebook.com/gpm90',
@@ -511,7 +512,7 @@ class SoukApp {
         </div>
       </div>
 
-      <!-- Header -->
+      <!-- Prominent Header -->
       <header class="site-header">
         <div class="container">
           <div class="header-main">
@@ -525,6 +526,9 @@ class SoukApp {
 
             <div class="header-actions">
               <button class="btn btn-secondary" onclick="window.app.navigate('/')">⬅️ العودة للرئيسية</button>
+              <button class="btn btn-secondary" onclick="window.app.toggleTheme()" title="تبديل المظهر">
+                ${this.currentTheme === 'dark' ? '☀️' : '🌙'}
+              </button>
               <button class="btn btn-primary cart-btn-indicator" id="btn-open-cart">
                 <span>🛒 السلة</span>
                 ${this.cart.length > 0 ? `<span class="cart-badge-count">${this.cart.length}</span>` : ''}
@@ -544,38 +548,39 @@ class SoukApp {
           </span>
         </nav>
 
-        <!-- Seller Store Banner Card -->
-        <div style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98)); border: 1.5px solid var(--border-strong); padding: 24px 20px; border-radius: var(--radius-lg); margin-bottom: 28px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; box-shadow: var(--card-shadow);">
-          <div style="display: flex; align-items: center; gap: 16px;">
-            <img src="${merchant.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80'}" style="width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 3px solid #f59e0b; box-shadow: 0 4px 15px rgba(245,158,11,0.4);" alt="${merchant.name}">
-            <div>
-              <div style="font-size: 1.35rem; font-weight: 900; color: #ffffff; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                <span>${merchant.name}</span>
-                ${SOCIAL_ICONS.VERIFIED_BADGE}
-                <span class="badge" style="background: #fef08a; color: #854d0e; font-size: 0.78rem; font-weight: 800;">👑 مدير ومؤسس الموقع</span>
-              </div>
-              <div style="color: #cbd5e1; font-size: 0.88rem; margin-top: 6px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                <span>📞 واتساب: <strong>${merchant.phone}</strong></span>
-                <span>|</span>
-                <span>📦 المعروض: <strong>${sellerProducts.length} قطعة</strong></span>
-                ${merchant.slug ? `<span>|</span><span style="direction: ltr; font-family: var(--font-numbers); color: #f59e0b;">/seller/${merchant.slug}</span>` : ''}
-              </div>
+        <!-- Seller Store Banner Card (Avatar Centered Above Name) -->
+        <div style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98)); border: 1.5px solid var(--border-strong); padding: 30px 20px; border-radius: var(--radius-lg); margin-bottom: 28px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; box-shadow: var(--card-shadow);">
+          <!-- Circular Avatar Directly Above Name -->
+          <img src="${merchant.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80'}" style="width: 88px; height: 88px; border-radius: 50%; object-fit: cover; border: 3.5px solid #f59e0b; box-shadow: 0 4px 20px rgba(245,158,11,0.4);" alt="${merchant.name}">
+          
+          <div>
+            <div style="font-size: 1.5rem; font-weight: 900; color: #ffffff; display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;">
+              <span>🏪 ${merchant.name}</span>
+              ${SOCIAL_ICONS.VERIFIED_BADGE}
+              <span class="badge" style="background: #fef08a; color: #854d0e; font-size: 0.8rem; font-weight: 800;">👑 مدير ومؤسس الموقع</span>
+            </div>
+            ${merchant.bio ? `<p style="color: #cbd5e1; max-width: 600px; margin: 8px auto 0; font-size: 0.92rem; line-height: 1.6;">${merchant.bio}</p>` : ''}
+            <div style="color: #94a3b8; font-size: 0.85rem; margin-top: 8px; display: flex; gap: 14px; justify-content: center; align-items: center; flex-wrap: wrap;">
+              <span>📞 واتساب: <strong style="color:#ffffff;">${merchant.phone}</strong></span>
+              <span>•</span>
+              <span>📦 المعروض: <strong style="color:#ffffff;">${sellerProducts.length} قطعة</strong></span>
+              ${merchant.slug ? `<span>•</span><span style="direction: ltr; font-family: var(--font-numbers); color: #f59e0b; font-weight: 700;">souk-al-balat.vercel.app/seller/${merchant.slug}</span>` : ''}
             </div>
           </div>
 
           <!-- Social Links & Store Poster Generator -->
-          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-            <button class="btn btn-secondary" id="btn-generate-seller-poster" style="padding: 8px 14px; font-size: 0.85rem; font-weight: 800; color: #d97706; border-color: #f59e0b; background: rgba(245, 158, 11, 0.12);">
+          <div style="display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; margin-top: 6px;">
+            <button class="btn btn-secondary" id="btn-generate-seller-poster" style="padding: 9px 16px; font-size: 0.88rem; font-weight: 800; color: #d97706; border-color: #f59e0b; background: rgba(245, 158, 11, 0.12);">
               📷 توليد بوستر المتجر 📱
             </button>
-            <a href="${merchant.socials?.facebook || 'https://www.facebook.com/gpm90'}" target="_blank" class="btn btn-secondary" style="padding: 8px 12px; font-size: 0.82rem; font-weight: 700; color: #1877f2;">
+            <a href="${merchant.socials?.facebook || 'https://www.facebook.com/gpm90'}" target="_blank" class="btn btn-secondary" style="padding: 8px 14px; font-size: 0.85rem; font-weight: 700; color: #1877f2;">
               ${SOCIAL_ICONS.FACEBOOK} فيسبوك
             </a>
-            <a href="${merchant.socials?.tiktok || 'https://www.tiktok.com/@alwareth_amazon'}" target="_blank" class="btn btn-secondary" style="padding: 8px 12px; font-size: 0.82rem; font-weight: 700;">
+            <a href="${merchant.socials?.tiktok || 'https://www.tiktok.com/@alwareth_amazon'}" target="_blank" class="btn btn-secondary" style="padding: 8px 14px; font-size: 0.85rem; font-weight: 700;">
               ${SOCIAL_ICONS.TIKTOK} تيك توك
             </a>
-            <a href="https://api.whatsapp.com/send?phone=964${(merchant.phone || '07707188166').replace(/[^0-9]/g,'').slice(-10)}" target="_blank" class="btn btn-whatsapp" style="padding: 8px 14px; font-size: 0.82rem; font-weight: 800;">
-              ${SOCIAL_ICONS.WHATSAPP} محادثة
+            <a href="https://api.whatsapp.com/send?phone=964${(merchant.phone || '07707188166').replace(/[^0-9]/g,'').slice(-10)}" target="_blank" class="btn btn-whatsapp" style="padding: 8px 16px; font-size: 0.85rem; font-weight: 800;">
+              ${SOCIAL_ICONS.WHATSAPP} محادثة واتساب
             </a>
           </div>
         </div>
@@ -600,9 +605,8 @@ class SoukApp {
     `;
 
     document.getElementById('btn-open-cart')?.addEventListener('click', () => this.openCartModal());
-    document.getElementById('btn-generate-seller-poster')?.addEventListener('click', async () => {
-      await PosterService.generateMerchantStorePoster(merchant, sellerProducts);
-      this.showToast('تم توليد وتحميل بوستر المتجر التسويقي بدقة فائقة! 📷', 'success');
+    document.getElementById('btn-generate-seller-poster')?.addEventListener('click', () => {
+      this.openStorePosterModal(merchant, sellerProducts);
     });
     document.getElementById('btn-floating-support')?.addEventListener('click', () => this.openSupportInquiryModal());
   }
@@ -683,7 +687,7 @@ class SoukApp {
         <div class="modal-header">
           <div class="modal-title" style="display: flex; align-items: center; gap: 8px;">
             <span>💬</span>
-            <span>خدمة العملاء والدعم المباشر</span>
+            <span>خدمة العملاء والاستفسارات</span>
           </div>
           <div class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</div>
         </div>
@@ -691,7 +695,7 @@ class SoukApp {
           <div style="font-size: 3.2rem; margin-bottom: 12px;">🏪👋</div>
           <h3 style="font-size: 1.18rem; font-weight: 900; color: var(--text-primary); margin-bottom: 8px;">أهلاً بك في منصة سوق البالات</h3>
           <p style="color: var(--text-secondary); font-size: 0.92rem; line-height: 1.75; margin-bottom: 20px;">
-            في حال الرغبة بالحصول على <strong>حساب تاجر</strong> لعرض ونشر بضائعك، أو كان لديك أي استفسار أو اقتراح، فريق إدارة الموقع متواجد لخدمتك ومساعدتك عبر الواتساب.
+            فريق خدمة العملاء وإدارة المنصة متواجد لمساعدتكم والإجابة عن كافة استفساراتكم عبر الواتساب.
           </p>
           <button class="btn btn-whatsapp" style="width: 100%; padding: 14px; font-size: 1.05rem; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px;" id="btn-confirm-support-wa">
             ${SOCIAL_ICONS.WHATSAPP}
@@ -707,7 +711,7 @@ class SoukApp {
       modalOverlay.remove();
       const phone = (this.siteSettings.supportPhone || '07707188166').replace(/[^0-9]/g, '');
       const waPhone = phone.startsWith('0') ? '964' + phone.slice(1) : (phone.startsWith('964') ? phone : '964' + phone);
-      const text = encodeURIComponent('السلام عليكم إدارة سوق البالات، أحتاج استفسار / طلب حساب تاجر عبر زر المساعدة في الموقع.');
+      const text = encodeURIComponent('السلام عليكم إدارة سوق البالات، أحتاج استفسار ومساعدة بخصوص الموقع.');
       window.open(`https://api.whatsapp.com/send?phone=${waPhone}&text=${text}`, '_blank');
     });
   }
@@ -728,7 +732,6 @@ class SoukApp {
     }
 
     const imagesList = product.images?.length > 0 ? product.images : [product.image];
-    const insights = product.aiEnabled ? await AIService.generateProductInsights(product.title, product.price) : null;
     const relatedFromSeller = ProductsService.getProducts().filter(p => p.merchantId === product.merchantId && p.id !== product.id).slice(0, 4);
     const relatedFromCategory = ProductsService.getProducts().filter(p => p.category === product.category && p.id !== product.id).slice(0, 4);
 
@@ -1346,6 +1349,137 @@ class SoukApp {
     modalOverlay.querySelector('#btn-download-poster-action')?.addEventListener('click', async () => {
       await PosterService.exportFlyerAsImage(product, selectedFormat, selectedTheme);
       this.showToast(`تم تحميل البوستر (${selectedFormat === 'vertical' ? 'العمودي 📱' : 'الأفقي 🖥️'}) بنجاح!`, 'success');
+    });
+  }
+
+  /* ==========================================================================
+     Merchant Store Poster Modal (Horizontal & Vertical, 4 Themes, Avatar Above Name)
+     ========================================================================== */
+  async openStorePosterModal(merchant, sellerProducts = []) {
+    if (!merchant) merchant = AuthService.getCurrentMerchant() || AuthService.getMerchantById('m-alwareth');
+    if (!sellerProducts || sellerProducts.length === 0) {
+      sellerProducts = ProductsService.getProducts().filter(p => p.merchantId === merchant.id || p.merchantName?.includes(merchant.name));
+    }
+
+    const qrDataUrl = await PosterService.generateStoreQRCode(merchant.slug || merchant.id);
+
+    let selectedFormat = 'vertical';
+    let selectedTheme = 'dark_gold';
+
+    const modalOverlay = document.createElement('div');
+    modalOverlay.className = 'modal-overlay active';
+
+    const updateStorePreviewHTML = () => {
+      const isVert = selectedFormat === 'vertical';
+      return `
+        <div style="background: ${selectedTheme === 'dark_gold' ? 'linear-gradient(135deg, #0f172a, #020617)' : selectedTheme === 'light_modern' ? 'linear-gradient(135deg, #ffffff, #f1f5f9)' : selectedTheme === 'neon_cyber' ? 'linear-gradient(135deg, #090d16, #020617)' : 'linear-gradient(135deg, #1e112a, #0d0517)'}; color: ${selectedTheme === 'light_modern' ? '#0f172a' : '#ffffff'}; border: 2px solid ${selectedTheme === 'dark_gold' ? '#f59e0b' : selectedTheme === 'light_modern' ? '#2563eb' : selectedTheme === 'neon_cyber' ? '#06b6d4' : '#c084fc'}; border-radius: var(--radius-lg); padding: 24px 20px; text-align: center; box-shadow: var(--card-shadow);">
+          ${isVert ? `
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 12px;">
+              <div style="font-size: 0.85rem; font-weight: 800; color: ${selectedTheme === 'dark_gold' ? '#f59e0b' : selectedTheme === 'light_modern' ? '#2563eb' : selectedTheme === 'neon_cyber' ? '#22d3ee' : '#e879f9'}; background: rgba(255,255,255,0.08); padding: 4px 14px; border-radius: 20px;">
+                ⚡ ${APP_CONFIG.STORE_NAME_SHORT} | المتجر الرسمي
+              </div>
+              
+              <!-- Avatar Centered Above Name -->
+              <img src="${merchant.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80'}" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid #f59e0b; margin-top: 4px;">
+
+              <h3 style="font-size: 1.25rem; font-weight: 900; margin: 0;">🏪 ${merchant.name} ✓</h3>
+              <div style="font-size: 0.8rem; color: #f59e0b; font-weight: 700;">👑 مدير ومؤسس الموقع | حساب معتمد وموثوق</div>
+              <div style="font-size: 0.82rem; color: var(--text-secondary);">📞 واتساب: ${merchant.phone} | 📦 ${sellerProducts.length} قطعة بالة وأوتلت</div>
+
+              <div style="background: #ffffff; padding: 10px; border-radius: 14px; margin-top: 8px; border: 2px solid #f59e0b; width: 140px; height: 140px; display: flex; align-items: center; justify-content: center;">
+                ${qrDataUrl ? `<img src="${qrDataUrl}" style="width: 120px; height: 120px; object-fit: contain;">` : '📱'}
+              </div>
+
+              <div style="font-size: 0.85rem; font-weight: 800; color: ${selectedTheme === 'light_modern' ? '#0f172a' : '#ffffff'}; margin-top: 4px;">
+                📷 امسح الكود بكاميرا الموبايل لفتح متجري
+              </div>
+            </div>
+          ` : `
+            <div style="display: grid; grid-template-columns: 1fr 1.3fr; gap: 20px; align-items: center; text-align: right;">
+              <div style="text-align: center;">
+                <div style="background: #ffffff; padding: 8px; border-radius: 12px; display: inline-block; border: 2px solid #f59e0b; width: 130px; height: 130px;">
+                  ${qrDataUrl ? `<img src="${qrDataUrl}" style="width: 114px; height: 114px; object-fit: contain;">` : '📱'}
+                </div>
+                <div style="font-size: 0.75rem; font-weight: 800; margin-top: 6px;">امسح لزيارة المتجر 📷</div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
+                <img src="${merchant.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80'}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2.5px solid #f59e0b;">
+                <h3 style="font-size: 1.15rem; font-weight: 900; margin: 0;">🏪 ${merchant.name} ✓</h3>
+                <div style="font-size: 0.75rem; color: #f59e0b; font-weight: 700;">👑 مدير ومؤسس الموقع</div>
+                <div style="font-size: 0.78rem; color: var(--text-secondary);">📞 ${merchant.phone} | 📦 ${sellerProducts.length} قطعة معروضة</div>
+                <div style="font-size: 0.8rem; font-weight: 800; color: ${selectedTheme === 'dark_gold' ? '#f59e0b' : '#2563eb'};">⚡ ${APP_CONFIG.STORE_NAME_SHORT}</div>
+              </div>
+            </div>
+          `}
+        </div>
+      `;
+    };
+
+    modalOverlay.innerHTML = `
+      <div class="modal-container marketing-poster-modal" style="max-width: 650px;">
+        <div class="modal-header">
+          <div class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+            <span>📷</span>
+            <span>توليد بوستر تسويقي للمتجر (${merchant.name})</span>
+          </div>
+          <div class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</div>
+        </div>
+
+        <div class="modal-body">
+          <!-- Theme Selector Bar -->
+          <div style="margin-bottom: 14px; text-align: center;">
+            <div style="font-size: 0.82rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 6px;">🎨 اختر مظهر وألوان البوستر:</div>
+            <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+              <button class="btn btn-secondary btn-store-theme-pill active" data-theme="dark_gold" style="font-size: 0.78rem; padding: 5px 12px; font-weight: 800;">🌙 داكن ذهبي</button>
+              <button class="btn btn-secondary btn-store-theme-pill" data-theme="light_modern" style="font-size: 0.78rem; padding: 5px 12px; font-weight: 800;">☀️ فاتح مودرن</button>
+              <button class="btn btn-secondary btn-store-theme-pill" data-theme="neon_cyber" style="font-size: 0.78rem; padding: 5px 12px; font-weight: 800;">⚡ نيون أزرق</button>
+              <button class="btn btn-secondary btn-store-theme-pill" data-theme="royal_purple" style="font-size: 0.78rem; padding: 5px 12px; font-weight: 800;">💎 ملكي بنفسجي</button>
+            </div>
+          </div>
+
+          <div id="store-poster-preview-box">
+            ${updateStorePreviewHTML()}
+          </div>
+        </div>
+
+        <div class="modal-footer" style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+          <button class="btn btn-secondary" id="btn-toggle-store-poster-format" style="font-weight: 800;">
+            🔄 📱 قلب الشكل (${selectedFormat === 'vertical' ? 'عمودي ستوري' : 'أفقي عريض'})
+          </button>
+
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">إلغاء</button>
+            <button class="btn btn-primary" id="btn-download-store-poster-act" style="font-weight: 800;">
+              📷 تحميل بوستر المتجر كصورة PNG
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modalOverlay);
+
+    const toggleBtn = modalOverlay.querySelector('#btn-toggle-store-poster-format');
+    const previewBox = modalOverlay.querySelector('#store-poster-preview-box');
+
+    toggleBtn.addEventListener('click', () => {
+      selectedFormat = selectedFormat === 'vertical' ? 'horizontal' : 'vertical';
+      toggleBtn.innerHTML = `🔄 📱 قلب الشكل (${selectedFormat === 'vertical' ? 'عمودي ستوري' : 'أفقي عريض'})`;
+      previewBox.innerHTML = updateStorePreviewHTML();
+    });
+
+    modalOverlay.querySelectorAll('.btn-store-theme-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        modalOverlay.querySelectorAll('.btn-store-theme-pill').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedTheme = btn.dataset.theme;
+        previewBox.innerHTML = updateStorePreviewHTML();
+      });
+    });
+
+    modalOverlay.querySelector('#btn-download-store-poster-act')?.addEventListener('click', async () => {
+      await PosterService.exportMerchantStorePosterAsImage(merchant, sellerProducts, selectedFormat, selectedTheme);
+      this.showToast(`تم تحميل بوستر المتجر (${selectedFormat === 'vertical' ? 'العمودي 📱' : 'الأفقي 🖥️'}) بنجاح!`, 'success');
     });
   }
 

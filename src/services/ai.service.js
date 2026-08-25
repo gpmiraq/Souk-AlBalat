@@ -89,4 +89,12 @@ export class AIService {
 سعر المنتج التقريبي : يتم تقديره حسب فئة الموديل وتوفره في السوق العراقي
 سعر المنتج العالمي : راجع التسعير الرسمي للشركة المصنعة`;
   }
+
+  /**
+   * Alias for generateProductDescription to prevent any runtime call errors
+   */
+  static async generateProductInsights(title = '', price = 0) {
+    return this.generateProductDescription(title);
+  }
 }
+
