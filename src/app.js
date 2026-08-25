@@ -1039,6 +1039,122 @@ class SoukApp {
   }
 
   /* ==========================================================================
+     In-App Category Search, Selection & Creation Modal
+     ========================================================================== */
+  openCategoryPickerModal(currentCat, onSelect) {
+    const modalOverlay = document.createElement('div');
+    modalOverlay.className = 'modal-overlay active';
+
+    let isCreatingNew = false;
+
+    const renderPickerBody = (searchQuery = '') => {
+      const filtered = this.categories
+        .filter(c => c.id !== 'all')
+        .filter(c => !searchQuery || c.name.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      return `
+        <!-- Top Search Box -->
+        <div style="margin-bottom: 14px;">
+          <input type="text" id="picker-cat-search" class="form-input" placeholder="🔍 اكتب هنا للبحث السريع في الأقسام..." value="${searchQuery}">
+        </div>
+
+        <!-- Add New Category Toggle Banner -->
+        <div style="margin-bottom: 14px; padding: 10px 14px; background: var(--bg-surface-subtle); border-radius: var(--radius-md); border: 1px dashed var(--border-strong); display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary);">لم تجد القسم المناسب لقطعتك؟</span>
+          <button type="button" class="btn btn-secondary" id="btn-toggle-add-custom-cat" style="font-size: 0.78rem; padding: 5px 10px; font-weight: 800; color: var(--brand-primary);">
+            ➕ إضافة قسم جديد
+          </button>
+        </div>
+
+        <!-- In-App Custom Category Creator Box -->
+        <div id="new-cat-inline-creator" style="display: ${isCreatingNew ? 'block' : 'none'}; background: var(--bg-surface-subtle); padding: 14px; border-radius: var(--radius-md); border: 1.5px solid var(--brand-primary); margin-bottom: 14px;">
+          <label class="form-label" style="font-size: 0.85rem;">اسم القسم الجديد المطلوب:</label>
+          <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+            <input type="text" class="form-input" id="custom-cat-input-name" placeholder="مثال: ساعات ذكية، أجهزة كهربائية...">
+            <button type="button" class="btn btn-primary" id="btn-confirm-save-custom-cat" style="white-space: nowrap;">
+              حفظ واختيار
+            </button>
+          </div>
+        </div>
+
+        <!-- Categories Grid -->
+        <div style="max-height: 280px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); gap: 10px; padding: 2px;">
+          ${filtered.length === 0 ? `
+            <div style="grid-column: 1/-1; text-align: center; padding: 20px; color: var(--text-secondary); font-size: 0.9rem;">
+              لا يوجد قسم بهذا الاسم. اضغط على (➕ إضافة قسم جديد) بالأعلى لإضافته فوراً.
+            </div>
+          ` : filtered.map(c => `
+            <div class="category-pick-card ${c.name === currentCat ? 'active' : ''}" data-cat-name="${c.name}" data-cat-icon="${c.icon || '📦'}" style="cursor: pointer; padding: 12px 10px; border-radius: 10px; border: 1.5px solid ${c.name === currentCat ? 'var(--brand-primary)' : 'var(--border-subtle)'}; background: ${c.name === currentCat ? 'rgba(245, 158, 11, 0.1)' : 'var(--bg-surface-subtle)'}; text-align: center; transition: all 0.2s ease;">
+              <div style="font-size: 1.6rem; margin-bottom: 4px;">${c.icon || '📦'}</div>
+              <div style="font-weight: 800; font-size: 0.88rem; color: var(--text-primary);">${c.name}</div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    };
+
+    modalOverlay.innerHTML = `
+      <div class="modal-container" style="max-width: 520px;">
+        <div class="modal-header">
+          <div class="modal-title">
+            <span>🗂️</span>
+            <span>اختيار أو إضافة قسم البضاعة</span>
+          </div>
+          <div class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</div>
+        </div>
+        <div class="modal-body" id="cat-picker-modal-body">
+          ${renderPickerBody()}
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modalOverlay);
+
+    const bindEvents = () => {
+      const searchInput = modalOverlay.querySelector('#picker-cat-search');
+      searchInput?.addEventListener('input', (e) => {
+        const val = e.target.value;
+        modalOverlay.querySelector('#cat-picker-modal-body').innerHTML = renderPickerBody(val);
+        const newSearch = modalOverlay.querySelector('#picker-cat-search');
+        if (newSearch) {
+          newSearch.focus();
+          newSearch.setSelectionRange(val.length, val.length);
+        }
+        bindEvents();
+      });
+
+      modalOverlay.querySelector('#btn-toggle-add-custom-cat')?.addEventListener('click', () => {
+        isCreatingNew = !isCreatingNew;
+        const box = modalOverlay.querySelector('#new-cat-inline-creator');
+        if (box) box.style.display = isCreatingNew ? 'block' : 'none';
+        if (isCreatingNew) modalOverlay.querySelector('#custom-cat-input-name')?.focus();
+      });
+
+      modalOverlay.querySelector('#btn-confirm-save-custom-cat')?.addEventListener('click', () => {
+        const newName = modalOverlay.querySelector('#custom-cat-input-name')?.value.trim();
+        if (newName) {
+          const newCatObj = { id: 'cat_' + Date.now(), name: newName, icon: '📦' };
+          this.categories.push(newCatObj);
+          localStorage.setItem('souk_categories', JSON.stringify(this.categories));
+          modalOverlay.remove();
+          onSelect(newName, '📦');
+        }
+      });
+
+      modalOverlay.querySelectorAll('.category-pick-card').forEach(card => {
+        card.addEventListener('click', () => {
+          const catName = card.dataset.catName;
+          const catIcon = card.dataset.catIcon;
+          modalOverlay.remove();
+          onSelect(catName, catIcon);
+        });
+      });
+    };
+
+    bindEvents();
+  }
+
+  /* ==========================================================================
      Merchant Public Store Modal (Profile, Verified Badge, Socials, Inventory)
      ========================================================================== */
   openMerchantStoreModal(merchantId) {
@@ -1565,18 +1681,17 @@ class SoukApp {
             </div>
           </div>
 
-          <!-- Category with Autocomplete & Custom Adder -->
+          <!-- Category with In-App Search & Inline Creator Trigger -->
           <div class="form-group">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-              <label class="form-label" style="margin-bottom:0;">القسم / التصنيف *</label>
-              <button type="button" class="btn btn-secondary" id="btn-add-custom-cat" style="font-size: 0.75rem; padding: 4px 8px; font-weight: 800;">
-                ➕ إضافة تصنيف جديد
-              </button>
+            <label class="form-label">القسم / التصنيف *</label>
+            <div class="form-input" id="selected-category-trigger" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface-subtle); border: 1.5px solid var(--border-strong);">
+              <span style="font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                <span id="selected-cat-icon">📦</span>
+                <span id="selected-cat-name">إلكترونيات</span>
+              </span>
+              <span class="btn btn-secondary" style="font-size: 0.75rem; padding: 3px 8px; pointer-events: none;">🔍 بحث / اختيار قسم</span>
             </div>
-            <input list="categories-datalist" class="form-input" id="new-prod-cat" placeholder="اكتب للبحث أو اختر من القائمة..." value="إلكترونيات">
-            <datalist id="categories-datalist">
-              ${this.categories.filter(c => c.id !== 'all').map(c => `<option value="${c.name}"></option>`).join('')}
-            </datalist>
+            <input type="hidden" id="new-prod-cat" value="إلكترونيات">
           </div>
 
           <!-- Merchant Manual Notes -->
@@ -1607,21 +1722,17 @@ class SoukApp {
 
     document.body.appendChild(modalOverlay);
 
-    // Custom Category Adder
-    modalOverlay.querySelector('#btn-add-custom-cat')?.addEventListener('click', () => {
-      const newCatName = prompt('أدخل اسم التصنيف الجديد:');
-      if (newCatName && newCatName.trim()) {
-        const cleanName = newCatName.trim();
-        const catId = 'cat_' + Date.now();
-        this.categories.push({ id: catId, name: cleanName, icon: '📦' });
-        localStorage.setItem('souk_categories', JSON.stringify(this.categories));
-        document.getElementById('new-prod-cat').value = cleanName;
-        const datalist = modalOverlay.querySelector('#categories-datalist');
-        if (datalist) {
-          datalist.innerHTML = this.categories.filter(c => c.id !== 'all').map(c => `<option value="${c.name}"></option>`).join('');
-        }
-        this.showToast(`تمت إضافة التصنيف الجديد (${cleanName}) بنجاح!`, 'success');
-      }
+    // In-App Category Picker Trigger
+    modalOverlay.querySelector('#selected-category-trigger')?.addEventListener('click', () => {
+      const currentVal = document.getElementById('new-prod-cat')?.value || 'إلكترونيات';
+      this.openCategoryPickerModal(currentVal, (chosenName, chosenIcon) => {
+        document.getElementById('new-prod-cat').value = chosenName;
+        const iconEl = modalOverlay.querySelector('#selected-cat-icon');
+        const nameEl = modalOverlay.querySelector('#selected-cat-name');
+        if (iconEl) iconEl.textContent = chosenIcon || '📦';
+        if (nameEl) nameEl.textContent = chosenName;
+        this.showToast(`تم اختيار قسم (${chosenName}) بنجاح!`, 'success');
+      });
     });
 
     // Setup 3 upload slots connected to Merchant Cloud Gallery
@@ -1645,10 +1756,20 @@ class SoukApp {
       });
     });
 
-    // Deep Generative AI Copywriter Button
-    modalOverlay.querySelector('#btn-generate-ai-desc')?.addEventListener('click', async () => {
+    // Deep Generative AI Copywriter Button (Locked to 1 click per product)
+    const aiBtn = modalOverlay.querySelector('#btn-generate-ai-desc');
+    const titleInput = document.getElementById('new-prod-title');
+
+    // Re-enable if title changes
+    titleInput?.addEventListener('input', () => {
+      if (aiBtn && aiBtn.disabled) {
+        aiBtn.disabled = false;
+        aiBtn.innerHTML = `✨ توليد تفاصيل بالذكاء الاصطناعي 🤖`;
+      }
+    });
+
+    aiBtn?.addEventListener('click', async () => {
       const title = document.getElementById('new-prod-title').value.trim();
-      const price = Number(document.getElementById('new-prod-price').value) || 0;
       const cat = document.getElementById('new-prod-cat').value;
       const cond = document.getElementById('new-prod-condition').value;
 
@@ -1658,20 +1779,19 @@ class SoukApp {
         return;
       }
 
-      const btn = modalOverlay.querySelector('#btn-generate-ai-desc');
-      btn.innerHTML = `⏳ جاري سحب المواصفات من الإنترنت...`;
-      btn.disabled = true;
+      aiBtn.innerHTML = `⏳ جاري استخراج المواصفات...`;
+      aiBtn.disabled = true;
 
       try {
-        const aiDesc = await AIService.generateProductDescription(title, cat, cond, price);
+        const aiDesc = await AIService.generateProductDescription(title, cat, cond);
         document.getElementById('new-prod-ai-details').value = aiDesc;
 
-        btn.innerHTML = `✨ تم استخراج التفاصيل بنجاح 🤖`;
-        btn.disabled = false;
+        aiBtn.innerHTML = `✅ تم توليد المواصفات بنجاح`;
+        aiBtn.disabled = true;
         this.showToast(`تم استخراج مواصفات (${title}) بنجاح!`, 'success');
       } catch (err) {
-        btn.innerHTML = `✨ توليد تفاصيل بالذكاء الاصطناعي 🤖`;
-        btn.disabled = false;
+        aiBtn.innerHTML = `✨ توليد تفاصيل بالذكاء الاصطناعي 🤖`;
+        aiBtn.disabled = false;
         this.showToast(err.message, 'error');
       }
     });
