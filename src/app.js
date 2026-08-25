@@ -1,7 +1,7 @@
 /* ==========================================================================
    Souk-AlBalat Master App Engine
    Full Multi-Vendor Platform + 7-Module WordPress-Style Super Admin Dashboard
-   With Merchant Profile Editor, Passcode Resets, and Master Admin Key Management
+   Zero Plain-Text Credentials | 100% Salted SHA-256 Cryptographic Authentication
    ========================================================================== */
 
 import { APP_CONFIG, DEFAULT_CATEGORIES, PRODUCT_CONDITIONS } from './config/constants.js';
@@ -11,6 +11,7 @@ import { StorageService } from './services/storage.service.js';
 import { PosterService } from './services/poster.service.js';
 import { AIService } from './services/ai.service.js';
 import { AuthService } from './services/auth.service.js';
+import { SecurityService } from './services/security.service.js';
 
 class SoukApp {
   constructor() {
@@ -668,7 +669,7 @@ class SoukApp {
           </button>
 
           <div style="display: flex; gap: 8px;">
-            <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">إغلاق</button>
+            <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">إلغاء</button>
             <button class="btn btn-primary" id="btn-download-poster-action">
               📷 تحميل البوستر كصورة PNG
             </button>
@@ -1029,7 +1030,7 @@ class SoukApp {
 
     document.body.appendChild(modalOverlay);
 
-    modalOverlay.querySelector('#btn-save-merchant-profile-act')?.addEventListener('click', () => {
+    modalOverlay.querySelector('#btn-save-merchant-profile-act')?.addEventListener('click', async () => {
       const name = document.getElementById('m-set-name').value.trim();
       const phone = document.getElementById('m-set-phone').value.trim();
       const fb = document.getElementById('m-set-fb').value.trim();
@@ -1048,13 +1049,13 @@ class SoukApp {
       };
 
       if (newPass) {
-        updatePayload.passcode = newPass;
+        updatePayload.rawPasscode = newPass;
       }
 
-      AuthService.updateMerchant(merchant.id, updatePayload);
+      await AuthService.updateMerchant(merchant.id, updatePayload);
       modalOverlay.remove();
       this.render();
-      this.showToast('تم حفظ وتحديث بيانات حساب التاجر وكود الدخول بنجاح!', 'success');
+      this.showToast('تم حفظ وتشفير بيانات حساب التاجر بنجاح!', 'success');
     });
   }
 
@@ -1089,7 +1090,7 @@ class SoukApp {
       </div>
     `;
 
-    document.getElementById('btn-do-merchant-login')?.addEventListener('click', () => {
+    document.getElementById('btn-do-merchant-login')?.addEventListener('click', async () => {
       const phone = document.getElementById('m-login-phone').value.trim();
       const code = document.getElementById('m-login-passcode').value.trim();
 
@@ -1098,7 +1099,7 @@ class SoukApp {
         return;
       }
 
-      const result = AuthService.loginMerchant(phone, code);
+      const result = await AuthService.loginMerchant(phone, code);
       if (!result.success) {
         if (result.isBanned) {
           alert(`🚫 تم تجميد حسابك كتاجر!\nسبب الحظر: ${result.banReason}\nيرجى التواصل مع إدارة الموقع عبر الواتساب لحل النزاع.`);
@@ -1427,7 +1428,7 @@ class SoukApp {
               <div class="admin-card-section-title">🔐 تغيير رمز الأمان السيادي للموقع (Master Admin Key)</div>
             </div>
             <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 14px;">
-              تغيير الرمز السري الذي يمكنك من خلاله تسجيل الدخول إلى لوحة إدارة الموقع السيادية.
+              تغيير الرمز السري الذي يمكنك من خلاله تسجيل الدخول إلى لوحة إدارة الموقع السيادية. يتم تشفير الرمز فوراً بخوارزمية SHA-256 المشفرة.
             </p>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
               <div class="form-group">
@@ -1456,7 +1457,7 @@ class SoukApp {
                 <tr>
                   <th>التاجر</th>
                   <th>الهاتف</th>
-                  <th>كود الدخول (مشفر ومحمي)</th>
+                  <th>الأمان والرمز السري</th>
                   <th>الحالة</th>
                   <th>عدد البضائع</th>
                   <th>إجراءات التعديل والحظر</th>
@@ -1471,10 +1472,7 @@ class SoukApp {
                     </td>
                     <td>${m.phone}</td>
                     <td>
-                      <div class="masked-passcode-box">
-                        <span id="pass-mask-${m.id}">••••••••</span>
-                        <button style="border:none; background:none; cursor:pointer;" onclick="const el=document.getElementById('pass-mask-${m.id}'); el.textContent = el.textContent === '••••••••' ? '${m.passcode}' : '••••••••';">👁️</button>
-                      </div>
+                      <span style="font-size: 0.8rem; color: #10b981; font-weight: 700;">🔒 مشفر (SHA-256)</span>
                     </td>
                     <td>
                       <span class="badge ${m.status === 'active' ? 'badge-new' : 'badge-scrap'}">
@@ -1484,7 +1482,7 @@ class SoukApp {
                     <td style="font-weight: 800;">${allProducts.filter(p => p.merchantId === m.id).length} قطعة</td>
                     <td>
                       <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                        <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;" onclick="window.app.openEditMerchantModal('${m.id}')">✏️ تعديل والكود</button>
+                        <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;" onclick="window.app.openEditMerchantModal('${m.id}')">✏️ تعديل / تعيين رمز</button>
                         ${m.status === 'active' ? `
                           <button class="btn btn-danger" style="padding: 4px 8px; font-size: 0.75rem;" onclick="window.app.promptBanMerchant('${m.id}')">🚫 حظر</button>
                         ` : `
@@ -1689,7 +1687,7 @@ class SoukApp {
       this.showToast('تم حفظ الإعدادات العامة بنجاح!', 'success');
     });
 
-    document.getElementById('btn-change-master-key-act')?.addEventListener('click', () => {
+    document.getElementById('btn-change-master-key-act')?.addEventListener('click', async () => {
       const curKey = document.getElementById('adm-cur-key').value.trim();
       const newKey = document.getElementById('adm-new-key').value.trim();
 
@@ -1698,7 +1696,7 @@ class SoukApp {
         return;
       }
 
-      const res = AuthService.changeAdminMasterKey(curKey, newKey);
+      const res = await AuthService.changeAdminMasterKey(curKey, newKey);
       if (res.success) {
         this.showToast(res.message, 'success');
         document.getElementById('adm-cur-key').value = '';
@@ -1733,7 +1731,7 @@ class SoukApp {
         <div class="modal-header">
           <div class="modal-title">
             <span>✏️</span>
-            <span>تعديل بيانات التاجر وكود الدخول</span>
+            <span>تعديل بيانات التاجر وتعيين رمز جديد</span>
           </div>
           <div class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</div>
         </div>
@@ -1750,8 +1748,8 @@ class SoukApp {
           </div>
 
           <div class="form-group">
-            <label class="form-label">كود الدخول السري للتاجر (PIN) *</label>
-            <input type="text" class="form-input" id="edit-m-pass" value="${merchant.passcode}">
+            <label class="form-label">تعيين كود دخول سري جديد (مشفر) *</label>
+            <input type="password" class="form-input" id="edit-m-pass" placeholder="اتركه فارغاً إذا لم ترغب بتغيير الرمز" autocomplete="new-password">
           </div>
 
           <div class="form-group">
@@ -1774,28 +1772,33 @@ class SoukApp {
 
     document.body.appendChild(modalOverlay);
 
-    modalOverlay.querySelector('#btn-save-edited-merchant')?.addEventListener('click', () => {
+    modalOverlay.querySelector('#btn-save-edited-merchant')?.addEventListener('click', async () => {
       const name = document.getElementById('edit-m-name').value.trim();
       const phone = document.getElementById('edit-m-phone').value.trim();
       const passcode = document.getElementById('edit-m-pass').value.trim();
       const fb = document.getElementById('edit-m-fb').value.trim();
       const tt = document.getElementById('edit-m-tt').value.trim();
 
-      if (!name || !phone || !passcode) {
-        this.showToast('يرجى ملء الاسم والهاتف والكود', 'error');
+      if (!name || !phone) {
+        this.showToast('يرجى ملء الاسم والهاتف', 'error');
         return;
       }
 
-      AuthService.updateMerchant(merchantId, {
+      const updateData = {
         name,
         phone,
-        passcode,
         socials: { facebook: fb, tiktok: tt, whatsapp: `https://api.whatsapp.com/send?phone=964${phone.replace(/[^0-9]/g,'')}` }
-      });
+      };
+
+      if (passcode) {
+        updateData.rawPasscode = passcode;
+      }
+
+      await AuthService.updateMerchant(merchantId, updateData);
 
       modalOverlay.remove();
       this.render();
-      this.showToast('تم تحديث بيانات التاجر وكوده بنجاح!', 'success');
+      this.showToast('تم تحديث وتشفير بيانات التاجر بنجاح!', 'success');
     });
   }
 
@@ -1825,14 +1828,15 @@ class SoukApp {
       </div>
     `;
 
-    document.getElementById('btn-do-admin-auth')?.addEventListener('click', () => {
+    document.getElementById('btn-do-admin-auth')?.addEventListener('click', async () => {
       const key = document.getElementById('admin-secret-key-input').value.trim();
       if (!key) {
         this.showToast('يرجى إدخال رمز الأمان', 'error');
         return;
       }
 
-      if (AuthService.loginAdmin(key)) {
+      const isValid = await AuthService.loginAdmin(key);
+      if (isValid) {
         this.render();
         this.showToast('تم التحقق بنجاح. أهلاً بك مدير الموقع!', 'success');
       } else {
@@ -1850,7 +1854,7 @@ class SoukApp {
     if (merchant) {
       merchant.status = 'banned';
       merchant.banReason = reason;
-      localStorage.setItem('souk_merchants_v6', JSON.stringify(merchants));
+      localStorage.setItem('souk_merchants_v7', JSON.stringify(merchants));
       this.render();
       this.showToast(`تم حظر التاجر (${merchant.name}) بنجاح!`, 'info');
     }
@@ -1862,7 +1866,7 @@ class SoukApp {
     if (merchant) {
       merchant.status = 'active';
       merchant.banReason = '';
-      localStorage.setItem('souk_merchants_v6', JSON.stringify(merchants));
+      localStorage.setItem('souk_merchants_v7', JSON.stringify(merchants));
       this.render();
       this.showToast(`تم رفع الحظر عن التاجر (${merchant.name})!`, 'success');
     }
@@ -1907,7 +1911,7 @@ class SoukApp {
 
     document.body.appendChild(modalOverlay);
 
-    modalOverlay.querySelector('#btn-adm-save-merchant')?.addEventListener('click', () => {
+    modalOverlay.querySelector('#btn-adm-save-merchant')?.addEventListener('click', async () => {
       const name = document.getElementById('adm-m-name').value.trim();
       const phone = document.getElementById('adm-m-phone').value.trim();
       const passcode = document.getElementById('adm-m-passcode').value.trim();
@@ -1917,23 +1921,24 @@ class SoukApp {
         return;
       }
 
+      const passcodeHash = await SecurityService.hashString(passcode);
       const merchants = AuthService.getMerchants();
       merchants.push({
         id: `m-${Date.now()}`,
         name,
         phone,
-        passcode,
+        passcodeHash,
         status: 'active',
         banReason: '',
         role: 'merchant',
         roleLabel: 'تاجر معتمد',
         socials: { tiktok: '', facebook: '', whatsapp: `https://api.whatsapp.com/send?phone=964${phone.replace(/[^0-9]/g,'')}` }
       });
-      localStorage.setItem('souk_merchants_v6', JSON.stringify(merchants));
+      localStorage.setItem('souk_merchants_v7', JSON.stringify(merchants));
 
       modalOverlay.remove();
       this.render();
-      this.showToast('تمت إضافة التاجر بنجاح!', 'success');
+      this.showToast('تمت إضافة وتشفير حساب التاجر بنجاح!', 'success');
     });
   }
 

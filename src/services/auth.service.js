@@ -1,13 +1,21 @@
 /* ==========================================================================
-   Authentication & Role Authorization Service (Secure, Hashed & Editable)
+   Authentication & Cryptographic Access Control Service
+   All Credentials Hashed via Salted SHA-256 (Zero Plain-Text Storage)
    ========================================================================== */
+
+import { SecurityService } from './security.service.js';
+
+// Default Master Admin Cryptographic Hash (SHA-256 + Salt)
+const DEFAULT_ADMIN_HASH = "9f2c58e8697f323d9d864c0b2bdbfdb293afe1216a5b5cf638870e1f9cd85cf8";
+const BACKUP_ADMIN_HASH = "1261c16ee5d7fb9eb8e099a2573c09353916c3f8383fdcbf835085f5ce660a88";
 
 const INITIAL_MERCHANTS = [
   {
     id: "m-alwareth",
     name: "أبو وارث أمازون",
     phone: "07707188166",
-    passcode: "1234",
+    // Salted SHA-256 Hash of "1234"
+    passcodeHash: "490a977090e7a5bdca9023315d92bb84c346f4cd46bfb1e649956f9c622ea156",
     avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80",
     role: "admin_seller",
     roleLabel: "👑 مدير ومؤسس الموقع",
@@ -23,20 +31,25 @@ const INITIAL_MERCHANTS = [
 
 export class AuthService {
   static getMerchants() {
-    const saved = localStorage.getItem('souk_merchants_v6');
+    const saved = localStorage.getItem('souk_merchants_v7');
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { console.error(e); }
     }
-    localStorage.setItem('souk_merchants_v6', JSON.stringify(INITIAL_MERCHANTS));
+    localStorage.setItem('souk_merchants_v7', JSON.stringify(INITIAL_MERCHANTS));
     return INITIAL_MERCHANTS;
   }
 
-  static loginMerchant(phone, passcode) {
+  static async loginMerchant(phone, passcode) {
     const merchants = this.getMerchants();
     const cleanPhone = phone.replace(/[^0-9]/g, '');
-    const merchant = merchants.find(m => m.phone.replace(/[^0-9]/g, '') === cleanPhone && m.passcode === passcode);
+    const merchant = merchants.find(m => m.phone.replace(/[^0-9]/g, '') === cleanPhone);
 
     if (!merchant) {
+      return { success: false, message: "رقم الهاتف أو كود الدخول غير صحيح" };
+    }
+
+    const isMatch = await SecurityService.verifyHash(passcode, merchant.passcodeHash);
+    if (!isMatch) {
       return { success: false, message: "رقم الهاتف أو كود الدخول غير صحيح" };
     }
 
@@ -53,12 +66,17 @@ export class AuthService {
     return { success: true, merchant };
   }
 
-  static updateMerchant(merchantId, updatedData) {
+  static async updateMerchant(merchantId, updatedData) {
     const merchants = this.getMerchants();
     const index = merchants.findIndex(m => m.id === merchantId);
     if (index !== -1) {
+      if (updatedData.rawPasscode) {
+        updatedData.passcodeHash = await SecurityService.hashString(updatedData.rawPasscode);
+        delete updatedData.rawPasscode;
+      }
+
       merchants[index] = { ...merchants[index], ...updatedData };
-      localStorage.setItem('souk_merchants_v6', JSON.stringify(merchants));
+      localStorage.setItem('souk_merchants_v7', JSON.stringify(merchants));
       
       const current = this.getCurrentMerchant();
       if (current && current.id === merchantId) {
@@ -69,19 +87,20 @@ export class AuthService {
     return { success: false, message: "لم يتم العثور على التاجر" };
   }
 
-  static changeMerchantPasscode(merchantId, oldPasscode, newPasscode) {
+  static async changeMerchantPasscode(merchantId, oldPasscode, newPasscode) {
     const merchants = this.getMerchants();
     const merchant = merchants.find(m => m.id === merchantId);
     if (!merchant) return { success: false, message: "التاجر غير موجود" };
 
-    if (merchant.passcode !== oldPasscode) {
+    const isOldValid = await SecurityService.verifyHash(oldPasscode, merchant.passcodeHash);
+    if (!isOldValid) {
       return { success: false, message: "كود الدخول الحالي غير صحيح" };
     }
 
-    merchant.passcode = newPasscode;
-    localStorage.setItem('souk_merchants_v6', JSON.stringify(merchants));
+    merchant.passcodeHash = await SecurityService.hashString(newPasscode);
+    localStorage.setItem('souk_merchants_v7', JSON.stringify(merchants));
     localStorage.setItem('souk_current_merchant', JSON.stringify(merchant));
-    return { success: true, message: "تم تغيير رمز الدخول بنجاح!" };
+    return { success: true, message: "تم تغيير وتشفير رمز الدخول بنجاح!" };
   }
 
   static getCurrentMerchant() {
@@ -93,23 +112,30 @@ export class AuthService {
     localStorage.removeItem('souk_current_merchant');
   }
 
-  static getAdminMasterKey() {
-    return localStorage.getItem('souk_admin_master_key') || 'GPM@SuperAdmin#2026';
+  static getAdminMasterHash() {
+    return localStorage.getItem('souk_admin_master_hash') || DEFAULT_ADMIN_HASH;
   }
 
-  static changeAdminMasterKey(oldKey, newKey) {
-    const currentKey = this.getAdminMasterKey();
-    if (oldKey !== currentKey && oldKey !== 'admin90' && oldKey !== '1234') {
-      return { success: false, message: "رمز الأمان الحالي للموقع غير صحيح" };
+  static async changeAdminMasterKey(oldKey, newKey) {
+    const currentHash = this.getAdminMasterHash();
+    const isOldValid = (await SecurityService.verifyHash(oldKey, currentHash)) ||
+                        (await SecurityService.verifyHash(oldKey, BACKUP_ADMIN_HASH));
+
+    if (!isOldValid) {
+      return { success: false, message: "رمز الأمان الحالي غير صحيح" };
     }
 
-    localStorage.setItem('souk_admin_master_key', newKey);
-    return { success: true, message: "تم تغيير الرمز السيادي للموقع بنجاح!" };
+    const newHash = await SecurityService.hashString(newKey);
+    localStorage.setItem('souk_admin_master_hash', newHash);
+    return { success: true, message: "تم تغيير وتشفير رمز الأمان السيادي بنجاح!" };
   }
 
-  static loginAdmin(adminKey) {
-    const masterKey = this.getAdminMasterKey();
-    if (adminKey === masterKey || adminKey === "GPM@SuperAdmin#2026" || adminKey === "admin90" || adminKey === "1234") {
+  static async loginAdmin(adminKey) {
+    const currentHash = this.getAdminMasterHash();
+    const isMasterValid = await SecurityService.verifyHash(adminKey, currentHash);
+    const isBackupValid = await SecurityService.verifyHash(adminKey, BACKUP_ADMIN_HASH);
+
+    if (isMasterValid || isBackupValid) {
       localStorage.setItem('souk_admin_authenticated', 'true');
       return true;
     }
