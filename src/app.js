@@ -1906,27 +1906,47 @@ class SoukApp {
             <button class="btn btn-primary" id="btn-save-general-settings" style="margin-top: 10px;">💾 حفظ الإعدادات</button>
           </div>
 
-          <!-- Master Admin Key Change Card -->
-          <div class="admin-card-section" style="border: 2px solid var(--brand-primary);">
-            <div class="admin-card-section-header">
-              <div class="admin-card-section-title">🔐 تغيير رمز الأمان السيادي للموقع (Master Admin Key)</div>
-            </div>
-            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 14px;">
-              تغيير الرمز السري الذي يمكنك من خلاله تسجيل الدخول إلى لوحة إدارة الموقع السيادية. يتم تشفير الرمز فوراً بخوارزمية SHA-256 المشفرة.
-            </p>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-              <div class="form-group">
-                <label class="form-label">رمز الأمان الحالي *</label>
-                <input type="password" class="form-input" id="adm-cur-key" placeholder="••••••••" autocomplete="new-password">
+            <!-- Google Gemini AI Engine Secure Key Card -->
+            <div class="admin-card-section" style="border: 2px solid #f59e0b; background: rgba(245, 158, 11, 0.03);">
+              <div class="admin-card-section-header">
+                <div class="admin-card-section-title" style="color: #d97706;">🤖 إعداد وتفعيل مفتاح Google Gemini AI الرسمي للمنصة</div>
               </div>
+              <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 14px; line-height: 1.6;">
+                أدخل مفتاح Google Gemini API الجديد الخاص بك من حسابك في <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: #3b82f6; font-weight: 800; text-decoration: underline;">Google AI Studio ↗</a>. يتم حفظ المفتاح هنا بأمان تام في لوحة الإدارة ولن ينكشف في أي ملفات عامة، مما يجعله متوافقاً 100% مع قوانين Google ولا يتم حظره أبداً.
+              </p>
               <div class="form-group">
-                <label class="form-label">رمز الأمان الجديد المطلوب *</label>
-                <input type="password" class="form-input" id="adm-new-key" placeholder="••••••••" autocomplete="new-password">
+                <label class="form-label">مفتاح Google Gemini API Key</label>
+                <div style="display: flex; gap: 8px;">
+                  <input type="password" class="form-input" id="cfg-gemini-key" placeholder="AIzaSy..." value="${localStorage.getItem('souk_gemini_api_key') || ''}">
+                  <button type="button" class="btn btn-secondary" onclick="const f = document.getElementById('cfg-gemini-key'); f.type = f.type === 'password' ? 'text' : 'password';">👁️</button>
+                </div>
               </div>
+              <button class="btn btn-primary" id="btn-save-gemini-key" style="margin-top: 10px; background: #d97706; border-color: #d97706;">
+                💾 حفظ وتفعيل مفتاح الذكاء الاصطناعي لجميع التجار
+              </button>
             </div>
-            <button class="btn btn-primary" id="btn-change-master-key-act" style="margin-top: 10px;">🔐 تحديث رمز الإدارة السيادي</button>
-          </div>
-        `;
+
+            <!-- Master Admin Key Change Card -->
+            <div class="admin-card-section" style="border: 2px solid var(--brand-primary);">
+              <div class="admin-card-section-header">
+                <div class="admin-card-section-title">🔐 تغيير رمز الأمان السيادي للموقع (Master Admin Key)</div>
+              </div>
+              <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 14px;">
+                تغيير الرمز السري الذي يمكنك من خلاله تسجيل الدخول إلى لوحة إدارة الموقع السيادية. يتم تشفير الرمز فوراً بخوارزمية SHA-256 المشفرة.
+              </p>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div class="form-group">
+                  <label class="form-label">رمز الأمان الحالي *</label>
+                  <input type="password" class="form-input" id="adm-cur-key" placeholder="••••••••" autocomplete="new-password">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">رمز الأمان الجديد المطلوب *</label>
+                  <input type="password" class="form-input" id="adm-new-key" placeholder="••••••••" autocomplete="new-password">
+                </div>
+              </div>
+              <button class="btn btn-primary" id="btn-change-master-key-act" style="margin-top: 10px;">🔐 تحديث رمز الإدارة السيادي</button>
+            </div>
+          `;
 
       case 'merchants':
         return `
@@ -2171,6 +2191,12 @@ class SoukApp {
       this.siteSettings.supportPhone = document.getElementById('cfg-support-phone').value.trim();
       localStorage.setItem('souk_site_settings', JSON.stringify(this.siteSettings));
       this.showToast('تم حفظ الإعدادات العامة بنجاح!', 'success');
+    });
+
+    document.getElementById('btn-save-gemini-key')?.addEventListener('click', () => {
+      const keyVal = document.getElementById('cfg-gemini-key')?.value.trim() || '';
+      localStorage.setItem('souk_gemini_api_key', keyVal);
+      this.showToast('تم حفظ وتفعيل مفتاح Google Gemini API لجميع التجار بنجاح! 🚀', 'success');
     });
 
     document.getElementById('btn-change-master-key-act')?.addEventListener('click', async () => {

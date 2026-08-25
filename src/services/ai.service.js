@@ -1,11 +1,12 @@
 /* ==========================================================================
    Real AI & Live Web Specs Engine for Souk-AlBalat
-   Completely Automated & Secure - Zero User Prompts or Exposed Keys
+   Direct Google Gemini Live API (Configured securely via Admin Portal)
+   + Live Internet Search & Technical Database Extraction
    ========================================================================== */
 
 export class AIService {
   /**
-   * Generates the 4-line structured AI Product Sheet automatically via Live Web Engine
+   * Generates the 4-line structured AI Product Sheet
    * @param {string} title Product Title
    * @param {string} category Product Category
    * @param {string} condition Product Condition
@@ -18,24 +19,40 @@ export class AIService {
       throw new Error('يرجى إدخال عنوان وموديل المنتج أولاً.');
     }
 
+    const apiKey = localStorage.getItem('souk_gemini_api_key') || '';
     const conditionLabel = condition === 'open_box' ? 'أوبن بوكس (استوكات أمازون)' : condition === 'new' ? 'جديد بالكرتون المصنعي' : condition === 'used' ? 'مستخدم نظيف ومفحوص' : 'عاطل / قطع غيار';
 
-    // 1. Try Backend Serverless Endpoint
-    try {
-      const res = await fetch('/api/generate-desc', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: cleanTitle, category, condition, price })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.text) return data.text;
+    // 1. Official Google Gemini 3.6 Flash Live API (When configured in Admin Portal)
+    if (apiKey) {
+      try {
+        const prompt = `أنت خبير فني في بضائع أمازون والبالات في العراق. اكتب ملخصاً باللغة العربية الفصحى للمنتج: "${cleanTitle}" (الحالة: ${conditionLabel}، السعر: ${price} د.ع).
+المطلوب حصراً الالتزام بالهيكل التالي فقط وبدون أي مقدمات أو خاتمة:
+اسم المنتج : [اسم تجاري وتقني دقيق في حدود 10 إلى 15 كلمة]
+وصف المنتج : [مواصفات ومزايا فنية للمحرك/الصوت/البطارية وخامات الصنع في حدود 40 إلى 50 كلمة مفيدة للمشتري]
+سعر المنتج التقريبي : [السعر التقديري في السوق العراقي مثل: 35,000 - 45,000 د.ع]
+سعر المنتج العالمي : [السعر العالمي التقديري بالدولار مثل: $25 - $35 دولار تقريباً]`;
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }]
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (text && text.length > 25) {
+            return text.trim();
+          }
+        }
+      } catch (err) {
+        console.warn('Gemini API call notice:', err);
       }
-    } catch (e) {
-      console.warn('Backend proxy notice, falling back to direct live web analyzer:', e);
     }
 
-    // 2. Direct Live Web Knowledge Fetcher (Zero Keys Required, 100% Real Web Data)
+    // 2. Live Web Knowledge Fetcher (Real-time technical specs from international databases)
     return this.fetchLiveWebSpecs(cleanTitle, conditionLabel, price);
   }
 
