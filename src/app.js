@@ -67,12 +67,19 @@ class SoukApp {
 
     if (path.startsWith('/m-manage-order') || managePid) {
       this.selectedProductId = null;
+      this.selectedSellerId = null;
       this.renderMerchantOrderActionModal(managePid);
+    } else if (path.startsWith('/seller/')) {
+      this.selectedProductId = null;
+      this.selectedSellerId = path.replace('/seller/', '');
+      this.render();
     } else if (path.startsWith('/p/')) {
       this.selectedProductId = path.replace('/p/', '');
+      this.selectedSellerId = null;
       this.render();
     } else {
       this.selectedProductId = null;
+      this.selectedSellerId = null;
       this.render();
     }
   }
@@ -94,6 +101,8 @@ class SoukApp {
       this.renderMerchantPortal();
     } else if (this.currentRoute.startsWith(APP_CONFIG.ROUTES.SUPER_ADMIN)) {
       this.renderAdminPortal();
+    } else if (this.selectedSellerId) {
+      this.renderSellerStorePage(this.selectedSellerId);
     } else if (this.selectedProductId) {
       this.renderProductPage(this.selectedProductId);
     } else {
@@ -129,39 +138,44 @@ class SoukApp {
       <header class="site-header">
         <div class="container">
           <div class="header-main">
-            <!-- Brand -->
-            <div class="header-brand" style="cursor:pointer;" id="nav-brand-logo">
-              <div class="brand-logo-badge">
-                <span>⚡</span>
-                <span>سوق البالات</span>
+            <!-- Top Row: Hamburger + Brand Logo + Actions -->
+            <div class="header-top-row">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <button class="btn-hamburger-menu" id="btn-toggle-mobile-drawer" title="القائمة والأقسام">
+                  <span>☰</span>
+                  <span>الأقسام</span>
+                </button>
+                <div class="header-brand" style="cursor:pointer;" id="nav-brand-logo">
+                  <div class="brand-logo-badge">
+                    <span>⚡</span>
+                    <span>سوق البالات</span>
+                  </div>
+                  <span class="brand-tagline">AMAZON & DHL OUTLET IQ</span>
+                </div>
               </div>
-              <span class="brand-tagline">AMAZON & DHL OUTLET IQ</span>
+
+              <!-- Header Actions -->
+              <div class="header-actions">
+                <button class="btn-icon" id="btn-theme-toggle" title="تبديل المظهر">
+                  ${this.currentTheme === 'dark' ? '☀️' : '🌙'}
+                </button>
+
+                <button class="btn btn-primary cart-btn-indicator" id="btn-open-cart">
+                  <span>🛒 السلة</span>
+                  ${this.cart.length > 0 ? `<span class="cart-badge-count">${this.cart.length}</span>` : ''}
+                </button>
+              </div>
             </div>
 
-            <!-- Search Bar -->
+            <!-- Bottom Row / Center: Search Bar -->
             <div class="header-search-box">
-              <select class="search-category-select" id="search-cat-dropdown">
-                ${activeCategories.map(c => `<option value="${c.id}" ${this.activeCategory === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}
-              </select>
-              <input type="text" class="search-input" id="search-keyword-input" placeholder="ابحث عن موديل، ماركة، أو كود..." value="${this.searchQuery}">
-              <button class="search-submit-btn" id="btn-search-trigger">🔍 بحث</button>
-            </div>
-
-            <!-- Actions -->
-            <div class="header-actions">
-              <button class="btn-icon" id="btn-theme-toggle" title="تبديل المظهر">
-                ${this.currentTheme === 'dark' ? '☀️' : '🌙'}
-              </button>
-
-              <button class="btn btn-primary cart-btn-indicator" id="btn-open-cart">
-                <span>🛒 السلة</span>
-                ${this.cart.length > 0 ? `<span class="cart-badge-count">${this.cart.length}</span>` : ''}
-              </button>
+              <input type="text" class="search-input" id="search-keyword-input" placeholder="🔍 ابحث عن موديل، ماركة، أو كود..." value="${this.searchQuery}">
+              <button class="search-submit-btn" id="btn-search-trigger">بحث</button>
             </div>
           </div>
         </div>
 
-        <!-- Categories Navigation -->
+        <!-- Categories Horizontal Navigation -->
         <nav class="categories-navbar">
           <div class="container">
             <div class="categories-list">
@@ -174,6 +188,37 @@ class SoukApp {
           </div>
         </nav>
       </header>
+
+      <!-- Mobile Drawer Sidebar & Backdrop -->
+      <div class="mobile-drawer-backdrop" id="mobile-drawer-backdrop"></div>
+      <div class="mobile-drawer-sidebar" id="mobile-drawer-sidebar">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border-subtle);">
+          <div style="font-weight: 900; font-size: 1.05rem; display: flex; align-items: center; gap: 6px;">
+            <span>📁</span>
+            <span>أقسام وتصنيفات المتجر</span>
+          </div>
+          <button class="btn-icon" id="btn-close-mobile-drawer" style="font-size: 1.1rem; width: 32px; height: 32px; border-radius: 50%;">✕</button>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <h4 style="font-size: 0.85rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 8px;">التصنيفات:</h4>
+          ${activeCategories.map(c => `
+            <div class="filter-list-item ${this.activeCategory === c.id ? 'active' : ''}" data-cat="${c.id}" style="padding: 10px 8px; margin-bottom: 4px;">
+              <span>${c.name}</span>
+              <span class="filter-count-badge">${products.filter(p => c.id === 'all' || p.category === c.id).length}</span>
+            </div>
+          `).join('')}
+        </div>
+
+        <div>
+          <h4 style="font-size: 0.85rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 8px;">حالة الفحص:</h4>
+          <div class="filter-list-item ${this.activeCondition === 'all' ? 'active' : ''}" data-cond="all" style="padding: 10px 8px; margin-bottom: 4px;">الكل</div>
+          <div class="filter-list-item ${this.activeCondition === 'new' ? 'active' : ''}" data-cond="new" style="padding: 10px 8px; margin-bottom: 4px;">✨ جديد غير مفتوح (NEW)</div>
+          <div class="filter-list-item ${this.activeCondition === 'open_box' ? 'active' : ''}" data-cond="open_box" style="padding: 10px 8px; margin-bottom: 4px;">📦 أوبن بوكس (Open Box)</div>
+          <div class="filter-list-item ${this.activeCondition === 'used' ? 'active' : ''}" data-cond="used" style="padding: 10px 8px; margin-bottom: 4px;">🔍 مستخدم فحص</div>
+          <div class="filter-list-item ${this.activeCondition === 'scrap' ? 'active' : ''}" data-cond="scrap" style="padding: 10px 8px; margin-bottom: 4px;">🔧 عاطل - أدوات (SCRAP)</div>
+        </div>
+      </div>
 
       <!-- Disclaimer Strip -->
       <div class="disclaimer-banner">
@@ -289,10 +334,9 @@ class SoukApp {
         </section>
       </main>
 
-      <!-- Floating Support Bubble -->
-      <div class="floating-support-bubble" id="btn-floating-support">
-        <div class="bubble-icon">${SOCIAL_ICONS.WHATSAPP}</div>
-        <div class="bubble-text" style="margin-right: 6px;">مراسلة الإدارة</div>
+      <!-- Floating Green WhatsApp Button (Icon Only) -->
+      <div class="floating-whatsapp-btn" id="btn-floating-support" title="خدمة العملاء والدعم الفني">
+        ${SOCIAL_ICONS.WHATSAPP}
       </div>
     `;
 
@@ -320,7 +364,7 @@ class SoukApp {
         </div>
 
         <div class="product-card-body">
-          <div class="product-merchant-link" style="cursor: pointer; display: flex; align-items: center; gap: 4px;" onclick="event.stopPropagation(); window.app.openMerchantStoreModal('${p.merchantId || 'm-alwareth'}')">
+          <div class="product-merchant-link" style="cursor: pointer; display: flex; align-items: center; gap: 4px;" onclick="event.stopPropagation(); window.app.navigate('/seller/${p.merchantId || 'm-alwareth'}')">
             <span>🏪 ${p.merchantName || 'أبو وارث أمازون'}</span>
             ${SOCIAL_ICONS.VERIFIED_BADGE}
             ${Number(p.quantity) > 1 ? `<span style="color: #10b981; font-weight: 800;">(متوفر: ${p.quantity} قطع)</span>` : ''}
@@ -338,12 +382,12 @@ class SoukApp {
 
           <div class="product-card-actions">
             ${isSold ? `
-              <button class="btn btn-secondary" style="grid-column: span 2;" disabled>❌ مباعة بالكامل</button>
+              <button class="btn btn-secondary" disabled>❌ مباعة بالكامل</button>
             ` : isReserved ? `
-              <button class="btn btn-secondary" style="grid-column: span 2;" disabled>⏳ قيد الحجز</button>
+              <button class="btn btn-secondary" disabled>⏳ قيد الحجز</button>
             ` : `
               <button class="btn btn-primary" onclick="window.app.addToCart('${p.id}')">🛒 أضف للسلة</button>
-              <button class="btn btn-secondary" onclick="window.app.navigate('/p/${p.id}')">تفاصيل</button>
+              <button class="btn btn-secondary" onclick="window.app.navigate('/p/${p.id}')">تفاصيل القطعة</button>
             `}
           </div>
         </div>
@@ -366,13 +410,39 @@ class SoukApp {
     });
 
     document.getElementById('btn-search-trigger')?.addEventListener('click', () => {
-      this.searchQuery = document.getElementById('search-keyword-input').value;
+      this.searchQuery = document.getElementById('search-keyword-input')?.value || '';
       this.render();
     });
+
+    document.getElementById('search-keyword-input')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        this.searchQuery = e.target.value;
+        this.render();
+      }
+    });
+
+    // Mobile Drawer Toggle
+    const drawer = document.getElementById('mobile-drawer-sidebar');
+    const backdrop = document.getElementById('mobile-drawer-backdrop');
+
+    const openDrawer = () => {
+      drawer?.classList.add('active');
+      backdrop?.classList.add('active');
+    };
+
+    const closeDrawer = () => {
+      drawer?.classList.remove('active');
+      backdrop?.classList.remove('active');
+    };
+
+    document.getElementById('btn-toggle-mobile-drawer')?.addEventListener('click', openDrawer);
+    document.getElementById('btn-close-mobile-drawer')?.addEventListener('click', closeDrawer);
+    backdrop?.addEventListener('click', closeDrawer);
 
     document.querySelectorAll('.category-pill, .filter-list-item[data-cat]').forEach(el => {
       el.addEventListener('click', () => {
         this.activeCategory = el.dataset.cat;
+        closeDrawer();
         this.render();
       });
     });
@@ -380,13 +450,171 @@ class SoukApp {
     document.querySelectorAll('.feature-card[data-cond], .filter-list-item[data-cond]').forEach(el => {
       el.addEventListener('click', () => {
         this.activeCondition = el.dataset.cond;
+        closeDrawer();
         this.render();
       });
     });
 
     document.getElementById('btn-floating-support')?.addEventListener('click', () => {
-      const cleanAdminPhone = (this.siteSettings.supportPhone || '07707188166').replace(/[^0-9]/g, '');
-      window.open(`https://api.whatsapp.com/send?phone=964${cleanAdminPhone.startsWith('0') ? cleanAdminPhone.slice(1) : cleanAdminPhone}&text=${encodeURIComponent('السلام عليكم إدارة سوق البالات، أحتاج مساعدة بخصوص المتجر.')}`, '_blank');
+      this.openSupportInquiryModal();
+    });
+  }
+
+  /* ==========================================================================
+     Dedicated Seller Store Page (/seller/:id)
+     ========================================================================== */
+  renderSellerStorePage(sellerId) {
+    const merchant = AuthService.getMerchantById(sellerId) || {
+      id: 'm-alwareth',
+      name: 'أبو وارث أمازون',
+      phone: '07707188166',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80',
+      socials: {
+        facebook: 'https://www.facebook.com/gpm90',
+        tiktok: 'https://www.tiktok.com/@alwareth_amazon',
+        whatsapp: 'https://api.whatsapp.com/send?phone=9647707188166'
+      }
+    };
+
+    const sellerProducts = ProductsService.getProducts().filter(p => p.merchantId === sellerId || p.merchantName?.includes('أبو وارث') || !p.merchantId);
+
+    this.appEl.innerHTML = `
+      <!-- Top Announcement Marquee -->
+      <div class="top-announcement-bar">
+        <div class="container">
+          <div class="marquee-content">
+            <span class="marquee-item">${this.siteSettings.marqueeText}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Header -->
+      <header class="site-header">
+        <div class="container">
+          <div class="header-main">
+            <div class="header-brand" style="cursor:pointer;" onclick="window.app.navigate('/')">
+              <div class="brand-logo-badge">
+                <span>⚡</span>
+                <span>سوق البالات</span>
+              </div>
+              <span class="brand-tagline">AMAZON & DHL OUTLET IQ</span>
+            </div>
+
+            <div class="header-actions">
+              <button class="btn btn-secondary" onclick="window.app.navigate('/')">⬅️ العودة للرئيسية</button>
+              <button class="btn btn-primary cart-btn-indicator" id="btn-open-cart">
+                <span>🛒 السلة</span>
+                ${this.cart.length > 0 ? `<span class="cart-badge-count">${this.cart.length}</span>` : ''}
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="container" style="padding: 24px 0 60px;">
+        <!-- Breadcrumb -->
+        <nav class="breadcrumb-nav" style="margin-bottom: 20px; display: flex; align-items: center; gap: 8px; font-size: 0.88rem;">
+          <span class="breadcrumb-item" onclick="window.app.navigate('/')" style="cursor:pointer; color: var(--text-secondary);">الرئيسية</span>
+          <span>/</span>
+          <span class="breadcrumb-item active" style="font-weight: 800; color: var(--brand-primary); display: inline-flex; align-items: center; gap: 4px;">
+            متجر ${merchant.name} ${SOCIAL_ICONS.VERIFIED_BADGE}
+          </span>
+        </nav>
+
+        <!-- Seller Store Banner Card -->
+        <div style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98)); border: 1.5px solid var(--border-strong); padding: 24px 20px; border-radius: var(--radius-lg); margin-bottom: 28px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; box-shadow: var(--card-shadow);">
+          <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="width: 68px; height: 68px; border-radius: 50%; background: #f59e0b; color: #000; font-size: 2.2rem; display: flex; align-items: center; justify-content: center; font-weight: 900; border: 3px solid #fff; box-shadow: 0 4px 15px rgba(245,158,11,0.4);">
+              👑
+            </div>
+            <div>
+              <div style="font-size: 1.35rem; font-weight: 900; color: #ffffff; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span>${merchant.name}</span>
+                ${SOCIAL_ICONS.VERIFIED_BADGE}
+                <span class="badge" style="background: #fef08a; color: #854d0e; font-size: 0.78rem; font-weight: 800;">👑 مدير ومؤسس الموقع</span>
+              </div>
+              <div style="color: #cbd5e1; font-size: 0.88rem; margin-top: 6px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                <span>📞 واتساب: <strong>${merchant.phone}</strong></span>
+                <span>|</span>
+                <span>📦 المعروض: <strong>${sellerProducts.length} قطعة</strong></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Social Links -->
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <a href="${merchant.socials?.facebook || 'https://www.facebook.com/gpm90'}" target="_blank" class="btn btn-secondary" style="padding: 8px 12px; font-size: 0.82rem; font-weight: 700; color: #1877f2;">
+              ${SOCIAL_ICONS.FACEBOOK} فيسبوك
+            </a>
+            <a href="${merchant.socials?.tiktok || 'https://www.tiktok.com/@alwareth_amazon'}" target="_blank" class="btn btn-secondary" style="padding: 8px 12px; font-size: 0.82rem; font-weight: 700;">
+              ${SOCIAL_ICONS.TIKTOK} تيك توك
+            </a>
+            <a href="https://api.whatsapp.com/send?phone=964${(merchant.phone || '07707188166').replace(/[^0-9]/g,'').slice(-10)}" target="_blank" class="btn btn-whatsapp" style="padding: 8px 14px; font-size: 0.82rem; font-weight: 800;">
+              ${SOCIAL_ICONS.WHATSAPP} محادثة
+            </a>
+          </div>
+        </div>
+
+        <div class="products-header-bar">
+          <span class="products-count-label">بضائع التاجر المعروضة (${sellerProducts.length} قطعة)</span>
+        </div>
+
+        ${sellerProducts.length === 0 ? `
+          <div style="background: var(--bg-surface); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); padding: 50px 20px; text-align: center;">
+            <h3>لا توجد بضائع معروضة حالياً لهذا التاجر</h3>
+          </div>
+        ` : `
+          <div class="products-grid">
+            ${sellerProducts.map(p => this.renderProductCard(p)).join('')}
+          </div>
+        `}
+      </main>
+
+      <!-- Floating WhatsApp Button -->
+      <div class="floating-whatsapp-btn" id="btn-floating-support" title="خدمة العملاء">${SOCIAL_ICONS.WHATSAPP}</div>
+    `;
+
+    document.getElementById('btn-open-cart')?.addEventListener('click', () => this.openCartModal());
+    document.getElementById('btn-floating-support')?.addEventListener('click', () => this.openSupportInquiryModal());
+  }
+
+  /* ==========================================================================
+     Inquiry Modal for Floating Support WhatsApp Button
+     ========================================================================== */
+  openSupportInquiryModal() {
+    const modalOverlay = document.createElement('div');
+    modalOverlay.className = 'modal-overlay active';
+    modalOverlay.innerHTML = `
+      <div class="modal-container" style="max-width: 440px; text-align: center;">
+        <div class="modal-header">
+          <div class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+            <span>💬</span>
+            <span>خدمة العملاء والدعم المباشر</span>
+          </div>
+          <div class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</div>
+        </div>
+        <div class="modal-body" style="padding: 24px 20px;">
+          <div style="font-size: 3.2rem; margin-bottom: 12px;">🏪👋</div>
+          <h3 style="font-size: 1.18rem; font-weight: 900; color: var(--text-primary); margin-bottom: 8px;">أهلاً بك في منصة سوق البالات</h3>
+          <p style="color: var(--text-secondary); font-size: 0.92rem; line-height: 1.75; margin-bottom: 20px;">
+            في حال الرغبة بالحصول على <strong>حساب تاجر</strong> لعرض ونشر بضائعك، أو كان لديك أي استفسار أو اقتراح، فريق إدارة الموقع متواجد لخدمتك ومساعدتك عبر الواتساب.
+          </p>
+          <button class="btn btn-whatsapp" style="width: 100%; padding: 14px; font-size: 1.05rem; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px;" id="btn-confirm-support-wa">
+            ${SOCIAL_ICONS.WHATSAPP}
+            <span>بدء المحادثة عبر واتساب الآن</span>
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modalOverlay);
+
+    modalOverlay.querySelector('#btn-confirm-support-wa')?.addEventListener('click', () => {
+      modalOverlay.remove();
+      const phone = (this.siteSettings.supportPhone || '07707188166').replace(/[^0-9]/g, '');
+      const waPhone = phone.startsWith('0') ? '964' + phone.slice(1) : (phone.startsWith('964') ? phone : '964' + phone);
+      const text = encodeURIComponent('السلام عليكم إدارة سوق البالات، أحتاج استفسار / طلب حساب تاجر عبر زر المساعدة في الموقع.');
+      window.open(`https://api.whatsapp.com/send?phone=${waPhone}&text=${text}`, '_blank');
     });
   }
 

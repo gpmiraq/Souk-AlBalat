@@ -198,46 +198,35 @@
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
 
-/* Floating Admin Support Bubble (Fixed Right) */
-.floating-support-bubble {
+/* Floating Green WhatsApp Button (Icon Only, Bottom Left) */
+.floating-whatsapp-btn {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
-  z-index: 900;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: var(--bg-surface-elevated);
-  border: 1px solid var(--border-subtle);
-  padding: 8px 14px;
-  border-radius: var(--radius-full);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.floating-support-bubble:hover {
-  transform: translateY(-3px) scale(1.03);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
-  border-color: var(--brand-primary);
-}
-
-.floating-support-bubble .bubble-icon {
-  width: 32px;
-  height: 32px;
-  background: var(--brand-primary);
-  color: #0f1111;
-  border-radius: var(--radius-full);
+  bottom: 22px;
+  left: 22px;
+  z-index: 950;
+  width: 52px;
+  height: 52px;
+  background: #25d366;
+  color: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 6px 20px rgba(37, 211, 102, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 2.5px solid #ffffff;
 }
 
-.floating-support-bubble .bubble-text {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--text-primary);
+.floating-whatsapp-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 10px 25px rgba(37, 211, 102, 0.6);
+}
+
+.floating-whatsapp-btn svg {
+  width: 28px;
+  height: 28px;
+  fill: #ffffff;
 }
 
 /* Toast Notifications */
