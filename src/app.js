@@ -1,7 +1,7 @@
 /* ==========================================================================
    Souk-AlBalat Master App Engine
    Full Multi-Vendor Platform + 7-Module WordPress-Style Super Admin Dashboard
-   Zero Plain-Text Credentials | 100% Salted SHA-256 Cryptographic Authentication
+   With 3-Image Cloud Upload, Stock Decrement, Secret Order Management & AI Writer
    ========================================================================== */
 
 import { APP_CONFIG, DEFAULT_CATEGORIES, PRODUCT_CONDITIONS } from './config/constants.js';
@@ -62,12 +62,19 @@ class SoukApp {
 
   handlePath(path) {
     this.currentRoute = path;
-    if (path.startsWith('/p/')) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const managePid = urlParams.get('pid');
+
+    if (path.startsWith('/m-manage-order') || managePid) {
+      this.selectedProductId = null;
+      this.renderMerchantOrderActionModal(managePid);
+    } else if (path.startsWith('/p/')) {
       this.selectedProductId = path.replace('/p/', '');
+      this.render();
     } else {
       this.selectedProductId = null;
+      this.render();
     }
-    this.render();
   }
 
   navigate(path) {
@@ -288,7 +295,7 @@ class SoukApp {
 
   renderProductCard(p) {
     const isSold = p.status === 'sold';
-    const isReserved = p.status === 'reserved';
+    const isReserved = p.status === 'reserved' || (Number(p.quantity) === 0);
 
     return `
       <div class="product-card" data-product-id="${p.id}">
@@ -308,7 +315,7 @@ class SoukApp {
 
         <div class="product-card-body">
           <div class="product-merchant-link">
-            🏪 ${p.merchantName}
+            🏪 ${p.merchantName} ${Number(p.quantity) > 1 ? `<span style="color: #10b981; font-weight: 800;">(متوفر: ${p.quantity} قطع)</span>` : ''}
           </div>
 
           <h3 class="product-card-title" style="cursor:pointer;" onclick="window.app.navigate('/p/${p.id}')">
@@ -376,7 +383,7 @@ class SoukApp {
   }
 
   /* ==========================================================================
-     2. Dedicated Full-Page Product View (/p/:id)
+     2. Dedicated Full-Page Product View (/p/:id) with Interactive 3-Image Gallery
      ========================================================================== */
   async renderProductPage(productId) {
     const product = ProductsService.getProductById(productId);
@@ -385,7 +392,8 @@ class SoukApp {
       return;
     }
 
-    const insights = await AIService.generateProductInsights(product.title, product.price);
+    const imagesList = product.images?.length > 0 ? product.images : [product.image];
+    const insights = product.aiEnabled ? await AIService.generateProductInsights(product.title, product.price) : null;
     const relatedFromSeller = ProductsService.getProducts().filter(p => p.merchantId === product.merchantId && p.id !== product.id).slice(0, 4);
     const relatedFromCategory = ProductsService.getProducts().filter(p => p.category === product.category && p.id !== product.id).slice(0, 4);
 
@@ -437,7 +445,7 @@ class SoukApp {
         <!-- 3-Column Layout Grid -->
         <div class="product-details-alrayan-grid">
           
-          <!-- 1. Right Column: Image Gallery -->
+          <!-- 1. Right Column: Image Gallery (Up to 3 Photos with Interactive Thumbnails) -->
           <div class="product-gallery-container">
             <div class="gallery-floating-actions">
               <button class="btn-icon" title="مشاركة" onclick="navigator.clipboard.writeText(window.location.href); window.app.showToast('تم نسخ رابط المنتج بنجاح!', 'success');">🔗</button>
@@ -445,8 +453,18 @@ class SoukApp {
             </div>
 
             <div class="gallery-main-img-box">
-              <img src="${product.image}" alt="${product.title}">
+              <img id="main-gallery-view-img" src="${imagesList[0]}" alt="${product.title}">
             </div>
+
+            ${imagesList.length > 1 ? `
+              <div style="display: flex; gap: 8px; margin-top: 10px; justify-content: center;">
+                ${imagesList.map((imgUrl, i) => `
+                  <div class="gallery-thumb-item ${i === 0 ? 'active' : ''}" style="width: 60px; height: 60px; border-radius: 8px; overflow: hidden; border: 2px solid ${i === 0 ? 'var(--brand-primary)' : 'var(--border-subtle)'}; cursor: pointer;" onclick="document.getElementById('main-gallery-view-img').src='${imgUrl}'; document.querySelectorAll('.gallery-thumb-item').forEach(el => el.style.borderColor='var(--border-subtle)'); this.style.borderColor='var(--brand-primary)';">
+                    <img src="${imgUrl}" style="width: 100%; height: 100%; object-fit: cover;">
+                  </div>
+                `).join('')}
+              </div>
+            ` : ''}
           </div>
 
           <!-- 2. Middle Column: Product Details & Socials -->
@@ -454,7 +472,7 @@ class SoukApp {
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; background: var(--bg-surface-subtle); padding: 8px 14px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
               <div style="display: flex; align-items: center; gap: 8px;">
                 <span style="font-weight: 900; color: var(--text-primary);">🏪 ${product.merchantName}</span>
-                <span class="badge" style="background: #fef08a; color: #854d0e; cursor: pointer;" onclick="window.app.showToast('مدير ومؤسس الموقع 👑', 'success');">👑 مدير الموقع</span>
+                <span class="badge" style="background: #fef08a; color: #854d0e;">👑 مدير الموقع</span>
               </div>
 
               <!-- Social Links -->
@@ -495,34 +513,36 @@ class SoukApp {
             <!-- Description Box -->
             <div style="background: var(--bg-surface-subtle); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
               <h4 style="font-weight: 900; margin-bottom: 6px; color: var(--text-primary);">تفاصيل ومواصفات القطعة:</h4>
-              <p style="color: var(--text-secondary); line-height: 1.7; font-size: 0.95rem;">${product.description}</p>
+              <p style="color: var(--text-secondary); line-height: 1.7; font-size: 0.95rem; white-space: pre-line;">${product.description}</p>
             </div>
 
-            <!-- AI Market Insights Card -->
-            <div class="ai-insights-box">
-              <div class="ai-header-tag">
-                <span>🤖 تقييم الذكاء الاصطناعي للمنتج:</span>
+            <!-- AI Market Insights Card (Shown if Enabled by Merchant) -->
+            ${insights ? `
+              <div class="ai-insights-box">
+                <div class="ai-header-tag">
+                  <span>🤖 تقييم الذكاء الاصطناعي للمنتج:</span>
+                </div>
+                <div class="ai-data-row">
+                  <strong>التوفر في العراق:</strong>
+                  <span>${insights.availabilityInIraq}</span>
+                </div>
+                <div class="ai-data-row">
+                  <strong>السعر التقديري في العراق:</strong>
+                  <span style="font-weight: 900; color: #dc2626;">${insights.estimatedPriceLocal}</span>
+                </div>
+                <div class="ai-data-row">
+                  <strong>السعر التقديري عالمياً:</strong>
+                  <span>${insights.estimatedPriceGlobal}</span>
+                </div>
+                <div class="ai-disclaimer">${insights.disclaimer}</div>
               </div>
-              <div class="ai-data-row">
-                <strong>التوفر في العراق:</strong>
-                <span>${insights.availabilityInIraq}</span>
-              </div>
-              <div class="ai-data-row">
-                <strong>السعر التقديري في العراق:</strong>
-                <span style="font-weight: 900; color: #dc2626;">${insights.estimatedPriceLocal}</span>
-              </div>
-              <div class="ai-data-row">
-                <strong>السعر التقديري عالمياً:</strong>
-                <span>${insights.estimatedPriceGlobal}</span>
-              </div>
-              <div class="ai-disclaimer">${insights.disclaimer}</div>
-            </div>
+            ` : ''}
           </div>
 
           <!-- 3. Left Column: Sticky Buy Box Card -->
           <div class="product-sticky-buybox">
             <div class="buybox-badge-header">
-              ⚡ متاح قطعة واحدة فقط - حجز فوري
+              ⚡ متاح بالمخزون: ${Number(product.quantity) || 1} قطع فقط
             </div>
 
             <div style="font-size: 1.6rem; font-weight: 900; color: #dc2626; font-family: var(--font-numbers);">
@@ -589,13 +609,169 @@ class SoukApp {
     const product = ProductsService.getProductById(productId);
     if (!product) return;
 
+    // Decrement stock in catalog
+    ProductsService.decrementStock(productId, 1);
+
     const cleanPhone = (product.merchantPhone || '07707188166').replace(/[^0-9]/g, '');
-    const msg = `السلام عليكم ورحمة الله،\nأود حجز هذا المنتج مباشرة:\n*${product.title}*\nالسعر: ${Number(product.price).toLocaleString()} د.ع\nرابط المنتج: ${window.location.origin}/p/${product.id}`;
+    const origin = window.location.origin;
+
+    let msg = `السلام عليكم ورحمة الله،\nأود حجز هذا المنتج مباشرة:\n*${product.title}*\nالسعر: ${Number(product.price).toLocaleString()} د.ع\nرابط المنتج: ${origin}/p/${product.id}\n\n`;
+    msg += `──────────────────────\n`;
+    msg += `👑 *خيارات التاجر (إدارة حالة المنتج):*\n`;
+    msg += `👉 ${origin}/m-manage-order?pid=${product.id}`;
+
     window.open(`https://api.whatsapp.com/send?phone=964${cleanPhone.startsWith('0') ? cleanPhone.slice(1) : cleanPhone}&text=${encodeURIComponent(msg)}`, '_blank');
+    this.render();
   }
 
   /* ==========================================================================
-     3. Poster Modal (Live Preview Morphing)
+     3. Secret Merchant Quick-Action Modal (/m-manage-order?pid=...)
+     ========================================================================== */
+  renderMerchantOrderActionModal(productId) {
+    const merchant = AuthService.getCurrentMerchant();
+    const product = ProductsService.getProductById(productId);
+
+    if (!merchant) {
+      // Prompt merchant login first
+      const modalOverlay = document.createElement('div');
+      modalOverlay.className = 'modal-overlay active';
+      modalOverlay.innerHTML = `
+        <div class="modal-container" style="max-width: 440px;">
+          <div class="modal-header">
+            <div class="modal-title">
+              <span>💼</span>
+              <span>تسجيل دخول التاجر لإدارة البضاعة</span>
+            </div>
+            <div class="modal-close" onclick="window.app.navigate('/')">✕</div>
+          </div>
+          <div class="modal-body">
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 14px;">
+              وصلتك رسالة حجز على الواتساب؟ يرجى تسجيل الدخول للتحكم بحالة البضاعة وتأكيد البيع أو إعادة تفعيلها.
+            </p>
+            <div class="form-group">
+              <label class="form-label">رقم الهاتف المعتمد</label>
+              <input type="tel" class="form-input" id="quick-m-phone" placeholder="07XXXXXXXXX" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label class="form-label">كود الدخول السري</label>
+              <input type="password" class="form-input" id="quick-m-passcode" placeholder="••••" autocomplete="new-password">
+            </div>
+            <button class="btn btn-primary" style="width: 100%;" id="btn-do-quick-login">
+              تسجيل الدخول والتحكم بالمنتج
+            </button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modalOverlay);
+
+      modalOverlay.querySelector('#btn-do-quick-login')?.addEventListener('click', async () => {
+        const phone = document.getElementById('quick-m-phone').value.trim();
+        const code = document.getElementById('quick-m-passcode').value.trim();
+        const res = await AuthService.loginMerchant(phone, code);
+        if (res.success) {
+          modalOverlay.remove();
+          this.renderMerchantOrderActionModal(productId);
+        } else {
+          this.showToast(res.message, 'error');
+        }
+      });
+      return;
+    }
+
+    if (!product) {
+      this.showToast('المنتج المطلوب غير موجود', 'error');
+      this.navigate('/v-space-k90');
+      return;
+    }
+
+    const modalOverlay = document.createElement('div');
+    modalOverlay.className = 'modal-overlay active';
+    modalOverlay.innerHTML = `
+      <div class="modal-container" style="max-width: 520px;">
+        <div class="modal-header">
+          <div class="modal-title">
+            <span>⚙️</span>
+            <span>إدارة حالة البضاعة والمخزون</span>
+          </div>
+          <div class="modal-close" onclick="window.app.navigate('/v-space-k90')">✕</div>
+        </div>
+
+        <div class="modal-body">
+          <div style="display: flex; gap: 12px; align-items: center; background: var(--bg-surface-subtle); padding: 12px; border-radius: var(--radius-md); margin-bottom: 16px;">
+            <img src="${product.image}" style="width: 64px; height: 64px; border-radius: 8px; object-fit: cover;">
+            <div>
+              <h4 style="font-weight: 800; font-size: 0.95rem;">${product.title}</h4>
+              <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px;">
+                السعر: <strong>${Number(product.price).toLocaleString()} د.ع</strong> | الحالة الحالية: <span class="badge ${product.status === 'available' ? 'badge-new' : product.status === 'reserved' ? 'badge-used' : 'badge-scrap'}">${product.status === 'available' ? 'متوفر 🟢' : product.status === 'reserved' ? 'قيد الحجز ⏳' : 'تم البيع 🔴'}</span>
+              </div>
+            </div>
+          </div>
+
+          <h4 style="font-weight: 800; margin-bottom: 10px;">اختر الإجراء المناسب بعد محادثة الزبون:</h4>
+
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <button class="btn btn-primary" style="justify-content: flex-start; padding: 12px;" id="act-reactivate-prod">
+              🟢 إعادة تفعيل المنتج وإتاحته للبيع (متوفر بالموقع)
+            </button>
+
+            <button class="btn btn-danger" style="justify-content: flex-start; padding: 12px;" id="act-mark-sold-prod">
+              🔴 تأكيد البيع النهائي (إخفاء من المتجر وخصم من المخزون)
+            </button>
+
+            <button class="btn btn-secondary" style="justify-content: flex-start; padding: 12px;" id="act-keep-reserved-prod">
+              ⏳ إبقاء المنتج قيد الحجز (مؤقتاً لحين استلام العربون)
+            </button>
+          </div>
+
+          <div style="margin-top: 20px; border-top: 1px solid var(--border-subtle); padding-top: 14px;">
+            <label class="form-label">📦 تعديل الكمية المتوفرة في المخزون</label>
+            <div style="display: flex; gap: 8px;">
+              <input type="number" class="form-input" id="act-stock-qty" value="${product.quantity || 1}" min="0">
+              <button class="btn btn-secondary" id="btn-save-stock-qty" style="flex-shrink: 0;">تحديث الكمية</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="window.app.navigate('/v-space-k90')">الذهاب للوحة التحكم</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modalOverlay);
+
+    modalOverlay.querySelector('#act-reactivate-prod')?.addEventListener('click', () => {
+      ProductsService.updateProductStatus(productId, 'available', Math.max(1, Number(product.quantity) || 1));
+      modalOverlay.remove();
+      this.navigate('/v-space-k90');
+      this.showToast('تمت إعادة تفعيل المنتج وإتاحته للبيع بنجاح!', 'success');
+    });
+
+    modalOverlay.querySelector('#act-mark-sold-prod')?.addEventListener('click', () => {
+      ProductsService.updateProductStatus(productId, 'sold', 0);
+      modalOverlay.remove();
+      this.navigate('/v-space-k90');
+      this.showToast('تم تثبيت بيع المنتج بنجاح!', 'info');
+    });
+
+    modalOverlay.querySelector('#act-keep-reserved-prod')?.addEventListener('click', () => {
+      ProductsService.updateProductStatus(productId, 'reserved');
+      modalOverlay.remove();
+      this.navigate('/v-space-k90');
+      this.showToast('المنتج الآن قيد الحجز المؤقت', 'info');
+    });
+
+    modalOverlay.querySelector('#btn-save-stock-qty')?.addEventListener('click', () => {
+      const qty = Number(document.getElementById('act-stock-qty').value);
+      ProductsService.updateProductStatus(productId, qty > 0 ? 'available' : 'reserved', qty);
+      modalOverlay.remove();
+      this.navigate('/v-space-k90');
+      this.showToast(`تم تحديث كمية المخزون إلى: ${qty}`, 'success');
+    });
+  }
+
+  /* ==========================================================================
+     4. Poster Modal (Live Preview Morphing)
      ========================================================================== */
   openPosterModal(productId) {
     const product = ProductsService.getProductById(productId);
@@ -857,7 +1033,7 @@ class SoukApp {
   }
 
   /* ==========================================================================
-     4. Merchant Isolated Portal (/v-space-k90)
+     5. Merchant Isolated Portal (/v-space-k90)
      ========================================================================== */
   renderMerchantPortal() {
     const merchant = AuthService.getCurrentMerchant();
@@ -930,6 +1106,7 @@ class SoukApp {
                   <th>الصورة</th>
                   <th>عنوان المنتج</th>
                   <th>السعر</th>
+                  <th>الكمية</th>
                   <th>الحالة</th>
                   <th>الخصم والتوصيل</th>
                   <th>إجراءات سريعة</th>
@@ -937,14 +1114,15 @@ class SoukApp {
               </thead>
               <tbody>
                 ${myProducts.length === 0 ? `
-                  <tr><td colspan="6" style="text-align: center; padding: 40px; font-weight: 700; color: var(--text-secondary);">
+                  <tr><td colspan="7" style="text-align: center; padding: 40px; font-weight: 700; color: var(--text-secondary);">
                     المتجر فارغ حالياً. اضغط على زر <strong>"➕ نشر بضاعة جديدة"</strong> أعلاه لبدء إضافة أولى بضائعك!
                   </td></tr>
                 ` : myProducts.map(p => `
                   <tr>
                     <td><img src="${p.image}" style="width: 44px; height: 44px; border-radius: 6px; object-fit: cover;"></td>
-                    <td style="font-weight: 800; max-width: 300px;">${p.title}</td>
+                    <td style="font-weight: 800; max-width: 260px;">${p.title}</td>
                     <td style="font-family: var(--font-numbers); font-weight: 800;">${Number(p.price).toLocaleString()} د.ع</td>
+                    <td style="font-weight: 800; color: #10b981;">${p.quantity || 1} قطعة</td>
                     <td>
                       <select class="form-select" style="padding: 4px 8px; font-size: 0.8rem;" onchange="window.app.changeProductStatus('${p.id}', this.value)">
                         <option value="available" ${p.status === 'available' ? 'selected' : ''}>متوفر 🟢</option>
@@ -1114,53 +1292,64 @@ class SoukApp {
     });
   }
 
+  /* ==========================================================================
+     6. Add Product Modal (3-Images Cloud Upload + AI Auto Description)
+     ========================================================================== */
   openAddProductModal() {
     const merchant = AuthService.getCurrentMerchant();
-    let processedImageDataUrl = '';
+    const uploadedImagesList = [];
+    let isAIActive = false;
 
     const modalOverlay = document.createElement('div');
     modalOverlay.className = 'modal-overlay active';
     modalOverlay.innerHTML = `
-      <div class="modal-container" style="max-width: 650px;">
+      <div class="modal-container" style="max-width: 680px;">
         <div class="modal-header">
           <div class="modal-title">
             <span>➕</span>
-            <span>نشر بضاعة جديدة في المتجر</span>
+            <span>نشر بضاعة جديدة (رفع 3 صور + تخزين سحابي + ذكاء اصطناعي)</span>
           </div>
           <div class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</div>
         </div>
 
         <div class="modal-body">
-          <div class="image-upload-zone" id="upload-zone-trigger">
-            <div style="font-size: 2.2rem; margin-bottom: 6px;">📸</div>
-            <div style="font-weight: 800;">اضغط لرفع صورة المنتج (نظام 1:1 مربع)</div>
-            <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 4px;">
-              سيتم دمج ختم المنصة الشفاف وكود الـ QR ديناميكياً داخل الصورة لحفظ حقوقك
-            </div>
-            <input type="file" id="file-img-input" accept="image/*" style="display: none;">
+          <!-- 3-Image Upload Slots -->
+          <label class="form-label" style="font-weight: 800;">📸 صور المنتج (ارفع حتى 3 صور مع ختم المنصة السحابي):</label>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px;">
+            ${[1, 2, 3].map(slot => `
+              <div class="image-upload-zone" id="upload-slot-${slot}" style="padding: 14px 8px; text-align: center; cursor: pointer;">
+                <div style="font-size: 1.6rem; margin-bottom: 4px;">📷</div>
+                <div style="font-size: 0.75rem; font-weight: 800;">صورة ${slot} ${slot === 1 ? '(الرئيسية *)' : '(إضافية)'}</div>
+                <input type="file" id="file-slot-input-${slot}" accept="image/*" style="display: none;">
+                <div id="preview-slot-${slot}" style="display: none; aspect-ratio: 1/1; width: 100%; margin-top: 6px; border-radius: 6px; overflow: hidden;"></div>
+              </div>
+            `).join('')}
           </div>
-
-          <div id="image-preview-slot" style="display: none; aspect-ratio: 1/1; max-width: 200px; margin: 0 auto 16px; border-radius: var(--radius-md); overflow: hidden; border: 2px solid var(--brand-primary);"></div>
 
           <div class="form-group">
-            <label class="form-label">عنوان المنتج *</label>
-            <input type="text" class="form-input" id="new-prod-title" placeholder="مثال: سماعات لاسلكية Anker Soundcore R50i">
+            <label class="form-label">عنوان وموديل المنتج *</label>
+            <input type="text" class="form-input" id="new-prod-title" placeholder="مثال: سماعات رأس لاسلكية Sony WH-1000XM4 عزل ضوضاء">
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
             <div class="form-group">
-              <label class="form-label">السعر بالدينار العراقي *</label>
-              <input type="number" class="form-input" id="new-prod-price" placeholder="31450">
+              <label class="form-label">السعر (د.ع) *</label>
+              <input type="number" class="form-input" id="new-prod-price" placeholder="45000">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">الكمية المتوفرة بالمخزون *</label>
+              <input type="number" class="form-input" id="new-prod-qty" value="1" min="1">
             </div>
 
             <!-- Exact 4 Condition Choices -->
             <div class="form-group">
               <label class="form-label">حالة القطعة *</label>
               <select class="form-select" id="new-prod-condition">
-                <option value="new">✨ جديد غير مفتوح (NEW) - بضائع جديدة كلياً بالكرتون ولم تفتح</option>
-                <option value="open_box">📦 أوبن بوكس (Open Box) - جديد بالكرتون لكن مفتوح لغرض الفحص</option>
-                <option value="used">🔍 مستخدم (Used) - بضائع مستخدمة خاضعة للفحص والتجربة</option>
-                <option value="scrap">🔧 عاطل - أدوات (SCRAP) - بضاعة عاطلة تباع كأدوات وقطع غيار للمصلحين</option>
+                <option value="new">✨ جديد غير مفتوح (NEW)</option>
+                <option value="open_box" selected>📦 أوبن بوكس (Open Box)</option>
+                <option value="used">🔍 مستخدم (Used)</option>
+                <option value="scrap">🔧 عاطل - أدوات (SCRAP)</option>
               </select>
             </div>
           </div>
@@ -1172,9 +1361,21 @@ class SoukApp {
             </select>
           </div>
 
+          <!-- AI Generator Action Button -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label class="form-label" style="margin-bottom: 0;">وصف وتفاصيل المنتج:</label>
+            <button type="button" class="btn btn-secondary" id="btn-generate-ai-desc" style="font-size: 0.78rem; padding: 4px 10px; font-weight: 800; color: #d97706; border-color: #f59e0b;">
+              ✨ توليد شرح وتقييم بالذكاء الاصطناعي 🤖
+            </button>
+          </div>
+
           <div class="form-group">
-            <label class="form-label">وصف وتفاصيل المنتج</label>
-            <textarea class="form-textarea" id="new-prod-desc" placeholder="المواصفات، الملحقات المتوفرة، النظافة..."></textarea>
+            <textarea class="form-textarea" id="new-prod-desc" rows="5" placeholder="المواصفات، الملحقات، النظافة... أو اضغط الزر أعلاه للتوليد بالذكاء الاصطناعي"></textarea>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+            <input type="checkbox" id="toggle-ai-insights" style="width: 18px; height: 18px;">
+            <label for="toggle-ai-insights" style="font-weight: 700; font-size: 0.85rem;">🤖 إظهار بطاقة تقييم وتخمين السعر بالذكاء الاصطناعي للزبائن داخل صفحة المنتج</label>
           </div>
         </div>
 
@@ -1187,36 +1388,61 @@ class SoukApp {
 
     document.body.appendChild(modalOverlay);
 
-    const fileInput = modalOverlay.querySelector('#file-img-input');
-    const uploadZone = modalOverlay.querySelector('#upload-zone-trigger');
-    const previewSlot = modalOverlay.querySelector('#image-preview-slot');
+    // Setup 3 upload slots
+    [1, 2, 3].forEach(slot => {
+      const dropZone = modalOverlay.querySelector(`#upload-slot-${slot}`);
+      const fileInput = modalOverlay.querySelector(`#file-slot-input-${slot}`);
+      const previewBox = modalOverlay.querySelector(`#preview-slot-${slot}`);
 
-    uploadZone.addEventListener('click', () => fileInput.click());
+      dropZone.addEventListener('click', () => fileInput.click());
 
-    fileInput.addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        processedImageDataUrl = await StorageService.processAndWatermark(file);
-        previewSlot.style.display = 'block';
-        previewSlot.innerHTML = `<img src="${processedImageDataUrl}" style="width:100%; height:100%; object-fit:cover;">`;
-      }
+      fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          dropZone.style.opacity = '0.5';
+          const cloudUrl = await StorageService.processAndUploadImage(file, `slot_${slot}_${Date.now()}`);
+          uploadedImagesList[slot - 1] = cloudUrl;
+          dropZone.style.opacity = '1';
+          previewBox.style.display = 'block';
+          previewBox.innerHTML = `<img src="${cloudUrl}" style="width:100%; height:100%; object-fit:cover;">`;
+        }
+      });
+    });
+
+    // AI Description Generator Button
+    modalOverlay.querySelector('#btn-generate-ai-desc')?.addEventListener('click', () => {
+      const title = document.getElementById('new-prod-title').value.trim() || 'منتج بالة أمازون أصلي';
+      const cat = document.getElementById('new-prod-cat').value;
+      const cond = document.getElementById('new-prod-condition').value;
+
+      const aiDesc = AIService.generateProductDescription(title, cat, cond);
+      document.getElementById('new-prod-desc').value = aiDesc;
+      document.getElementById('toggle-ai-insights').checked = true;
+      isAIActive = true;
+      this.showToast('تم توليد الشرح والمواصفات بالذكاء الاصطناعي بنجاح!', 'success');
     });
 
     modalOverlay.querySelector('#btn-save-new-product')?.addEventListener('click', () => {
       const title = document.getElementById('new-prod-title').value.trim();
       const price = Number(document.getElementById('new-prod-price').value);
+      const quantity = Number(document.getElementById('new-prod-qty').value) || 1;
       const condition = document.getElementById('new-prod-condition').value;
       const category = document.getElementById('new-prod-cat').value;
       const description = document.getElementById('new-prod-desc').value.trim();
+      const aiEnabled = document.getElementById('toggle-ai-insights').checked;
 
       if (!title || !price) {
         this.showToast('يرجى إدخال العنوان والسعر', 'error');
         return;
       }
 
+      const validImages = uploadedImagesList.filter(Boolean);
+      const primaryImage = validImages[0] || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80';
+
       ProductsService.addProduct({
         title,
         price,
+        quantity,
         condition,
         conditionLabel: PRODUCT_CONDITIONS[condition.toUpperCase()]?.label || condition,
         category,
@@ -1224,12 +1450,14 @@ class SoukApp {
         merchantId: merchant?.id || 'm-alwareth',
         merchantName: merchant?.name || 'أبو وارث أمازون',
         merchantPhone: merchant?.phone || '07707188166',
-        image: processedImageDataUrl || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80'
+        image: primaryImage,
+        images: validImages.length > 0 ? validImages : [primaryImage],
+        aiEnabled: aiEnabled
       });
 
       modalOverlay.remove();
       this.render();
-      this.showToast('تم نشر المنتج مع الختم والعلامة المائية بنجاح!', 'success');
+      this.showToast('تم حفظ ونشر المنتج مع الصور السحابية بنجاح!', 'success');
     });
   }
 
@@ -1291,7 +1519,7 @@ class SoukApp {
   }
 
   /* ==========================================================================
-     5. Full 7-Module WordPress-Style Super Admin Dashboard (/hub-mgr-secure-x90)
+     7. Full 7-Module WordPress-Style Super Admin Dashboard (/hub-mgr-secure-x90)
      ========================================================================== */
   renderAdminPortal() {
     if (!AuthService.isAdminAuthenticated()) {
@@ -1511,13 +1739,14 @@ class SoukApp {
                   <th>العنوان والكود</th>
                   <th>التاجر</th>
                   <th>السعر</th>
+                  <th>الكمية</th>
                   <th>الحالة</th>
                   <th>الإجراءات الرقابية</th>
                 </tr>
               </thead>
               <tbody>
                 ${allProducts.length === 0 ? `
-                  <tr><td colspan="6" style="text-align: center; padding: 30px;">لا توجد أي بضائع منشورة حالياً في المنصة.</td></tr>
+                  <tr><td colspan="7" style="text-align: center; padding: 30px;">لا توجد أي بضائع منشورة حالياً في المنصة.</td></tr>
                 ` : allProducts.map(p => `
                   <tr>
                     <td><img src="${p.image}" style="width: 44px; height: 44px; border-radius: 6px; object-fit: cover;"></td>
@@ -1527,6 +1756,7 @@ class SoukApp {
                     </td>
                     <td>${p.merchantName}</td>
                     <td style="font-weight: 800; font-family: var(--font-numbers);">${Number(p.price).toLocaleString()} د.ع</td>
+                    <td style="font-weight: 800; color: #10b981;">${p.quantity || 1} قطعة</td>
                     <td>
                       <span class="badge ${p.status === 'available' ? 'badge-new' : p.status === 'reserved' ? 'badge-used' : 'badge-scrap'}">
                         ${p.status === 'available' ? 'متوفر 🟢' : p.status === 'reserved' ? 'محجوز ⏳' : 'تم البيع 🔴'}
@@ -2011,9 +2241,7 @@ class SoukApp {
 
   adminDeleteProduct(productId) {
     if (confirm('هل أنت متأكد من حذف هذه البضاعة نهائياً من المنصة؟')) {
-      let products = ProductsService.getProducts();
-      products = products.filter(p => p.id !== productId);
-      localStorage.setItem('souk_products_v4', JSON.stringify(products));
+      ProductsService.deleteProduct(productId);
       this.render();
       this.showToast('تم حذف المنتج نهائياً من المنصة', 'info');
     }

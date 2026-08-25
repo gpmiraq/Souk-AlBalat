@@ -1,6 +1,5 @@
 /* ==========================================================================
-   Orders & WhatsApp Checkout Dispatcher Service
-   Handles split cart by vendor, delivery calculation, and WhatsApp invoicing
+   Orders & WhatsApp Dispatch Engine with Merchant Inventory Action Links
    ========================================================================== */
 
 import { APP_CONFIG } from '../config/constants.js';
@@ -8,93 +7,78 @@ import { ProductsService } from './products.service.js';
 
 export class OrdersService {
   /**
-   * Group cart items by merchant and generate formatted WhatsApp checkout messages
-   * @param {Array} cartItems 
-   * @param {Object} customerInfo { name, phone, address, notes }
+   * Processes cart items and generates grouped WhatsApp orders with secret action links
    */
   static processOrderAndGenerateWhatsApp(cartItems, customerInfo) {
-    if (!cartItems || cartItems.length === 0) return [];
+    // Group items by merchant
+    const merchantGroups = {};
 
-    // 1. Group items by Merchant ID
-    const groupsByMerchant = {};
     cartItems.forEach(item => {
-      const merchantKey = item.merchantPhone || APP_CONFIG.SUPPORT_PHONE;
-      if (!groupsByMerchant[merchantKey]) {
-        groupsByMerchant[merchantKey] = {
-          merchantName: item.merchantName || APP_CONFIG.STORE_NAME_SHORT,
-          merchantPhone: merchantKey,
-          items: [],
-          subtotal: 0,
-          deliveryFee: item.freeDelivery ? 0 : APP_CONFIG.FIXED_DELIVERY_FEE
+      const merchantPhone = item.merchantPhone || "07707188166";
+      if (!merchantGroups[merchantPhone]) {
+        merchantGroups[merchantPhone] = {
+          merchantName: item.merchantName || "أبو وارث أمازون",
+          merchantPhone: merchantPhone,
+          items: []
         };
       }
-      groupsByMerchant[merchantKey].items.push(item);
-      groupsByMerchant[merchantKey].subtotal += Number(item.price);
+      merchantGroups[merchantPhone].items.push(item);
+
+      // Decrement stock in catalog and mark reserved if quantity reaches 0
+      ProductsService.decrementStock(item.id, 1);
     });
 
-    const results = [];
-    const orderId = `ORD-${Math.floor(100000 + Math.random() * 900000)}`;
+    const orders = [];
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://souk-al-balat.vercel.app';
 
-    Object.values(groupsByMerchant).forEach(group => {
-      const totalAmount = group.subtotal + group.deliveryFee;
+    Object.keys(merchantGroups).forEach(phone => {
+      const group = merchantGroups[phone];
+      const itemsTotal = group.items.reduce((sum, it) => sum + Number(it.price), 0);
+      const deliveryFee = APP_CONFIG.FIXED_DELIVERY_FEE;
+      const grandTotal = itemsTotal + deliveryFee;
 
-      // Lock products status to 'reserved'
-      group.items.forEach(item => {
-        ProductsService.updateProductStatus(item.id, 'reserved');
-      });
-
-      // Construct Professional WhatsApp Invoice
-      let msg = `🛒 *طلب حجز جديد من منصة ${APP_CONFIG.STORE_NAME_SHORT}*\n`;
-      msg += `━━━━━━━━━━━━━━━━━━━━\n`;
-      msg += `📋 *رقم الطلب:* #${orderId}\n`;
-      msg += `👤 *اسم الزبون:* ${customerInfo.name}\n`;
-      msg += `📱 *رقم الهاتف:* ${customerInfo.phone}\n`;
-      msg += `📍 *العنوان / المحافظة:* ${customerInfo.address}\n`;
+      let msg = `⚡ *فاتورة حجز بضاعة من منصة سوق البالات* 📦\n\n`;
+      msg += `👤 *معلومات الزبون والتوصيل:*\n`;
+      msg += `• الاسم: ${customerInfo.name}\n`;
+      msg += `• الهاتف: ${customerInfo.phone}\n`;
+      msg += `• العنوان: ${customerInfo.address}\n`;
       if (customerInfo.notes) {
-        msg += `📝 *ملاحظات:* ${customerInfo.notes}\n`;
+        msg += `• ملاحظات إضافية: ${customerInfo.notes}\n`;
       }
-      msg += `━━━━━━━━━━━━━━━━━━━━\n`;
-      msg += `📦 *المنتجات المطلوبة:*\n`;
+      msg += `\n🛒 *البضائع المحجوزة:*\n`;
 
-      group.items.forEach((item, idx) => {
-        msg += `${idx + 1}. *${item.title}*\n`;
-        msg += `   └ السعر: ${Number(item.price).toLocaleString()} ${APP_CONFIG.CURRENCY}\n`;
+      group.items.forEach((it, idx) => {
+        msg += `${idx + 1}. *${it.title}*\n`;
+        msg += `   - السعر: ${Number(it.price).toLocaleString()} ${APP_CONFIG.CURRENCY}\n`;
+        msg += `   - الحالة: ${it.conditionLabel || 'أوبن بوكس'}\n`;
+        msg += `   - رابط المنتج: ${origin}/p/${it.id}\n`;
       });
 
-      msg += `━━━━━━━━━━━━━━━━━━━━\n`;
-      msg += `💵 *المجموع الفرعي:* ${group.subtotal.toLocaleString()} ${APP_CONFIG.CURRENCY}\n`;
-      msg += `🚚 *أجور التوصيل:* ${group.deliveryFee === 0 ? 'مجاني 🎁' : `${group.deliveryFee.toLocaleString()} ${APP_CONFIG.CURRENCY}`}\n`;
-      msg += `⭐ *الإجمالي الكلي:* ${totalAmount.toLocaleString()} ${APP_CONFIG.CURRENCY}\n`;
-      msg += `━━━━━━━━━━━━━━━━━━━━\n`;
-      msg += `🔗 *إدارة الطلب للتاجر:* ${window.location.origin}${APP_CONFIG.ROUTES.MERCHANT_PORTAL}?order_id=${orderId}`;
+      msg += `\n💵 *الحساب الإجمالي:*\n`;
+      msg += `• مجموع البضائع: ${itemsTotal.toLocaleString()} د.ع\n`;
+      msg += `• أجور التوصيل: ${deliveryFee.toLocaleString()} د.ع\n`;
+      msg += `• *المبلغ الكلي المطلوب: ${grandTotal.toLocaleString()} د.ع*\n\n`;
 
-      // Clean phone number (remove + or spaces)
-      const cleanPhone = group.merchantPhone.replace(/[^0-9]/g, '');
-      const waUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(msg)}`;
-
-      // Save order to history
-      const savedOrders = JSON.parse(localStorage.getItem('souk_orders') || '[]');
-      savedOrders.unshift({
-        orderId,
-        date: new Date().toISOString(),
-        customerInfo,
-        merchantName: group.merchantName,
-        merchantPhone: group.merchantPhone,
-        items: group.items,
-        totalAmount,
-        status: 'pending'
+      msg += `──────────────────────\n`;
+      msg += `👑 *خيارات التاجر السريعة (إدارة المخزون):*\n`;
+      group.items.forEach(it => {
+        msg += `⚙️ لإعادة تفعيل أو تأكيد بيع (${it.title}):\n`;
+        msg += `👉 ${origin}/m-manage-order?pid=${it.id}\n\n`;
       });
-      localStorage.setItem('souk_orders', JSON.stringify(savedOrders));
 
-      results.push({
+      const cleanPhone = phone.replace(/[^0-9]/g, '');
+      const waPhone = cleanPhone.startsWith('0') ? '964' + cleanPhone.slice(1) : (cleanPhone.startsWith('964') ? cleanPhone : '964' + cleanPhone);
+      const waUrl = `https://api.whatsapp.com/send?phone=${waPhone}&text=${encodeURIComponent(msg)}`;
+
+      orders.push({
         merchantName: group.merchantName,
         merchantPhone: group.merchantPhone,
-        orderId,
-        totalAmount,
-        waUrl
+        itemsCount: group.items.length,
+        total: grandTotal,
+        waUrl: waUrl
       });
     });
 
-    return results;
+    return orders;
   }
 }
