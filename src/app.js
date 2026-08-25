@@ -1,10 +1,10 @@
 /* ==========================================================================
    Souk-AlBalat Master App Engine
    Full Multi-Vendor Platform + 7-Module WordPress-Style Super Admin Dashboard
-   With 3-Image Cloud Upload, Stock Decrement, Secret Order Management & AI Writer
+   Official Social Media SVGs | Direct Cloud CDN Storage | Deep Generative AI
    ========================================================================== */
 
-import { APP_CONFIG, DEFAULT_CATEGORIES, PRODUCT_CONDITIONS } from './config/constants.js';
+import { APP_CONFIG, DEFAULT_CATEGORIES, PRODUCT_CONDITIONS, SOCIAL_ICONS } from './config/constants.js';
 import { ProductsService } from './services/products.service.js';
 import { OrdersService } from './services/orders.service.js';
 import { StorageService } from './services/storage.service.js';
@@ -285,8 +285,8 @@ class SoukApp {
 
       <!-- Floating Support Bubble -->
       <div class="floating-support-bubble" id="btn-floating-support">
-        <div class="bubble-icon">💬</div>
-        <div class="bubble-text">مراسلة الإدارة</div>
+        <div class="bubble-icon">${SOCIAL_ICONS.WHATSAPP}</div>
+        <div class="bubble-text" style="margin-right: 6px;">مراسلة الإدارة</div>
       </div>
     `;
 
@@ -383,7 +383,7 @@ class SoukApp {
   }
 
   /* ==========================================================================
-     2. Dedicated Full-Page Product View (/p/:id) with Interactive 3-Image Gallery
+     2. Dedicated Full-Page Product View (/p/:id) with Official Brand Icons & Gallery
      ========================================================================== */
   async renderProductPage(productId) {
     const product = ProductsService.getProductById(productId);
@@ -467,19 +467,25 @@ class SoukApp {
             ` : ''}
           </div>
 
-          <!-- 2. Middle Column: Product Details & Socials -->
+          <!-- 2. Middle Column: Product Details & Official Brand Social Icons -->
           <div class="product-middle-info">
-            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; background: var(--bg-surface-subtle); padding: 8px 14px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; background: var(--bg-surface-subtle); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
               <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-weight: 900; color: var(--text-primary);">🏪 ${product.merchantName}</span>
-                <span class="badge" style="background: #fef08a; color: #854d0e;">👑 مدير الموقع</span>
+                <span style="font-weight: 900; color: var(--text-primary); font-size: 0.95rem;">🏪 ${product.merchantName}</span>
+                <span class="badge" style="background: #fef08a; color: #854d0e; font-weight: 800;">👑 مدير الموقع</span>
               </div>
 
-              <!-- Social Links -->
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <a href="https://www.facebook.com/gpm90" target="_blank" title="صفحة الفيسبوك" style="font-size: 1.1rem; text-decoration: none;">📘</a>
-                <a href="https://www.tiktok.com/@alwareth_amazon" target="_blank" title="حساب تيك توك" style="font-size: 1.1rem; text-decoration: none;">🎵</a>
-                <a href="https://api.whatsapp.com/send?phone=9647707188166" target="_blank" title="محادثة واتساب" style="font-size: 1.1rem; text-decoration: none;">💬</a>
+              <!-- Official Vector Brand Logos for Social Media -->
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <a href="https://www.facebook.com/gpm90" target="_blank" title="صفحة الفيسبوك الرسمية" style="display: flex; align-items: center; text-decoration: none; padding: 4px; border-radius: 6px; background: rgba(24, 119, 242, 0.08);">
+                  ${SOCIAL_ICONS.FACEBOOK}
+                </a>
+                <a href="https://www.tiktok.com/@alwareth_amazon" target="_blank" title="حساب تيك توك الرسمي" style="display: flex; align-items: center; text-decoration: none; padding: 4px; border-radius: 6px; background: rgba(0, 0, 0, 0.06);">
+                  ${SOCIAL_ICONS.TIKTOK}
+                </a>
+                <a href="https://api.whatsapp.com/send?phone=9647707188166" target="_blank" title="محادثة واتساب مباشرة" style="display: flex; align-items: center; text-decoration: none; padding: 4px; border-radius: 6px; background: rgba(37, 211, 102, 0.08);">
+                  ${SOCIAL_ICONS.WHATSAPP}
+                </a>
               </div>
             </div>
 
@@ -512,8 +518,8 @@ class SoukApp {
 
             <!-- Description Box -->
             <div style="background: var(--bg-surface-subtle); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
-              <h4 style="font-weight: 900; margin-bottom: 6px; color: var(--text-primary);">تفاصيل ومواصفات القطعة:</h4>
-              <p style="color: var(--text-secondary); line-height: 1.7; font-size: 0.95rem; white-space: pre-line;">${product.description}</p>
+              <h4 style="font-weight: 900; margin-bottom: 8px; color: var(--text-primary); font-size: 1.05rem;">تفاصيل ومواصفات القطعة:</h4>
+              <p style="color: var(--text-secondary); line-height: 1.8; font-size: 0.95rem; white-space: pre-line;">${product.description}</p>
             </div>
 
             <!-- AI Market Insights Card (Shown if Enabled by Merchant) -->
@@ -553,8 +559,9 @@ class SoukApp {
               🛒 أضف إلى السلة
             </button>
 
-            <button class="btn btn-whatsapp" style="width: 100%; padding: 12px;" onclick="window.app.openWhatsAppDirectOrder('${product.id}')">
-              📲 اشترِ الآن عبر واتساب
+            <button class="btn btn-whatsapp" style="width: 100%; padding: 12px; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="window.app.openWhatsAppDirectOrder('${product.id}')">
+              ${SOCIAL_ICONS.WHATSAPP}
+              <span>اشترِ الآن عبر واتساب</span>
             </button>
 
             <button class="btn btn-secondary" style="width: 100%;" onclick="window.app.openPosterModal('${product.id}')">
@@ -1033,7 +1040,7 @@ class SoukApp {
   }
 
   /* ==========================================================================
-     5. Merchant Isolated Portal (/v-space-k90)
+     5. Merchant Isolated Portal (/v-space-k90) with Official Brand Vectors
      ========================================================================== */
   renderMerchantPortal() {
     const merchant = AuthService.getCurrentMerchant();
@@ -1055,14 +1062,18 @@ class SoukApp {
               <div>
                 <div style="display: flex; align-items: center; gap: 8px;">
                   <h2 style="font-size: 1.25rem; font-weight: 900;">${merchant.name}</h2>
-                  <span class="badge" style="background: #fef08a; color: #854d0e;">👑 مدير الموقع</span>
+                  <span class="badge" style="background: #fef08a; color: #854d0e;">👑 مدير ومؤسس الموقع</span>
                 </div>
-                <div style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 4px; display: flex; gap: 10px; align-items: center;">
-                  <span>هاتف الواتساب: ${merchant.phone}</span>
+                <div style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 6px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                  <span>هاتف الواتساب: <strong>${merchant.phone}</strong></span>
                   <span>|</span>
-                  <a href="${merchant.socials?.facebook || 'https://www.facebook.com/gpm90'}" target="_blank" style="color: var(--brand-primary); font-weight: 700; text-decoration: none;">فيسبوك 📘</a>
+                  <a href="${merchant.socials?.facebook || 'https://www.facebook.com/gpm90'}" target="_blank" style="display: inline-flex; align-items: center; gap: 4px; color: #1877f2; font-weight: 700; text-decoration: none;">
+                    ${SOCIAL_ICONS.FACEBOOK} فيسبوك
+                  </a>
                   <span>|</span>
-                  <a href="${merchant.socials?.tiktok || 'https://www.tiktok.com/@alwareth_amazon'}" target="_blank" style="color: var(--brand-primary); font-weight: 700; text-decoration: none;">تيك توك 🎵</a>
+                  <a href="${merchant.socials?.tiktok || 'https://www.tiktok.com/@alwareth_amazon'}" target="_blank" style="display: inline-flex; align-items: center; gap: 4px; color: #000; font-weight: 700; text-decoration: none;">
+                    ${SOCIAL_ICONS.TIKTOK} تيك توك
+                  </a>
                 </div>
               </div>
             </div>
@@ -1293,12 +1304,11 @@ class SoukApp {
   }
 
   /* ==========================================================================
-     6. Add Product Modal (3-Images Cloud Upload + AI Auto Description)
+     6. Add Product Modal (3-Images Cloud Upload + Deep Generative AI Copywriter)
      ========================================================================== */
   openAddProductModal() {
     const merchant = AuthService.getCurrentMerchant();
     const uploadedImagesList = [];
-    let isAIActive = false;
 
     const modalOverlay = document.createElement('div');
     modalOverlay.className = 'modal-overlay active';
@@ -1317,18 +1327,18 @@ class SoukApp {
           <label class="form-label" style="font-weight: 800;">📸 صور المنتج (ارفع حتى 3 صور مع ختم المنصة السحابي):</label>
           <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px;">
             ${[1, 2, 3].map(slot => `
-              <div class="image-upload-zone" id="upload-slot-${slot}" style="padding: 14px 8px; text-align: center; cursor: pointer;">
-                <div style="font-size: 1.6rem; margin-bottom: 4px;">📷</div>
-                <div style="font-size: 0.75rem; font-weight: 800;">صورة ${slot} ${slot === 1 ? '(الرئيسية *)' : '(إضافية)'}</div>
+              <div class="image-upload-zone" id="upload-slot-${slot}" style="padding: 14px 8px; text-align: center; cursor: pointer; position: relative;">
+                <div id="slot-icon-${slot}" style="font-size: 1.6rem; margin-bottom: 4px;">📷</div>
+                <div id="slot-label-${slot}" style="font-size: 0.75rem; font-weight: 800;">صورة ${slot} ${slot === 1 ? '(الرئيسية *)' : '(إضافية)'}</div>
                 <input type="file" id="file-slot-input-${slot}" accept="image/*" style="display: none;">
-                <div id="preview-slot-${slot}" style="display: none; aspect-ratio: 1/1; width: 100%; margin-top: 6px; border-radius: 6px; overflow: hidden;"></div>
+                <div id="preview-slot-${slot}" style="display: none; aspect-ratio: 1/1; width: 100%; margin-top: 6px; border-radius: 6px; overflow: hidden; border: 2px solid var(--brand-primary);"></div>
               </div>
             `).join('')}
           </div>
 
           <div class="form-group">
-            <label class="form-label">عنوان وموديل المنتج *</label>
-            <input type="text" class="form-input" id="new-prod-title" placeholder="مثال: سماعات رأس لاسلكية Sony WH-1000XM4 عزل ضوضاء">
+            <label class="form-label">عنوان وموديل المنتج بدقة *</label>
+            <input type="text" class="form-input" id="new-prod-title" placeholder="مثال: سماعة لوجيتك أصلية G432 محيطية 7.1 احترافية">
           </div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
@@ -1362,20 +1372,20 @@ class SoukApp {
           </div>
 
           <!-- AI Generator Action Button -->
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
             <label class="form-label" style="margin-bottom: 0;">وصف وتفاصيل المنتج:</label>
-            <button type="button" class="btn btn-secondary" id="btn-generate-ai-desc" style="font-size: 0.78rem; padding: 4px 10px; font-weight: 800; color: #d97706; border-color: #f59e0b;">
-              ✨ توليد شرح وتقييم بالذكاء الاصطناعي 🤖
+            <button type="button" class="btn btn-secondary" id="btn-generate-ai-desc" style="font-size: 0.78rem; padding: 6px 12px; font-weight: 800; color: #d97706; border-color: #f59e0b; background: rgba(245, 158, 11, 0.08);">
+              ✨ توليد شرح ومواصفات بالذكاء الاصطناعي 🤖
             </button>
           </div>
 
           <div class="form-group">
-            <textarea class="form-textarea" id="new-prod-desc" rows="5" placeholder="المواصفات، الملحقات، النظافة... أو اضغط الزر أعلاه للتوليد بالذكاء الاصطناعي"></textarea>
+            <textarea class="form-textarea" id="new-prod-desc" rows="6" placeholder="اكتب العنوان أعلاه واضغط زر التوليد بالذكاء الاصطناعي لكتابة شرح ومواصفات احترافية تلقائياً..."></textarea>
           </div>
 
           <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
             <input type="checkbox" id="toggle-ai-insights" style="width: 18px; height: 18px;">
-            <label for="toggle-ai-insights" style="font-weight: 700; font-size: 0.85rem;">🤖 إظهار بطاقة تقييم وتخمين السعر بالذكاء الاصطناعي للزبائن داخل صفحة المنتج</label>
+            <label for="toggle-ai-insights" style="font-weight: 700; font-size: 0.85rem; cursor: pointer;">🤖 تفعيل وإظهار بطاقة تقييم وتخمين السعر بالذكاء الاصطناعي للزبائن داخل صفحة المنتج</label>
           </div>
         </div>
 
@@ -1393,33 +1403,56 @@ class SoukApp {
       const dropZone = modalOverlay.querySelector(`#upload-slot-${slot}`);
       const fileInput = modalOverlay.querySelector(`#file-slot-input-${slot}`);
       const previewBox = modalOverlay.querySelector(`#preview-slot-${slot}`);
+      const slotLabel = modalOverlay.querySelector(`#slot-label-${slot}`);
 
       dropZone.addEventListener('click', () => fileInput.click());
 
       fileInput.addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (file) {
-          dropZone.style.opacity = '0.5';
-          const cloudUrl = await StorageService.processAndUploadImage(file, `slot_${slot}_${Date.now()}`);
-          uploadedImagesList[slot - 1] = cloudUrl;
-          dropZone.style.opacity = '1';
-          previewBox.style.display = 'block';
-          previewBox.innerHTML = `<img src="${cloudUrl}" style="width:100%; height:100%; object-fit:cover;">`;
+          slotLabel.innerHTML = `⏳ جاري الرفع للسحابة...`;
+          dropZone.style.opacity = '0.6';
+          try {
+            const cloudUrl = await StorageService.processAndUploadImage(file, `p_slot_${slot}_${Date.now()}`);
+            uploadedImagesList[slot - 1] = cloudUrl;
+            dropZone.style.opacity = '1';
+            slotLabel.innerHTML = `✅ تم الرفع للسحابة`;
+            previewBox.style.display = 'block';
+            previewBox.innerHTML = `<img src="${cloudUrl}" style="width:100%; height:100%; object-fit:cover;">`;
+          } catch (err) {
+            slotLabel.innerHTML = `صورة ${slot}`;
+            dropZone.style.opacity = '1';
+            this.showToast('تعذر رفع الصورة للسحابة، جاري المحاولة مرة أخرى', 'error');
+          }
         }
       });
     });
 
-    // AI Description Generator Button
-    modalOverlay.querySelector('#btn-generate-ai-desc')?.addEventListener('click', () => {
-      const title = document.getElementById('new-prod-title').value.trim() || 'منتج بالة أمازون أصلي';
+    // Deep Generative AI Copywriter Button
+    modalOverlay.querySelector('#btn-generate-ai-desc')?.addEventListener('click', async () => {
+      const title = document.getElementById('new-prod-title').value.trim();
+      const price = Number(document.getElementById('new-prod-price').value) || 0;
       const cat = document.getElementById('new-prod-cat').value;
       const cond = document.getElementById('new-prod-condition').value;
 
-      const aiDesc = AIService.generateProductDescription(title, cat, cond);
+      if (!title) {
+        this.showToast('يرجى كتابة عنوان المنتج أولاً ليقوم الذكاء الاصطناعي بتحليله وكتابة شرحه!', 'error');
+        document.getElementById('new-prod-title').focus();
+        return;
+      }
+
+      const btn = modalOverlay.querySelector('#btn-generate-ai-desc');
+      btn.innerHTML = `⏳ جاري تحليل المنتج وتوليد المواصفات...`;
+      btn.disabled = true;
+
+      // Generative AI Analysis based on title, category, condition
+      const aiDesc = AIService.generateProductDescription(title, cat, cond, price);
       document.getElementById('new-prod-desc').value = aiDesc;
       document.getElementById('toggle-ai-insights').checked = true;
-      isAIActive = true;
-      this.showToast('تم توليد الشرح والمواصفات بالذكاء الاصطناعي بنجاح!', 'success');
+
+      btn.innerHTML = `✨ تم توليد الشرح بنجاح 🤖`;
+      btn.disabled = false;
+      this.showToast(`تم تحليل ومطابقة مواصفات (${title}) بنجاح!`, 'success');
     });
 
     modalOverlay.querySelector('#btn-save-new-product')?.addEventListener('click', () => {
