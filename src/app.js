@@ -182,7 +182,7 @@ class SoukApp {
 
       <main class="container">
         <!-- Hero Section -->
-        <section class="hero-section">
+        <section class="hero-section" style="margin-bottom: 20px;">
           <div class="hero-banner">
             <span class="hero-badge-tag">✨ أول منصة لبضائع أمازون والبالة في العراق 🇮🇶</span>
             <h1 class="hero-title">${this.siteSettings.heroTitle}</h1>
@@ -190,44 +190,9 @@ class SoukApp {
           </div>
         </section>
 
-        <!-- Product Conditions 4 Main Cards -->
-        <section class="feature-filters-row">
-          <div class="feature-card ${this.activeCondition === 'new' ? 'active' : ''}" data-cond="new" style="${this.activeCondition === 'new' ? 'border-color: var(--brand-primary); background: var(--bg-surface-subtle);' : ''}">
-            <div class="feature-card-icon">✨</div>
-            <div class="feature-card-info">
-              <h4>جديد غير مفتوح (NEW)</h4>
-              <p>بضائع جديدة كلياً بالكرتون ولم تفتح</p>
-            </div>
-          </div>
-
-          <div class="feature-card ${this.activeCondition === 'open_box' ? 'active' : ''}" data-cond="open_box" style="${this.activeCondition === 'open_box' ? 'border-color: var(--brand-primary); background: var(--bg-surface-subtle);' : ''}">
-            <div class="feature-card-icon">📦</div>
-            <div class="feature-card-info">
-              <h4>أوبن بوكس (Open Box)</h4>
-              <p>جديد بالكرتون لكن مفتوح لغرض الفحص</p>
-            </div>
-          </div>
-
-          <div class="feature-card ${this.activeCondition === 'used' ? 'active' : ''}" data-cond="used" style="${this.activeCondition === 'used' ? 'border-color: var(--brand-primary); background: var(--bg-surface-subtle);' : ''}">
-            <div class="feature-card-icon">🔍</div>
-            <div class="feature-card-info">
-              <h4>مستخدم (Used)</h4>
-              <p>بضائع مستخدمة خاضعة للفحص والتجربة</p>
-            </div>
-          </div>
-
-          <div class="feature-card ${this.activeCondition === 'scrap' ? 'active' : ''}" data-cond="scrap" style="${this.activeCondition === 'scrap' ? 'border-color: var(--brand-primary); background: var(--bg-surface-subtle);' : ''}">
-            <div class="feature-card-icon">🔧</div>
-            <div class="feature-card-info">
-              <h4>عاطل - أدوات (SCRAP)</h4>
-              <p>بضاعة عاطلة تباع كأدوات وقطع غيار للمصلحين</p>
-            </div>
-          </div>
-        </section>
-
-        <!-- Marketplace Main Layout -->
+        <!-- Marketplace Main Layout (Products Front & Center) -->
         <div class="main-marketplace-layout">
-          <!-- Sidebar Filters -->
+          <!-- Sidebar Filters (Desktop Only) -->
           <aside class="marketplace-sidebar">
             <div class="filter-section">
               <div class="filter-title">
@@ -281,6 +246,47 @@ class SoukApp {
             `}
           </section>
         </div>
+
+        <!-- Product Conditions 4 Main Cards (Placed at the very BOTTOM of page) -->
+        <section style="margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--border-subtle);">
+          <h3 style="font-weight: 900; font-size: 1.15rem; margin-bottom: 16px; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+            <span>📖</span>
+            <span>دليل وتصنيف حالات القطع في سوق البالات:</span>
+          </h3>
+          <div class="feature-filters-row">
+            <div class="feature-card ${this.activeCondition === 'new' ? 'active' : ''}" data-cond="new" style="${this.activeCondition === 'new' ? 'border-color: var(--brand-primary); background: var(--bg-surface-subtle);' : ''}">
+              <div class="feature-card-icon">✨</div>
+              <div class="feature-card-info">
+                <h4>جديد غير مفتوح (NEW)</h4>
+                <p>بضائع جديدة كلياً بالكرتون ولم تفتح</p>
+              </div>
+            </div>
+
+            <div class="feature-card ${this.activeCondition === 'open_box' ? 'active' : ''}" data-cond="open_box" style="${this.activeCondition === 'open_box' ? 'border-color: var(--brand-primary); background: var(--bg-surface-subtle);' : ''}">
+              <div class="feature-card-icon">📦</div>
+              <div class="feature-card-info">
+                <h4>أوبن بوكس (Open Box)</h4>
+                <p>جديد بالكرتون لكن مفتوح لغرض الفحص</p>
+              </div>
+            </div>
+
+            <div class="feature-card ${this.activeCondition === 'used' ? 'active' : ''}" data-cond="used" style="${this.activeCondition === 'used' ? 'border-color: var(--brand-primary); background: var(--bg-surface-subtle);' : ''}">
+              <div class="feature-card-icon">🔍</div>
+              <div class="feature-card-info">
+                <h4>مستخدم (Used)</h4>
+                <p>بضائع مستخدمة خاضعة للفحص والتجربة</p>
+              </div>
+            </div>
+
+            <div class="feature-card ${this.activeCondition === 'scrap' ? 'active' : ''}" data-cond="scrap" style="${this.activeCondition === 'scrap' ? 'border-color: var(--brand-primary); background: var(--bg-surface-subtle);' : ''}">
+              <div class="feature-card-icon">🔧</div>
+              <div class="feature-card-info">
+                <h4>عاطل - أدوات (SCRAP)</h4>
+                <p>بضاعة عاطلة تباع كأدوات وقطع غيار للمصلحين</p>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
 
       <!-- Floating Support Bubble -->
@@ -314,8 +320,8 @@ class SoukApp {
         </div>
 
         <div class="product-card-body">
-          <div class="product-merchant-link" style="cursor: pointer; display: flex; align-items: center; gap: 4px;" onclick="event.stopPropagation(); window.app.openMerchantStoreModal('${p.merchantId || 'm1'}')">
-            <span>🏪 ${p.merchantName}</span>
+          <div class="product-merchant-link" style="cursor: pointer; display: flex; align-items: center; gap: 4px;" onclick="event.stopPropagation(); window.app.openMerchantStoreModal('${p.merchantId || 'm-alwareth'}')">
+            <span>🏪 ${p.merchantName || 'أبو وارث أمازون'}</span>
             ${SOCIAL_ICONS.VERIFIED_BADGE}
             ${Number(p.quantity) > 1 ? `<span style="color: #10b981; font-weight: 800;">(متوفر: ${p.quantity} قطع)</span>` : ''}
           </div>
@@ -434,28 +440,29 @@ class SoukApp {
 
       <main class="container product-page-wrapper">
         <!-- Breadcrumb Bar -->
-        <div class="breadcrumb-bar">
-          <a href="#" onclick="event.preventDefault(); window.app.navigate('/')">الرئيسية</a>
+        <nav class="breadcrumb-nav" style="margin-bottom: 20px; display: flex; align-items: center; gap: 8px; font-size: 0.88rem; flex-wrap: wrap;">
+          <span class="breadcrumb-item" onclick="window.app.navigate('/')" style="cursor:pointer; color: var(--text-secondary);">الرئيسية</span>
           <span>/</span>
-          <a href="#" onclick="event.preventDefault(); window.app.activeCategory='${product.category}'; window.app.navigate('/')">${product.category}</a>
+          <span class="breadcrumb-item" onclick="window.app.activeCategory='${product.category}'; window.app.navigate('/')" style="cursor:pointer; color: var(--text-secondary);">${product.category}</span>
           <span>/</span>
-          <span>${product.merchantName}</span>
+          <span class="breadcrumb-item" onclick="window.app.openMerchantStoreModal('${product.merchantId || 'm-alwareth'}')" style="cursor:pointer; color: var(--brand-primary); font-weight: 800; display: inline-flex; align-items: center; gap: 4px;">
+            ${product.merchantName || 'أبو وارث أمازون'} ${SOCIAL_ICONS.VERIFIED_BADGE}
+          </span>
           <span>/</span>
-          <span style="color: var(--text-primary); font-weight: 800;">${product.title}</span>
-        </div>
+          <span class="breadcrumb-item active" style="font-weight: 800; color: var(--text-primary);">${product.title}</span>
+        </nav>
 
-        <!-- 3-Column Layout Grid -->
-        <div class="product-details-alrayan-grid">
-          
-          <!-- 1. Right Column: Image Gallery (Up to 3 Photos with Interactive Thumbnails) -->
-          <div class="product-gallery-container">
-            <div class="gallery-floating-actions">
-              <button class="btn-icon" title="مشاركة" onclick="navigator.clipboard.writeText(window.location.href); window.app.showToast('تم نسخ رابط المنتج بنجاح!', 'success');">🔗</button>
-              <button class="btn-icon" title="تقديم بلاغ للإدارة" onclick="window.app.openReportModal('${product.id}')">🚩</button>
-            </div>
-
-            <div class="gallery-main-img-box">
-              <img id="main-gallery-view-img" src="${imagesList[0]}" alt="${product.title}">
+        <div class="product-page-main-layout">
+          <!-- 1. Right Column: Media Gallery -->
+          <div class="product-gallery-view">
+            <div class="main-gallery-image-box" style="position: relative;">
+              <img src="${imagesList[0]}" id="main-gallery-view-img" alt="${product.title}">
+              
+              <!-- Quick Copy Link & Fullscreen Action Badges -->
+              <div class="gallery-action-overlay">
+                <button class="btn-gallery-action" onclick="window.app.copyProductShareLink('${product.id}')" title="نسخ رابط المنتج">🔗</button>
+                <button class="btn-gallery-action" onclick="window.app.openPosterModal('${product.id}')" title="توليد بوستر ستوري">📱</button>
+              </div>
             </div>
 
             ${imagesList.length > 1 ? `
@@ -472,8 +479,8 @@ class SoukApp {
           <!-- 2. Middle Column: Product Details & Official Brand Social Icons -->
           <div class="product-middle-info">
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; background: var(--bg-surface-subtle); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
-              <div style="display: flex; align-items: center; gap: 6px; cursor: pointer;" onclick="window.app.openMerchantStoreModal('${product.merchantId || 'm1'}')">
-                <span style="font-weight: 900; color: var(--text-primary); font-size: 0.95rem;">🏪 ${product.merchantName}</span>
+              <div style="display: flex; align-items: center; gap: 6px; cursor: pointer;" onclick="window.app.openMerchantStoreModal('${product.merchantId || 'm-alwareth'}')">
+                <span style="font-weight: 900; color: var(--text-primary); font-size: 0.95rem;">🏪 ${product.merchantName || 'أبو وارث أمازون'}</span>
                 ${SOCIAL_ICONS.VERIFIED_BADGE}
                 <span class="badge" style="background: #fef08a; color: #854d0e; font-weight: 800;">👑 مدير الموقع</span>
               </div>

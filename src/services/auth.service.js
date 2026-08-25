@@ -39,6 +39,11 @@ export class AuthService {
     return INITIAL_MERCHANTS;
   }
 
+  static getMerchantById(id) {
+    const merchants = this.getMerchants();
+    return merchants.find(m => m.id === id || m.name?.includes(id)) || merchants[0] || null;
+  }
+
   static async loginMerchant(phone, passcode) {
     const merchants = this.getMerchants();
     const cleanPhone = phone.replace(/[^0-9]/g, '');
