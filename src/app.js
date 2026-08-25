@@ -519,31 +519,24 @@ class SoukApp {
               <span>توصيل سريع لكافة محافظات العراق (أجور التوصيل: ${product.freeDelivery ? 'مجاني 🎁' : '5,000 د.ع فقط'})</span>
             </div>
 
-            <!-- Description Box -->
-            <div style="background: var(--bg-surface-subtle); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
-              <h4 style="font-weight: 900; margin-bottom: 8px; color: var(--text-primary); font-size: 1.05rem;">تفاصيل ومواصفات القطعة:</h4>
-              <p style="color: var(--text-secondary); line-height: 1.8; font-size: 0.95rem; white-space: pre-line;">${product.description}</p>
-            </div>
+            <!-- 1. Merchant Manual Description (if provided) -->
+            ${product.description ? `
+              <div style="background: var(--bg-surface-subtle); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-bottom: 14px;">
+                <h4 style="font-weight: 900; margin-bottom: 8px; color: var(--text-primary); font-size: 1rem;">📝 تفاصيل وملاحظات التاجر:</h4>
+                <p style="color: var(--text-secondary); line-height: 1.8; font-size: 0.95rem; white-space: pre-line;">${product.description}</p>
+              </div>
+            ` : ''}
 
-            <!-- AI Market Insights Card (Shown if Enabled by Merchant) -->
-            ${insights ? `
-              <div class="ai-insights-box">
-                <div class="ai-header-tag">
-                  <span>🤖 تقييم الذكاء الاصطناعي للمنتج:</span>
+            <!-- 2. AI Generated Details Box with 4 lines and permanent footer notice -->
+            ${product.aiDetails ? `
+              <div style="background: var(--bg-surface-subtle); padding: 18px; border-radius: var(--radius-md); border: 1.5px solid var(--border-strong); margin-bottom: 14px;">
+                <h4 style="font-weight: 900; margin-bottom: 10px; color: var(--text-primary); font-size: 1.05rem; display: flex; align-items: center; gap: 6px;">
+                  <span>🤖 تفاصيل ومواصفات الذكاء الاصطناعي:</span>
+                </h4>
+                <div style="color: var(--text-primary); line-height: 2; font-size: 0.95rem; white-space: pre-line; font-weight: 500;">${product.aiDetails}</div>
+                <div style="font-size: 0.8rem; color: var(--text-tertiary); margin-top: 12px; border-top: 1px dashed var(--border-subtle); padding-top: 8px;">
+                  ملاحظة: هذه معلومات مستخرجة عبر محرك الذكاء الاصطناعي بناءً على أسعار السوق التقديرية... يرجى التأكد المباشر من البائع.
                 </div>
-                <div class="ai-data-row">
-                  <strong>التوفر في العراق:</strong>
-                  <span>${insights.availabilityInIraq}</span>
-                </div>
-                <div class="ai-data-row">
-                  <strong>السعر التقديري في العراق:</strong>
-                  <span style="font-weight: 900; color: #dc2626;">${insights.estimatedPriceLocal}</span>
-                </div>
-                <div class="ai-data-row">
-                  <strong>السعر التقديري عالمياً:</strong>
-                  <span>${insights.estimatedPriceGlobal}</span>
-                </div>
-                <div class="ai-disclaimer">${insights.disclaimer}</div>
               </div>
             ` : ''}
           </div>
@@ -1586,16 +1579,22 @@ class SoukApp {
             </datalist>
           </div>
 
-          <!-- AI Generator Action Button -->
+          <!-- Merchant Manual Notes -->
+          <div class="form-group">
+            <label class="form-label">وصف وتفاصيل المنتج (ملاحظات التاجر اليدوية):</label>
+            <textarea class="form-textarea" id="new-prod-desc" rows="3" placeholder="اكتب أي ملاحظات أو تفاصيل يدوية خاصة بالقطعة هنا..."></textarea>
+          </div>
+
+          <!-- AI Generator Section -->
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
-            <label class="form-label" style="margin-bottom: 0;">وصف وتفاصيل المنتج:</label>
+            <label class="form-label" style="margin-bottom: 0;">تفاصيل ومواصفات مولدة بالذكاء الاصطناعي:</label>
             <button type="button" class="btn btn-secondary" id="btn-generate-ai-desc" style="font-size: 0.78rem; padding: 6px 12px; font-weight: 800; color: #d97706; border-color: #f59e0b; background: rgba(245, 158, 11, 0.08);">
-              ✨ توليد شرح ومواصفات بالذكاء الاصطناعي 🤖
+              ✨ توليد تفاصيل بالذكاء الاصطناعي 🤖
             </button>
           </div>
 
           <div class="form-group">
-            <textarea class="form-textarea" id="new-prod-desc" rows="6" placeholder="اكتب ملاحظاتك اليدوية أو اضغط زر التوليد بالذكاء الاصطناعي لكتابة شرح ومواصفات احترافية تلقائياً..."></textarea>
+            <textarea class="form-textarea" id="new-prod-ai-details" rows="5" placeholder="اضغط زر (توليد تفاصيل بالذكاء الاصطناعي) أعلاه لتوليد الاسم والمواصفات والأسعار التقديرية تلقائياً..."></textarea>
           </div>
         </div>
 
@@ -1654,28 +1653,24 @@ class SoukApp {
       const cond = document.getElementById('new-prod-condition').value;
 
       if (!title) {
-        this.showToast('يرجى كتابة عنوان المنتج أولاً ليقوم الذكاء الاصطناعي بتحليله!', 'error');
+        this.showToast('يرجى كتابة عنوان وموديل المنتج أولاً!', 'error');
         document.getElementById('new-prod-title').focus();
         return;
       }
 
       const btn = modalOverlay.querySelector('#btn-generate-ai-desc');
-      btn.innerHTML = `⏳ جاري توليد الوصف بالذكاء الاصطناعي...`;
+      btn.innerHTML = `⏳ جاري توليد التفاصيل...`;
       btn.disabled = true;
 
       try {
         const aiDesc = await AIService.generateProductDescription(title, cat, cond, price);
-        const descField = document.getElementById('new-prod-desc');
-        const manualText = descField.value.trim();
-        
-        // If merchant already entered notes, append AI sheet below it
-        descField.value = manualText ? `${manualText}\n\n${aiDesc}` : aiDesc;
+        document.getElementById('new-prod-ai-details').value = aiDesc;
 
-        btn.innerHTML = `✨ تم توليد الشرح بنجاح 🤖`;
+        btn.innerHTML = `✨ تم توليد التفاصيل بنجاح 🤖`;
         btn.disabled = false;
         this.showToast(`تم توليد مواصفات (${title}) بنجاح!`, 'success');
       } catch (err) {
-        btn.innerHTML = `✨ توليد شرح ومواصفات بالذكاء الاصطناعي 🤖`;
+        btn.innerHTML = `✨ توليد تفاصيل بالذكاء الاصطناعي 🤖`;
         btn.disabled = false;
         this.showToast(err.message, 'error');
       }
@@ -1688,7 +1683,8 @@ class SoukApp {
       const condition = document.getElementById('new-prod-condition').value;
       const category = document.getElementById('new-prod-cat').value;
       const description = document.getElementById('new-prod-desc').value.trim();
-      const aiEnabled = true; // Always permanently enabled for all products
+      const aiDetails = document.getElementById('new-prod-ai-details').value.trim();
+      const aiEnabled = true;
 
       if (!title || !price) {
         this.showToast('يرجى إدخال العنوان والسعر', 'error');
@@ -1705,7 +1701,8 @@ class SoukApp {
         condition,
         conditionLabel: PRODUCT_CONDITIONS[condition.toUpperCase()]?.label || condition,
         category,
-        description: description || title,
+        description: description || '',
+        aiDetails: aiDetails || '',
         merchantId: merchant?.id || 'm-alwareth',
         merchantName: merchant?.name || 'أبو وارث أمازون',
         merchantPhone: merchant?.phone || '07707188166',
