@@ -77,12 +77,12 @@ class SoukApp {
   handlePath(path) {
     this.currentRoute = path;
     const urlParams = new URLSearchParams(window.location.search);
-    const managePid = urlParams.get('pid');
+    const managePids = urlParams.get('pids') || urlParams.get('pid');
 
-    if (path.startsWith('/m-manage-order') || managePid) {
+    if (path.startsWith('/m-manage-order') || managePids) {
       this.selectedProductId = null;
       this.selectedSellerId = null;
-      this.renderMerchantOrderActionModal(managePid);
+      this.renderMerchantOrderActionModal(managePids);
     } else if (path.startsWith('/seller/')) {
       this.selectedProductId = null;
       this.selectedSellerId = path.replace('/seller/', '');
@@ -638,8 +638,8 @@ class SoukApp {
      ========================================================================== */
   async renderProductPage(productId) {
     const product = ProductsService.getProductById(productId);
-    if (!product) {
-      this.navigate('/');
+    if (!product || product.status === 'deleted') {
+      this.renderProduct404Page();
       return;
     }
 
@@ -883,11 +883,77 @@ class SoukApp {
   }
 
   /* ==========================================================================
-     3. Secret Merchant Quick-Action Modal (/m-manage-order?pid=...)
+     404 / Unavailable Product Page with 5-Second Countdown Auto-Redirect
      ========================================================================== */
-  renderMerchantOrderActionModal(productId) {
+  renderProduct404Page() {
+    let secondsLeft = 5;
+    if (this.redirectTimer) clearInterval(this.redirectTimer);
+
+    this.appEl.innerHTML = `
+      <!-- Top Announcement Marquee -->
+      <div class="top-announcement-bar">
+        <div class="container">
+          <div class="marquee-content">
+            <span class="marquee-item">${this.siteSettings.marqueeText}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Header -->
+      <header class="site-header">
+        <div class="container">
+          <div class="header-main">
+            <div class="header-brand" style="cursor:pointer;" onclick="window.app.navigate('/')">
+              <div class="brand-logo-badge">
+                <span>⚡</span>
+                <span>سوق البالات</span>
+              </div>
+              <span class="brand-tagline">AMAZON & DHL OUTLET IQ</span>
+            </div>
+
+            <div class="header-actions">
+              <button class="btn btn-primary" onclick="window.app.navigate('/')">⬅️ العودة للمتجر</button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="container" style="padding: 60px 20px; text-align: center; max-width: 600px; margin: 0 auto;">
+        <div style="background: var(--bg-surface); border: 2px solid var(--border-strong); border-radius: var(--radius-lg); padding: 40px 24px; box-shadow: var(--card-shadow);">
+          <div style="font-size: 4rem; margin-bottom: 16px;">📦🔍</div>
+          <h1 style="font-size: 1.5rem; font-weight: 900; color: #dc2626; margin-bottom: 10px;">404 - المنتج غير متوفر أو تم بيعه</h1>
+          <p style="color: var(--text-secondary); font-size: 1rem; line-height: 1.7; margin-bottom: 20px;">
+            عذراً، هذه القطعة لم تعد متوفرة حالياً في المخزون أو تم حذفها/بيعها مسبقاً. يمكنك تصفح باقي البضائع والقطع المميزة في المتجر.
+          </p>
+
+          <div style="background: var(--bg-surface-subtle); padding: 12px; border-radius: var(--radius-md); font-weight: 800; color: var(--text-primary); margin-bottom: 24px; border: 1.5px dashed var(--border-strong);">
+            ⏳ سيتم تحويلك تلقائياً إلى الصفحة الرئيسية خلال <span id="redirect-countdown-number" style="color: #dc2626; font-size: 1.3rem;">5</span> ثوانٍ...
+          </div>
+
+          <button class="btn btn-primary" style="padding: 12px 24px; font-size: 1rem; font-weight: 900;" onclick="window.app.navigate('/')">
+            العودة إلى الصفحة الرئيسية الآن ⚡
+          </button>
+        </div>
+      </main>
+    `;
+
+    this.redirectTimer = setInterval(() => {
+      secondsLeft -= 1;
+      const el = document.getElementById('redirect-countdown-number');
+      if (el) el.textContent = secondsLeft;
+      if (secondsLeft <= 0) {
+        clearInterval(this.redirectTimer);
+        this.navigate('/');
+      }
+    }, 1000);
+  }
+
+  /* ==========================================================================
+     3. Secret Merchant Quick-Action Modal (/m-manage-order?pids=...)
+     ========================================================================== */
+  renderMerchantOrderActionModal(productIds) {
+    const ids = Array.isArray(productIds) ? productIds : String(productIds || '').split(',').map(s => s.trim()).filter(Boolean);
     const merchant = AuthService.getCurrentMerchant();
-    const product = ProductsService.getProductById(productId);
 
     if (!merchant) {
       // Prompt merchant login first
@@ -928,7 +994,7 @@ class SoukApp {
         const res = await AuthService.loginMerchant(phone, code);
         if (res.success) {
           modalOverlay.remove();
-          this.renderMerchantOrderActionModal(productId);
+          this.renderMerchantOrderActionModal(ids);
         } else {
           this.showToast(res.message, 'error');
         }
@@ -936,8 +1002,10 @@ class SoukApp {
       return;
     }
 
-    if (!product) {
-      this.showToast('المنتج المطلوب غير موجود', 'error');
+    const products = ids.map(id => ProductsService.getProductById(id)).filter(Boolean);
+
+    if (products.length === 0) {
+      this.showToast('المنتجات المطلوبة غير موجودة', 'error');
       this.navigate('/v-space-k90');
       return;
     }
@@ -945,86 +1013,118 @@ class SoukApp {
     const modalOverlay = document.createElement('div');
     modalOverlay.className = 'modal-overlay active';
     modalOverlay.innerHTML = `
-      <div class="modal-container" style="max-width: 520px;">
+      <div class="modal-container" style="max-width: 600px;">
         <div class="modal-header">
-          <div class="modal-title">
+          <div class="modal-title" style="display: flex; align-items: center; gap: 8px;">
             <span>⚙️</span>
-            <span>إدارة حالة البضاعة والمخزون</span>
+            <span>إدارة طلبية الواتساب (${products.length} منتجات)</span>
           </div>
-          <div class="modal-close" onclick="window.app.navigate('/v-space-k90')">✕</div>
+          <div class="modal-close" onclick="this.closest('.modal-overlay').remove(); window.app.navigate('/v-space-k90')">✕</div>
         </div>
 
-        <div class="modal-body">
-          <div style="display: flex; gap: 12px; align-items: center; background: var(--bg-surface-subtle); padding: 12px; border-radius: var(--radius-md); margin-bottom: 16px;">
-            <img src="${product.image}" style="width: 64px; height: 64px; border-radius: 8px; object-fit: cover;">
-            <div>
-              <h4 style="font-weight: 800; font-size: 0.95rem;">${product.title}</h4>
-              <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px;">
-                السعر: <strong>${Number(product.price).toLocaleString()} د.ع</strong> | الحالة الحالية: <span class="badge ${product.status === 'available' ? 'badge-new' : product.status === 'reserved' ? 'badge-used' : 'badge-scrap'}">${product.status === 'available' ? 'متوفر 🟢' : product.status === 'reserved' ? 'قيد الحجز ⏳' : 'تم البيع 🔴'}</span>
+        <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+          <p style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 14px;">
+            حدد الإجراء المطلوب لكل منتج في الطلبية (تأكيد البيع أو إعادة الإتاحة للبيع كمتوفر):
+          </p>
+
+          <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
+            ${products.map(p => `
+              <div style="background: var(--bg-surface-subtle); border: 1.5px solid var(--border-strong); border-radius: var(--radius-md); padding: 12px; display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: flex; gap: 10px; align-items: center;">
+                  <img src="${p.image}" style="width: 52px; height: 52px; border-radius: 8px; object-fit: cover;">
+                  <div style="flex: 1;">
+                    <h4 style="font-weight: 800; font-size: 0.9rem; line-height: 1.3;">${p.title}</h4>
+                    <div style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 2px;">
+                      السعر: <strong style="color: #dc2626;">${Number(p.price).toLocaleString()} د.ع</strong> |
+                      الحالة: <span class="badge ${p.status === 'available' ? 'badge-new' : p.status === 'reserved' ? 'badge-used' : 'badge-scrap'}" id="badge-status-${p.id}">${p.status === 'available' ? 'متوفر 🟢' : p.status === 'reserved' ? 'قيد الحجز ⏳' : 'تم البيع 🔴'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                  <button class="btn btn-danger btn-item-mark-sold" data-id="${p.id}" style="font-size: 0.78rem; padding: 6px 12px; font-weight: 800;">
+                    🔴 تم البيع
+                  </button>
+                  <button class="btn btn-primary btn-item-reactivate" data-id="${p.id}" style="font-size: 0.78rem; padding: 6px 12px; font-weight: 800;">
+                    🟢 إعادة تفعيل (متوفر)
+                  </button>
+                  <button class="btn btn-secondary btn-item-keep-reserved" data-id="${p.id}" style="font-size: 0.78rem; padding: 6px 12px; font-weight: 800;">
+                    ⏳ إبقاء محجوز
+                  </button>
+                </div>
               </div>
-            </div>
+            `).join('')}
           </div>
 
-          <h4 style="font-weight: 800; margin-bottom: 10px;">اختر الإجراء المناسب بعد محادثة الزبون:</h4>
-
-          <div style="display: flex; flex-direction: column; gap: 10px;">
-            <button class="btn btn-primary" style="justify-content: flex-start; padding: 12px;" id="act-reactivate-prod">
-              🟢 إعادة تفعيل المنتج وإتاحته للبيع (متوفر بالموقع)
+          <div style="display: flex; gap: 10px; border-top: 1px solid var(--border-subtle); padding-top: 14px; justify-content: space-between; flex-wrap: wrap;">
+            <button class="btn btn-danger" id="btn-bulk-mark-sold" style="font-weight: 800; font-size: 0.85rem;">
+              🔴 تم بيع كافة المنتجات
             </button>
-
-            <button class="btn btn-danger" style="justify-content: flex-start; padding: 12px;" id="act-mark-sold-prod">
-              🔴 تأكيد البيع النهائي (إخفاء من المتجر وخصم من المخزون)
+            <button class="btn btn-primary" id="btn-bulk-reactivate" style="font-weight: 800; font-size: 0.85rem;">
+              🟢 إعادة تفعيل الكل كمتوفر
             </button>
-
-            <button class="btn btn-secondary" style="justify-content: flex-start; padding: 12px;" id="act-keep-reserved-prod">
-              ⏳ إبقاء المنتج قيد الحجز (مؤقتاً لحين استلام العربون)
-            </button>
-          </div>
-
-          <div style="margin-top: 20px; border-top: 1px solid var(--border-subtle); padding-top: 14px;">
-            <label class="form-label">📦 تعديل الكمية المتوفرة في المخزون</label>
-            <div style="display: flex; gap: 8px;">
-              <input type="number" class="form-input" id="act-stock-qty" value="${product.quantity || 1}" min="0">
-              <button class="btn btn-secondary" id="btn-save-stock-qty" style="flex-shrink: 0;">تحديث الكمية</button>
-            </div>
           </div>
         </div>
 
         <div class="modal-footer">
-          <button class="btn btn-secondary" onclick="window.app.navigate('/v-space-k90')">الذهاب للوحة التحكم</button>
+          <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove(); window.app.navigate('/v-space-k90')">الذهاب للوحة التحكم الكاملة</button>
         </div>
       </div>
     `;
 
     document.body.appendChild(modalOverlay);
 
-    modalOverlay.querySelector('#act-reactivate-prod')?.addEventListener('click', () => {
-      ProductsService.updateProductStatus(productId, 'available', Math.max(1, Number(product.quantity) || 1));
-      modalOverlay.remove();
-      this.navigate('/v-space-k90');
-      this.showToast('تمت إعادة تفعيل المنتج وإتاحته للبيع بنجاح!', 'success');
+    modalOverlay.querySelectorAll('.btn-item-mark-sold').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        ProductsService.updateProductStatus(id, 'sold', 0);
+        const badge = document.getElementById(`badge-status-${id}`);
+        if (badge) {
+          badge.textContent = 'تم البيع 🔴';
+          badge.className = 'badge badge-scrap';
+        }
+        this.showToast('تم تحديث حالة المنتج إلى (تم البيع)!', 'success');
+      });
     });
 
-    modalOverlay.querySelector('#act-mark-sold-prod')?.addEventListener('click', () => {
-      ProductsService.updateProductStatus(productId, 'sold', 0);
-      modalOverlay.remove();
-      this.navigate('/v-space-k90');
-      this.showToast('تم تثبيت بيع المنتج بنجاح!', 'info');
+    modalOverlay.querySelectorAll('.btn-item-reactivate').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        ProductsService.updateProductStatus(id, 'available', 1);
+        const badge = document.getElementById(`badge-status-${id}`);
+        if (badge) {
+          badge.textContent = 'متوفر 🟢';
+          badge.className = 'badge badge-new';
+        }
+        this.showToast('تمت إعادة تفعيل المنتج وعرضه بالمتجر!', 'success');
+      });
     });
 
-    modalOverlay.querySelector('#act-keep-reserved-prod')?.addEventListener('click', () => {
-      ProductsService.updateProductStatus(productId, 'reserved');
-      modalOverlay.remove();
-      this.navigate('/v-space-k90');
-      this.showToast('المنتج الآن قيد الحجز المؤقت', 'info');
+    modalOverlay.querySelectorAll('.btn-item-keep-reserved').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        ProductsService.updateProductStatus(id, 'reserved');
+        const badge = document.getElementById(`badge-status-${id}`);
+        if (badge) {
+          badge.textContent = 'قيد الحجز ⏳';
+          badge.className = 'badge badge-used';
+        }
+        this.showToast('المنتج الآن قيد الحجز المؤقت', 'info');
+      });
     });
 
-    modalOverlay.querySelector('#btn-save-stock-qty')?.addEventListener('click', () => {
-      const qty = Number(document.getElementById('act-stock-qty').value);
-      ProductsService.updateProductStatus(productId, qty > 0 ? 'available' : 'reserved', qty);
+    modalOverlay.querySelector('#btn-bulk-mark-sold')?.addEventListener('click', () => {
+      products.forEach(p => ProductsService.updateProductStatus(p.id, 'sold', 0));
       modalOverlay.remove();
       this.navigate('/v-space-k90');
-      this.showToast(`تم تحديث كمية المخزون إلى: ${qty}`, 'success');
+      this.showToast('تم تأكيد بيع كافة منتجات الطلبية بنجاح!', 'success');
+    });
+
+    modalOverlay.querySelector('#btn-bulk-reactivate')?.addEventListener('click', () => {
+      products.forEach(p => ProductsService.updateProductStatus(p.id, 'available', 1));
+      modalOverlay.remove();
+      this.navigate('/v-space-k90');
+      this.showToast('تمت إعادة تفعيل كافة المنتجات وعرضها بالمتجر!', 'success');
     });
   }
 

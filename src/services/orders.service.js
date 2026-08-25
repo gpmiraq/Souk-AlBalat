@@ -94,10 +94,8 @@ export class OrdersService {
       msg += `⚠️ *ملاحظة :* يجب فحص المنتج امام المندوب ولا يتحمل البائع مسؤولية سعر التوصيل في حال مغادرة المندوب.\n\n`;
 
       msg += `──────────────────────\n`;
-      msg += `🔐 *كود تأكيد البائع:* \n`;
-      group.items.forEach(it => {
-        msg += `👉 ${origin}/m-manage-order?pid=${it.id}\n`;
-      });
+      const pidsParam = group.items.map(it => it.id).join(',');
+      msg += `🔐 *كود تأكيد البائع:* ${origin}/m-manage-order?pids=${pidsParam}`;
 
       const cleanPhone = phone.replace(/[^0-9]/g, '');
       const waPhone = cleanPhone.startsWith('0') ? '964' + cleanPhone.slice(1) : (cleanPhone.startsWith('964') ? cleanPhone : '964' + cleanPhone);
