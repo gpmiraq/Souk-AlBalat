@@ -1446,7 +1446,7 @@ class SoukApp {
       btn.disabled = true;
 
       // Generative AI Analysis based on title, category, condition
-      const aiDesc = AIService.generateProductDescription(title, cat, cond, price);
+      const aiDesc = await AIService.generateProductDescription(title, cat, cond, price);
       document.getElementById('new-prod-desc').value = aiDesc;
       document.getElementById('toggle-ai-insights').checked = true;
 
