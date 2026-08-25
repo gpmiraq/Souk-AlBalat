@@ -6,7 +6,7 @@
 
 import { APP_CONFIG, DEFAULT_CATEGORIES, PRODUCT_CONDITIONS, SOCIAL_ICONS } from './config/constants.js';
 import { ProductsService } from './services/products.service.js';
-import { OrdersService } from './services/orders.service.js';
+import { OrdersService, IRAQI_GOVERNORATES, isValidIraqiPhone } from './services/orders.service.js';
 import { StorageService } from './services/storage.service.js';
 import { PosterService } from './services/poster.service.js';
 import { AIService } from './services/ai.service.js';
@@ -40,6 +40,12 @@ class SoukApp {
 
     this.initTheme();
     this.initRouter();
+
+    // Live Cloud Sync from Google Firebase Firestore
+    ProductsService.syncFromCloud().then(() => this.render());
+    window.addEventListener('focus', () => {
+      ProductsService.syncFromCloud().then(() => this.render());
+    });
   }
 
   initTheme() {
@@ -868,8 +874,7 @@ class SoukApp {
     msg += `⚠️ *ملاحظة :* يجب فحص المنتج امام المندوب ولا يتحمل البائع مسؤولية سعر التوصيل في حال مغادرة المندوب.\n\n`;
 
     msg += `──────────────────────\n`;
-    msg += `👑 *رابط خاص للتاجر:* (هنا رابط تفعيل المنتج في حال عدم الشراء او ختم المنتج انه مباع)\n`;
-    msg += `👉 ${origin}/m-manage-order?pid=${product.id}`;
+    msg += `🔐 *كود تأكيد البائع:* ${origin}/m-manage-order?pid=${product.id}`;
 
     const waPhone = cleanPhone.startsWith('0') ? '964' + cleanPhone.slice(1) : (cleanPhone.startsWith('964') ? cleanPhone : '964' + cleanPhone);
     window.open(`https://api.whatsapp.com/send?phone=${waPhone}&text=${encodeURIComponent(msg)}`, '_blank');
@@ -1177,6 +1182,176 @@ class SoukApp {
       </div>
     `;
     document.body.appendChild(modalOverlay);
+  }
+
+  /* ==========================================================================
+     Cart & Checkout Modal with Strict Iraqi Phone & 18 Governorates
+     ========================================================================== */
+  openCartModal() {
+    const modalOverlay = document.createElement('div');
+    modalOverlay.className = 'modal-overlay active';
+
+    const renderCartBody = () => {
+      if (this.cart.length === 0) {
+        return `
+          <div style="text-align: center; padding: 40px 20px;">
+            <div style="font-size: 3.5rem; margin-bottom: 12px;">🛒</div>
+            <h3 style="font-size: 1.25rem; font-weight: 900; margin-bottom: 8px;">سلة التسوق فارغة حالياً</h3>
+            <p style="color: var(--text-secondary); font-size: 0.92rem; margin-bottom: 20px;">تصفح بضائع الأوتلت والبالات واختر القطع التي ترغب بشرائها.</p>
+            <button class="btn btn-primary" onclick="this.closest('.modal-overlay').remove(); window.app.navigate('/')">تصفح البضائع الآن ⚡</button>
+          </div>
+        `;
+      }
+
+      const itemsTotal = this.cart.reduce((sum, item) => sum + Number(item.price), 0);
+      const deliveryFee = APP_CONFIG.FIXED_DELIVERY_FEE;
+      const grandTotal = itemsTotal + deliveryFee;
+
+      return `
+        <!-- Cart Items List -->
+        <div style="max-height: 200px; overflow-y: auto; margin-bottom: 14px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 10px;">
+          ${this.cart.map((item, index) => `
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; background: var(--bg-surface-subtle); padding: 8px 12px; border-radius: var(--radius-sm);">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <img src="${item.image}" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px;" alt="${item.title}">
+                <div>
+                  <h4 style="font-size: 0.85rem; font-weight: 800; color: var(--text-primary); line-height: 1.3; max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.title}</h4>
+                  <div style="font-size: 0.82rem; font-weight: 900; color: #dc2626;">${Number(item.price).toLocaleString()} د.ع</div>
+                </div>
+              </div>
+              <button class="btn-icon btn-remove-cart-item" data-index="${index}" style="color: #ef4444; font-size: 1.1rem; cursor: pointer;" title="إزالة من السلة">🗑️</button>
+            </div>
+          `).join('')}
+        </div>
+
+        <!-- Cost Breakdown -->
+        <div style="background: var(--bg-surface-subtle); border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: 14px;">
+          <div style="display: flex; justify-content: space-between; font-size: 0.88rem; margin-bottom: 4px;">
+            <span style="color: var(--text-secondary);">مجموع البضائع:</span>
+            <span style="font-weight: 800;">${itemsTotal.toLocaleString()} د.ع</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 0.88rem; margin-bottom: 4px;">
+            <span style="color: var(--text-secondary);">أجور التوصيل (كافة المحافظات):</span>
+            <span style="font-weight: 800; color: #10b981;">${deliveryFee.toLocaleString()} د.ع</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 1.05rem; font-weight: 900; border-top: 1px dashed var(--border-strong); padding-top: 6px; margin-top: 4px; color: var(--brand-primary);">
+            <span>المبلغ الإجمالي الكلي:</span>
+            <span>${grandTotal.toLocaleString()} د.ع</span>
+          </div>
+        </div>
+
+        <!-- Customer Checkout Form -->
+        <form id="cart-checkout-form" onsubmit="return false;">
+          <div class="form-group" style="margin-bottom: 10px;">
+            <label class="form-label" style="font-weight: 800; font-size: 0.82rem; margin-bottom: 4px; display: block;">الاسم الكامل للزبون *</label>
+            <input type="text" class="form-input" id="cart-cust-name" placeholder="أدخل اسمك الكريم..." required style="width: 100%; padding: 8px 12px; font-size: 0.88rem; border-radius: var(--radius-sm); border: 1.5px solid var(--border-strong); background: var(--bg-surface); color: var(--text-primary);">
+          </div>
+
+          <div class="form-group" style="margin-bottom: 10px;">
+            <label class="form-label" style="font-weight: 800; font-size: 0.82rem; margin-bottom: 4px; display: block;">رقم الهاتف (يبدأ بـ 077 أو 078 أو 075 أو 079) *</label>
+            <input type="tel" class="form-input" id="cart-cust-phone" placeholder="مثال: 07701234567" required style="width: 100%; padding: 8px 12px; font-size: 0.88rem; border-radius: var(--radius-sm); border: 1.5px solid var(--border-strong); background: var(--bg-surface); color: var(--text-primary); direction: ltr; text-align: right;">
+          </div>
+
+          <div class="form-group" style="margin-bottom: 10px;">
+            <label class="form-label" style="font-weight: 800; font-size: 0.82rem; margin-bottom: 4px; display: block;">المحافظة *</label>
+            <select class="form-input" id="cart-cust-province" required style="width: 100%; padding: 8px 12px; font-size: 0.88rem; border-radius: var(--radius-sm); border: 1.5px solid var(--border-strong); background: var(--bg-surface); color: var(--text-primary);">
+              <option value="">-- اختر المحافظة من القائمة (18 محافظة) --</option>
+              ${IRAQI_GOVERNORATES.map(gov => `<option value="${gov}">📍 ${gov}</option>`).join('')}
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 14px;">
+            <label class="form-label" style="font-weight: 800; font-size: 0.82rem; margin-bottom: 4px; display: block;">تفاصيل العنوان وأقرب نقطة دالة *</label>
+            <textarea class="form-input" id="cart-cust-address" rows="2" placeholder="المنطقة، اسم الشارع / المحلة، أقرب نقطة دالة لتوصيل الطلب..." required style="width: 100%; padding: 8px 12px; font-size: 0.88rem; border-radius: var(--radius-sm); border: 1.5px solid var(--border-strong); background: var(--bg-surface); color: var(--text-primary);"></textarea>
+          </div>
+
+          <button class="btn btn-whatsapp" id="btn-submit-cart-order" style="width: 100%; padding: 12px; font-size: 1rem; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            ${SOCIAL_ICONS.WHATSAPP}
+            <span>تأكيد وإرسال الطلب عبر واتساب 🚀</span>
+          </button>
+        </form>
+      `;
+    };
+
+    modalOverlay.innerHTML = `
+      <div class="modal-container" style="max-width: 480px;">
+        <div class="modal-header">
+          <div class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+            <span>🛒</span>
+            <span>سلة المشتريات وتأكيد الطلب (${this.cart.length} قطع)</span>
+          </div>
+          <div class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</div>
+        </div>
+        <div class="modal-body" id="cart-modal-body-content">
+          ${renderCartBody()}
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modalOverlay);
+
+    const attachCartEvents = () => {
+      modalOverlay.querySelectorAll('.btn-remove-cart-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const idx = Number(btn.dataset.index);
+          this.cart.splice(idx, 1);
+          localStorage.setItem('souk_cart', JSON.stringify(this.cart));
+          this.render();
+          const content = document.getElementById('cart-modal-body-content');
+          if (content) {
+            content.innerHTML = renderCartBody();
+            attachCartEvents();
+          }
+        });
+      });
+
+      modalOverlay.querySelector('#btn-submit-cart-order')?.addEventListener('click', () => {
+        const name = document.getElementById('cart-cust-name')?.value.trim();
+        const phone = document.getElementById('cart-cust-phone')?.value.trim();
+        const province = document.getElementById('cart-cust-province')?.value;
+        const address = document.getElementById('cart-cust-address')?.value.trim();
+
+        if (!name) {
+          this.showToast('يرجى إدخال الاسم الكامل!', 'error');
+          return;
+        }
+
+        if (!isValidIraqiPhone(phone)) {
+          this.showToast('يرجى إدخال رقم هاتف عراقي صحيح يبدأ بـ (077 / 078 / 075 / 079) مكون من 11 رقماً!', 'error');
+          return;
+        }
+
+        if (!province) {
+          this.showToast('يرجى اختيار المحافظة من القائمة المنسدلة!', 'error');
+          return;
+        }
+
+        if (!address) {
+          this.showToast('يرجى كتابة تفاصيل العنوان وأقرب نقطة دالة!', 'error');
+          return;
+        }
+
+        const orders = OrdersService.processOrderAndGenerateWhatsApp(this.cart, {
+          name,
+          phone,
+          province,
+          address
+        });
+
+        // Clear cart
+        this.cart = [];
+        localStorage.setItem('souk_cart', JSON.stringify(this.cart));
+        modalOverlay.remove();
+        this.render();
+
+        if (orders.length > 0) {
+          window.open(orders[0].waUrl, '_blank');
+          this.showToast('تم تجهيز وإرسال الطلب عبر واتساب بنجاح! 🎉', 'success');
+        }
+      });
+    };
+
+    attachCartEvents();
   }
 
   /* ==========================================================================

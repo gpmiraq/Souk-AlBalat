@@ -1,7 +1,11 @@
 /* ==========================================================================
-   Products Catalog & Inventory Service
-   Supports Soft Delete / Archive, Restore, Edit & Multi-Image Management
+   Products Catalog & Real-Time Cloud Synchronization Service
+   Integrated with Google Firebase Cloud Firestore + Local Cache
+   Ensures products published from any phone/browser are globally available
    ========================================================================== */
+
+import { db } from '../config/firebase.config.js';
+import { collection, doc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
 
 const STORAGE_KEY = 'souk_products_v5';
 
@@ -33,6 +37,33 @@ const INITIAL_PRODUCTS = [
 ];
 
 export class ProductsService {
+  /**
+   * Syncs all products from Google Firebase Firestore Cloud
+   * Updates local cache and returns the latest catalog
+   */
+  static async syncFromCloud() {
+    try {
+      const snap = await getDocs(collection(db, 'products'));
+      if (!snap.empty) {
+        const cloudList = [];
+        snap.forEach(docSnap => {
+          cloudList.push(docSnap.data());
+        });
+        cloudList.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudList));
+        return cloudList;
+      } else {
+        // First-time seed into Firestore Cloud
+        for (const item of INITIAL_PRODUCTS) {
+          await setDoc(doc(db, 'products', item.id), item);
+        }
+      }
+    } catch (err) {
+      console.warn('Firebase Cloud Sync info:', err.message);
+    }
+    return this.getProducts(true);
+  }
+
   static getProducts(includeDeleted = false) {
     const saved = localStorage.getItem(STORAGE_KEY);
     let list = INITIAL_PRODUCTS;
@@ -85,6 +116,10 @@ export class ProductsService {
 
     products.unshift(newProduct);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
+
+    // Async Cloud write
+    setDoc(doc(db, 'products', newProduct.id), newProduct).catch(e => console.warn('Cloud sync error:', e));
+
     return newProduct;
   }
 
@@ -102,6 +137,10 @@ export class ProductsService {
         updatedAt: new Date().toISOString()
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
+
+      // Async Cloud write
+      setDoc(doc(db, 'products', id), products[index], { merge: true }).catch(e => console.warn('Cloud update error:', e));
+
       return products[index];
     }
     return null;
@@ -114,6 +153,10 @@ export class ProductsService {
       product.status = 'deleted';
       product.deletedAt = new Date().toISOString();
       localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
+
+      // Async Cloud write
+      setDoc(doc(db, 'products', id), { status: 'deleted', deletedAt: product.deletedAt }, { merge: true }).catch(e => console.warn('Cloud soft delete error:', e));
+
       return true;
     }
     return false;
@@ -126,6 +169,10 @@ export class ProductsService {
       product.status = 'available';
       delete product.deletedAt;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
+
+      // Async Cloud write
+      setDoc(doc(db, 'products', id), { status: 'available' }, { merge: true }).catch(e => console.warn('Cloud restore error:', e));
+
       return true;
     }
     return false;
@@ -135,6 +182,9 @@ export class ProductsService {
     let products = this.getProducts(true);
     products = products.filter(p => String(p.id) !== String(id));
     localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
+
+    // Async Cloud delete
+    deleteDoc(doc(db, 'products', id)).catch(e => console.warn('Cloud hard delete error:', e));
   }
 
   static updateProductStatus(id, status, quantity = null) {
@@ -146,6 +196,10 @@ export class ProductsService {
         product.quantity = Number(quantity);
       }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
+
+      // Async Cloud write
+      setDoc(doc(db, 'products', id), { status, ...(quantity !== null ? { quantity: Number(quantity) } : {}) }, { merge: true }).catch(e => console.warn('Cloud status update error:', e));
+
       return true;
     }
     return false;
@@ -164,6 +218,10 @@ export class ProductsService {
       }
 
       localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
+
+      // Async Cloud write
+      setDoc(doc(db, 'products', id), { quantity: newQty, status: product.status }, { merge: true }).catch(e => console.warn('Cloud stock decrement error:', e));
+
       return { success: true, newQuantity: newQty, status: product.status };
     }
     return { success: false };
@@ -181,6 +239,10 @@ export class ProductsService {
       }
       product.freeDelivery = Boolean(freeDelivery);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
+
+      // Async Cloud write
+      setDoc(doc(db, 'products', id), { discountPercent: product.discountPercent, oldPrice: product.oldPrice, freeDelivery: product.freeDelivery }, { merge: true }).catch(e => console.warn('Cloud discount error:', e));
+
       return true;
     }
     return false;

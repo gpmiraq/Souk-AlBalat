@@ -1,10 +1,42 @@
 /* ==========================================================================
    Orders & WhatsApp Dispatch Engine
-   Structured Multi-Line WhatsApp Invoices with Delivery & Merchant Action Links
+   Structured Multi-Line WhatsApp Invoices with Delivery & Merchant Action Codes
+   Strict Iraqi Phone Validation & 18 Governorates
    ========================================================================== */
 
 import { APP_CONFIG } from '../config/constants.js';
 import { ProductsService } from './products.service.js';
+
+export const IRAQI_GOVERNORATES = [
+  "بغداد",
+  "البصرة",
+  "أربيل",
+  "النجف الأشرف",
+  "كربلاء المقدسة",
+  "نينوى (الموصل)",
+  "السليمانية",
+  "كركوك",
+  "بابل (الحلة)",
+  "الأنبار",
+  "ديالى",
+  "ذي قار (الناصرية)",
+  "صلاح الدين",
+  "ميسان (العمارة)",
+  "دهوك",
+  "واسط (الكوت)",
+  "القادسية (الديوانية)",
+  "المثنى (السماوة)"
+];
+
+/**
+ * Validates Iraqi phone numbers (AsiaCell, Zain, Korek)
+ * Accepts formats: 077XXXXXXXX, 078XXXXXXXX, 075XXXXXXXX, 079XXXXXXXX, +9647XXXXXXXXX, 9647XXXXXXXXX
+ */
+export function isValidIraqiPhone(phone) {
+  if (!phone) return false;
+  const clean = String(phone).replace(/[^0-9]/g, '');
+  return /^(?:(?:00964|\+964|964|0)?7[5789]\d{8})$/.test(clean);
+}
 
 export class OrdersService {
   /**
@@ -42,7 +74,8 @@ export class OrdersService {
       msg += `👤 *معلومات الزبون والتوصيل:*\n`;
       msg += `الاسم : ${customerInfo.name}\n`;
       msg += `الهاتف : ${customerInfo.phone}\n`;
-      msg += `العنوان : ${customerInfo.address}\n`;
+      msg += `المحافظة : ${customerInfo.province || 'العراق'}\n`;
+      msg += `العنوان بالتفصيل : ${customerInfo.address}\n`;
       if (customerInfo.notes) {
         msg += `ملاحظات الزبون : ${customerInfo.notes}\n`;
       }
@@ -61,7 +94,7 @@ export class OrdersService {
       msg += `⚠️ *ملاحظة :* يجب فحص المنتج امام المندوب ولا يتحمل البائع مسؤولية سعر التوصيل في حال مغادرة المندوب.\n\n`;
 
       msg += `──────────────────────\n`;
-      msg += `👑 *رابط خاص للتاجر:* (هنا رابط تفعيل المنتج في حال عدم الشراء او ختم المنتج انه مباع)\n`;
+      msg += `🔐 *كود تأكيد البائع:* \n`;
       group.items.forEach(it => {
         msg += `👉 ${origin}/m-manage-order?pid=${it.id}\n`;
       });

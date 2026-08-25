@@ -1,12 +1,13 @@
 /* ==========================================================================
-   Official Google Firebase Cloud Storage Service
+   Official Google Firebase Cloud Storage & Cloud Firestore Service
    Project: Souk-AlBalat-Drive
    Bucket: souk-albalat-drive.firebasestorage.app
-   Strict Real-Cloud Upload (Throws error on failure - Zero Base64 Fallback)
+   Live Cloud Database & Storage Engine for Global Multi-Device Sync
    ========================================================================== */
 
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { getFirestore } from 'firebase/firestore';
 
 export const firebaseConfig = {
   projectId: "souk-albalat-drive",
@@ -15,7 +16,8 @@ export const firebaseConfig = {
 
 // Initialize Firebase App singleton
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const storage = getStorage(app);
+export const storage = getStorage(app);
+export const db = getFirestore(app);
 
 export class CloudStorageProvider {
   /**
