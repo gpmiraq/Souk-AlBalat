@@ -775,7 +775,7 @@ class SoukApp {
           <span>/</span>
           <span class="breadcrumb-item" onclick="window.app.activeCategory='${product.category}'; window.app.navigate('/')" style="cursor:pointer; color: var(--text-secondary);">${product.category}</span>
           <span>/</span>
-          <span class="breadcrumb-item" onclick="window.app.openMerchantStoreModal('${product.merchantId || 'm-alwareth'}')" style="cursor:pointer; color: var(--brand-primary); font-weight: 800; display: inline-flex; align-items: center; gap: 4px;">
+          <span class="breadcrumb-item" onclick="window.app.navigate('/seller/${product.merchantId || 'alwareth'}')" style="cursor:pointer; color: var(--brand-primary); font-weight: 800; display: inline-flex; align-items: center; gap: 4px;">
             ${product.merchantName || 'أبو وارث أمازون'} ${SOCIAL_ICONS.VERIFIED_BADGE}
           </span>
           <span>/</span>
@@ -809,7 +809,7 @@ class SoukApp {
           <!-- 2. Middle Column: Product Details & Official Brand Social Icons -->
           <div class="product-middle-info">
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; background: var(--bg-surface-subtle); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
-              <div style="display: flex; align-items: center; gap: 6px; cursor: pointer;" onclick="window.app.openMerchantStoreModal('${product.merchantId || 'm-alwareth'}')">
+              <div style="display: flex; align-items: center; gap: 6px; cursor: pointer;" onclick="window.app.navigate('/seller/${product.merchantId || 'alwareth'}')">
                 <span style="font-weight: 900; color: var(--text-primary); font-size: 0.95rem;">🏪 ${product.merchantName || 'أبو وارث أمازون'}</span>
                 ${SOCIAL_ICONS.VERIFIED_BADGE}
                 <span class="badge" style="background: #fef08a; color: #854d0e; font-weight: 800;">👑 مدير الموقع</span>
