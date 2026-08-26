@@ -2146,7 +2146,7 @@ class SoukApp {
                 <img src="${merchant.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
               </div>
               <div>
-                <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                   <h2 style="font-size: 1.25rem; font-weight: 900;">${merchant.name}</h2>
                   ${SOCIAL_ICONS.VERIFIED_BADGE}
                   <span class="badge" style="background: #fef08a; color: #854d0e;">👑 مدير ومؤسس الموقع</span>
@@ -2165,12 +2165,12 @@ class SoukApp {
               </div>
             </div>
 
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-              <button class="btn btn-secondary" id="btn-merchant-settings">
-                ⚙️ إعدادات الحساب
-              </button>
+            <div class="merchant-header-actions" style="display: flex; gap: 10px; flex-wrap: wrap;">
               <button class="btn btn-primary" id="btn-merchant-add-product">
                 ➕ نشر بضاعة جديدة
+              </button>
+              <button class="btn btn-secondary" id="btn-merchant-settings">
+                ⚙️ إعدادات الحساب
               </button>
               <button class="btn btn-secondary" id="btn-merchant-logout">
                 🚪 خروج
@@ -2180,21 +2180,21 @@ class SoukApp {
 
           <div class="merchant-stats-grid">
             <div class="merchant-stat-card">
-              <span class="stat-label">📦 البضائع النشطة المعروضة</span>
+              <span class="stat-label">📦 البضائع النشطة</span>
               <span class="stat-value">${myActiveProducts.filter(p => p.status === 'available').length}</span>
             </div>
             <div class="merchant-stat-card">
-              <span class="stat-label">⏳ طلبات قيد الحجز</span>
+              <span class="stat-label">⏳ قيد الحجز</span>
               <span class="stat-value">${myActiveProducts.filter(p => p.status === 'reserved').length}</span>
             </div>
             <div class="merchant-stat-card">
-              <span class="stat-label">🗑️ سلة المحذوفات والأرشيف</span>
+              <span class="stat-label">🗑️ المحذوفات</span>
               <span class="stat-value" style="color: #ef4444;">${myDeletedProducts.length}</span>
             </div>
           </div>
 
           <!-- Merchant Tabs Selector -->
-          <div style="display: flex; gap: 10px; margin-bottom: 14px; border-bottom: 2px solid var(--border-subtle); padding-bottom: 8px;">
+          <div class="merchant-tabs-wrapper">
             <button class="btn ${this.merchantActiveTab === 'active' ? 'btn-primary' : 'btn-secondary'}" id="tab-merchant-active" style="font-weight: 800;">
               📦 البضائع النشطة المعروضة (${myActiveProducts.length})
             </button>
@@ -2203,7 +2203,8 @@ class SoukApp {
             </button>
           </div>
 
-          <div class="admin-table-container">
+          <!-- 1. Desktop Data Table View (Visible on screens > 768px) -->
+          <div class="admin-table-container merchant-desktop-table">
             ${this.merchantActiveTab === 'active' ? `
               <table class="admin-data-table">
                 <thead>
@@ -2285,6 +2286,91 @@ class SoukApp {
               </table>
             `}
           </div>
+
+          <!-- 2. Mobile Responsive Card Grid View (Visible on smartphones <= 768px) -->
+          <div class="merchant-mobile-grid">
+            ${this.merchantActiveTab === 'active' ? (
+              myActiveProducts.length === 0 ? `
+                <div class="merchant-product-card" style="text-align: center; padding: 36px 16px;">
+                  <div style="font-size: 2.5rem; margin-bottom: 8px;">📦</div>
+                  <h3 style="font-size: 1.1rem; font-weight: 900; margin-bottom: 6px;">لا توجد بضائع نشطة حالياً</h3>
+                  <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 16px;">ابدأ الآن بنشر أول منتج في متجرك بكل سهولة وسرعة!</p>
+                  <button class="btn btn-primary" onclick="window.app.openAddProductModal()" style="width: 100%; padding: 12px; font-size: 1rem;">
+                    ➕ نشر بضاعة جديدة الآن 🚀
+                  </button>
+                </div>
+              ` : myActiveProducts.map(p => `
+                <div class="merchant-product-card">
+                  <div class="mpc-top-row">
+                    <img src="${p.image}" class="mpc-thumb" alt="${p.title}">
+                    <div class="mpc-info">
+                      <div class="mpc-title">${p.title}</div>
+                      <div class="mpc-meta-row">
+                        <span class="mpc-price">${Number(p.price).toLocaleString()} د.ع</span>
+                        <span class="badge ${p.condition === 'new' ? 'badge-new' : p.condition === 'used' ? 'badge-used' : 'badge-scrap'} mpc-badge">
+                          ${p.conditionLabel || p.condition}
+                        </span>
+                        <span class="badge" style="background: rgba(16, 185, 129, 0.12); color: #10b981; font-weight: 800; font-size: 0.72rem;">
+                          📦 ${p.quantity || 1} قطعة
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="mpc-controls-row">
+                    <div style="display: flex; flex-direction: column; gap: 3px;">
+                      <span style="font-size: 0.7rem; color: var(--text-tertiary); font-weight: 700;">حالة العرض:</span>
+                      <select class="mpc-status-select" onchange="window.app.changeProductStatus('${p.id}', this.value)">
+                        <option value="available" ${p.status === 'available' ? 'selected' : ''}>متوفر 🟢</option>
+                        <option value="reserved" ${p.status === 'reserved' ? 'selected' : ''}>قيد الحجز ⏳</option>
+                        <option value="sold" ${p.status === 'sold' ? 'selected' : ''}>تم البيع 🔴</option>
+                      </select>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 3px;">
+                      <span style="font-size: 0.7rem; color: var(--text-tertiary); font-weight: 700;">الخصم والتوصيل:</span>
+                      <button class="btn btn-secondary mpc-discount-btn" onclick="window.app.openDiscountModal('${p.id}')">
+                        ${p.discountPercent > 0 ? `🏷️ خصم ${p.discountPercent}%` : '🎁 خصم / توصيل'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="mpc-actions-toolbar">
+                    <button class="btn btn-secondary" onclick="window.app.openEditProductModal('${p.id}')">✏️ تعديل</button>
+                    <button class="btn btn-secondary" onclick="window.app.openPosterModal('${p.id}')">📷 بوستر</button>
+                    <button class="btn btn-danger" onclick="window.app.softDeleteMerchantProduct('${p.id}')" title="نقل للمحذوفات">🗑️ حذف</button>
+                  </div>
+                </div>
+              `).join('')
+            ) : (
+              myDeletedProducts.length === 0 ? `
+                <div class="merchant-product-card" style="text-align: center; padding: 36px 16px;">
+                  <div style="font-size: 2.2rem; margin-bottom: 8px;">🎉</div>
+                  <h3 style="font-size: 1.05rem; font-weight: 800; margin-bottom: 6px;">سلة المحذوفات فارغة</h3>
+                  <p style="font-size: 0.85rem; color: var(--text-secondary);">لا توجد أي بضائع محذوفة أو مؤرشفة حالياً.</p>
+                </div>
+              ` : myDeletedProducts.map(p => `
+                <div class="merchant-product-card is-deleted">
+                  <div class="mpc-top-row">
+                    <img src="${p.image}" class="mpc-thumb" style="opacity: 0.6;" alt="${p.title}">
+                    <div class="mpc-info">
+                      <div class="mpc-title" style="text-decoration: line-through; color: var(--text-secondary);">${p.title}</div>
+                      <div class="mpc-meta-row">
+                        <span class="mpc-price" style="color: var(--text-tertiary);">${Number(p.price).toLocaleString()} د.ع</span>
+                        <span class="badge badge-scrap mpc-badge">🗑️ محذوف</span>
+                        <span style="font-size: 0.72rem; color: var(--text-tertiary);">📅 ${p.deletedAt ? new Date(p.deletedAt).toLocaleDateString('ar-IQ') : 'مؤرشف'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px;">
+                    <button class="btn btn-primary" style="font-size: 0.82rem; padding: 8px;" onclick="window.app.restoreMerchantProduct('${p.id}')">♻️ استعادة للمتجر</button>
+                    <button class="btn btn-danger" style="font-size: 0.82rem; padding: 8px;" onclick="window.app.hardDeleteMerchantProduct('${p.id}')">❌ حذف نهائي</button>
+                  </div>
+                </div>
+              `).join('')
+            )}
+          </div>
         </div>
       </div>
     `;
@@ -2342,7 +2428,7 @@ class SoukApp {
     const modalOverlay = document.createElement('div');
     modalOverlay.className = 'modal-overlay active';
     modalOverlay.innerHTML = `
-      <div class="modal-container" style="max-width: 680px; max-height: 90vh; overflow-y: auto;">
+      <div class="modal-container">
         <div class="modal-header">
           <div class="modal-title">
             <span>✏️</span>
@@ -2354,11 +2440,11 @@ class SoukApp {
         <div class="modal-body">
           <!-- 3 Photo Slots -->
           <div class="form-group">
-            <label class="form-label">صور المنتج (اختر صورة واحدة على الأقل):</label>
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+            <label class="form-label" style="font-weight: 800;">📸 صور المنتج (اختر صورة واحدة على الأقل):</label>
+            <div class="image-upload-slots-grid">
               ${[1, 2, 3].map(slot => `
-                <div class="image-upload-dropzone" id="edit-upload-slot-${slot}" style="padding: 10px; cursor: pointer; text-align: center; border: 2px dashed var(--border-strong); border-radius: 8px;">
-                  <div id="edit-preview-slot-${slot}" style="width: 100%; height: 90px; margin-bottom: 6px; ${uploadedImagesList[slot-1] ? 'display:block;' : 'display:none;'}">
+                <div class="image-upload-dropzone" id="edit-upload-slot-${slot}" style="padding: 10px; cursor: pointer; text-align: center; border: 2px dashed var(--border-strong); border-radius: 8px; background: var(--bg-surface-subtle);">
+                  <div id="edit-preview-slot-${slot}" style="width: 100%; height: 85px; margin-bottom: 6px; ${uploadedImagesList[slot-1] ? 'display:block;' : 'display:none;'}">
                     ${uploadedImagesList[slot-1] ? `<img src="${uploadedImagesList[slot-1]}" style="width:100%; height:100%; object-fit:cover; border-radius:6px;">` : ''}
                   </div>
                   <span id="edit-slot-label-${slot}" style="font-size: 0.72rem; font-weight: 800; color: var(--text-secondary);">
@@ -2370,22 +2456,22 @@ class SoukApp {
           </div>
 
           <div class="form-group">
-            <label class="form-label">عنوان وموديل المنتج *</label>
+            <label class="form-label">عنوان وموديل المنتج بدقة *</label>
             <input type="text" class="form-input" id="edit-prod-title" value="${product.title}">
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
-            <div class="form-group">
+          <div class="modal-form-grid-3">
+            <div class="form-group" style="margin-bottom: 0;">
               <label class="form-label">السعر (د.ع) *</label>
               <input type="number" class="form-input" id="edit-prod-price" value="${product.price}">
             </div>
 
-            <div class="form-group">
-              <label class="form-label">الكمية المتوفرة بالمخزون *</label>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">الكمية المتوفرة *</label>
               <input type="number" class="form-input" id="edit-prod-qty" value="${product.quantity || 1}" min="0">
             </div>
 
-            <div class="form-group">
+            <div class="form-group" style="margin-bottom: 0;">
               <label class="form-label">حالة القطعة *</label>
               <select class="form-select" id="edit-prod-condition">
                 <option value="new" ${product.condition === 'new' ? 'selected' : ''}>✨ جديد غير مفتوح (NEW)</option>
@@ -2419,7 +2505,7 @@ class SoukApp {
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
             <label class="form-label" style="margin-bottom: 0;">تفاصيل ومواصفات مولدة بالذكاء الاصطناعي:</label>
             <button type="button" class="btn btn-secondary" id="btn-edit-generate-ai-desc" style="font-size: 0.78rem; padding: 6px 12px; font-weight: 800; color: #d97706; border-color: #f59e0b; background: rgba(245, 158, 11, 0.08);">
-              ✨ إعادة توليد التفاصيل بالذكاء الاصطناعي 🤖
+              ✨ توليد التفاصيل بالذكاء الاصطناعي 🤖
             </button>
           </div>
 
@@ -2683,11 +2769,11 @@ class SoukApp {
     const modalOverlay = document.createElement('div');
     modalOverlay.className = 'modal-overlay active';
     modalOverlay.innerHTML = `
-      <div class="modal-container" style="max-width: 680px;">
+      <div class="modal-container">
         <div class="modal-header">
           <div class="modal-title">
             <span>➕</span>
-            <span>نشر بضاعة جديدة (رفع 3 صور + تخزين سحابي + ذكاء اصطناعي)</span>
+            <span>نشر بضاعة جديدة (رفع 3 صور + ذكاء اصطناعي)</span>
           </div>
           <div class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</div>
         </div>
@@ -2695,13 +2781,13 @@ class SoukApp {
         <div class="modal-body">
           <!-- 3-Image Upload Slots -->
           <label class="form-label" style="font-weight: 800;">📸 صور المنتج (ارفع حتى 3 صور مع ختم المنصة السحابي):</label>
-          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px;">
+          <div class="image-upload-slots-grid">
             ${[1, 2, 3].map(slot => `
-              <div class="image-upload-zone" id="upload-slot-${slot}" style="padding: 14px 8px; text-align: center; cursor: pointer; position: relative;">
-                <div id="slot-icon-${slot}" style="font-size: 1.6rem; margin-bottom: 4px;">📷</div>
-                <div id="slot-label-${slot}" style="font-size: 0.75rem; font-weight: 800;">صورة ${slot} ${slot === 1 ? '(الرئيسية *)' : '(إضافية)'}</div>
+              <div class="image-upload-zone" id="upload-slot-${slot}" style="padding: 12px 6px; text-align: center; cursor: pointer; position: relative; margin-bottom: 0;">
+                <div id="slot-icon-${slot}" style="font-size: 1.5rem; margin-bottom: 2px;">📷</div>
+                <div id="slot-label-${slot}" style="font-size: 0.72rem; font-weight: 800;">صورة ${slot} ${slot === 1 ? '(الرئيسية *)' : '(إضافية)'}</div>
                 <input type="file" id="file-slot-input-${slot}" accept="image/*" style="display: none;">
-                <div id="preview-slot-${slot}" style="display: none; aspect-ratio: 1/1; width: 100%; margin-top: 6px; border-radius: 6px; overflow: hidden; border: 2px solid var(--brand-primary);"></div>
+                <div id="preview-slot-${slot}" style="display: none; aspect-ratio: 1/1; width: 100%; margin-top: 4px; border-radius: 6px; overflow: hidden; border: 2px solid var(--brand-primary);"></div>
               </div>
             `).join('')}
           </div>
@@ -2711,19 +2797,19 @@ class SoukApp {
             <input type="text" class="form-input" id="new-prod-title" placeholder="مثال: سماعة لوجيتك أصلية G432 محيطية 7.1 احترافية">
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
-            <div class="form-group">
+          <div class="modal-form-grid-3">
+            <div class="form-group" style="margin-bottom: 0;">
               <label class="form-label">السعر (د.ع) *</label>
               <input type="number" class="form-input" id="new-prod-price" placeholder="45000">
             </div>
 
-            <div class="form-group">
-              <label class="form-label">الكمية المتوفرة بالمخزون *</label>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">الكمية المتوفرة *</label>
               <input type="number" class="form-input" id="new-prod-qty" value="1" min="1">
             </div>
 
             <!-- Exact 4 Condition Choices -->
-            <div class="form-group">
+            <div class="form-group" style="margin-bottom: 0;">
               <label class="form-label">حالة القطعة *</label>
               <select class="form-select" id="new-prod-condition">
                 <option value="new">✨ جديد غير مفتوح (NEW)</option>
@@ -3165,7 +3251,7 @@ class SoukApp {
               <span>7. تخصيص مظهر الموقع</span>
             </div>
 
-            <div class="admin-nav-item" onclick="window.app.navigate('/')" style="margin-top: 20px; border-top: 1px solid #1e293b;">
+            <div class="admin-nav-item" onclick="window.app.navigate('/')" style="margin-top: 10px; border-top: 1px solid #1e293b;">
               <span class="admin-nav-icon">🛍️</span>
               <span>معاينة المتجر كزبون</span>
             </div>
@@ -3229,12 +3315,12 @@ class SoukApp {
             <div class="admin-card-section-header">
               <div class="admin-card-section-title">⚙️ الإعدادات العامة السريعة</div>
             </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-              <div class="form-group">
+            <div class="modal-form-grid-2">
+              <div class="form-group" style="margin-bottom: 0;">
                 <label class="form-label">أجور التوصيل الثابتة (د.ع)</label>
                 <input type="number" class="form-input" id="cfg-delivery-fee" value="${this.siteSettings.deliveryFee}">
               </div>
-              <div class="form-group">
+              <div class="form-group" style="margin-bottom: 0;">
                 <label class="form-label">هاتف واتساب إدارة الموقع</label>
                 <input type="text" class="form-input" id="cfg-support-phone" value="${this.siteSettings.supportPhone}">
               </div>
@@ -3242,47 +3328,47 @@ class SoukApp {
             <button class="btn btn-primary" id="btn-save-general-settings" style="margin-top: 10px;">💾 حفظ الإعدادات</button>
           </div>
 
-            <!-- Google Gemini AI Engine Secure Key Card -->
-            <div class="admin-card-section" style="border: 2px solid #f59e0b; background: rgba(245, 158, 11, 0.03);">
-              <div class="admin-card-section-header">
-                <div class="admin-card-section-title" style="color: #d97706;">🤖 إعداد وتفعيل مفتاح Google Gemini AI الرسمي للمنصة</div>
-              </div>
-              <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 14px; line-height: 1.6;">
-                أدخل مفتاح Google Gemini API الجديد الخاص بك من حسابك في <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: #3b82f6; font-weight: 800; text-decoration: underline;">Google AI Studio ↗</a>. يتم حفظ المفتاح هنا بأمان تام في لوحة الإدارة ولن ينكشف في أي ملفات عامة، مما يجعله متوافقاً 100% مع قوانين Google ولا يتم حظره أبداً.
-              </p>
-              <div class="form-group">
-                <label class="form-label">مفتاح Google Gemini API Key</label>
-                <div style="display: flex; gap: 8px;">
-                  <input type="password" class="form-input" id="cfg-gemini-key" placeholder="AIzaSy..." value="${localStorage.getItem('souk_gemini_api_key') || ''}">
-                  <button type="button" class="btn btn-secondary" onclick="const f = document.getElementById('cfg-gemini-key'); f.type = f.type === 'password' ? 'text' : 'password';">👁️</button>
-                </div>
-              </div>
-              <button class="btn btn-primary" id="btn-save-gemini-key" style="margin-top: 10px; background: #d97706; border-color: #d97706;">
-                💾 حفظ وتفعيل مفتاح الذكاء الاصطناعي لجميع التجار
-              </button>
+          <!-- Google Gemini AI Engine Secure Key Card -->
+          <div class="admin-card-section" style="border: 2px solid #f59e0b; background: rgba(245, 158, 11, 0.03);">
+            <div class="admin-card-section-header">
+              <div class="admin-card-section-title" style="color: #d97706;">🤖 إعداد وتفعيل مفتاح Google Gemini AI الرسمي للمنصة</div>
             </div>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 14px; line-height: 1.6;">
+              أدخل مفتاح Google Gemini API الجديد الخاص بك من حسابك في <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: #3b82f6; font-weight: 800; text-decoration: underline;">Google AI Studio ↗</a>. يتم حفظ المفتاح هنا بأمان تام في لوحة الإدارة ولن ينكشف في أي ملفات عامة، مما يجعله متوافقاً 100% مع قوانين Google ولا يتم حظره أبداً.
+            </p>
+            <div class="form-group">
+              <label class="form-label">مفتاح Google Gemini API Key</label>
+              <div style="display: flex; gap: 8px;">
+                <input type="password" class="form-input" id="cfg-gemini-key" placeholder="AIzaSy..." value="${localStorage.getItem('souk_gemini_api_key') || ''}">
+                <button type="button" class="btn btn-secondary" onclick="const f = document.getElementById('cfg-gemini-key'); f.type = f.type === 'password' ? 'text' : 'password';">👁️</button>
+              </div>
+            </div>
+            <button class="btn btn-primary" id="btn-save-gemini-key" style="margin-top: 10px; background: #d97706; border-color: #d97706;">
+              💾 حفظ وتفعيل مفتاح الذكاء الاصطناعي لجميع التجار
+            </button>
+          </div>
 
-            <!-- Master Admin Key Change Card -->
-            <div class="admin-card-section" style="border: 2px solid var(--brand-primary);">
-              <div class="admin-card-section-header">
-                <div class="admin-card-section-title">🔐 تغيير رمز الأمان السيادي للموقع (Master Admin Key)</div>
-              </div>
-              <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 14px;">
-                تغيير الرمز السري الذي يمكنك من خلاله تسجيل الدخول إلى لوحة إدارة الموقع السيادية. يتم تشفير الرمز فوراً بخوارزمية SHA-256 المشفرة.
-              </p>
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                <div class="form-group">
-                  <label class="form-label">رمز الأمان الحالي *</label>
-                  <input type="password" class="form-input" id="adm-cur-key" placeholder="••••••••" autocomplete="new-password">
-                </div>
-                <div class="form-group">
-                  <label class="form-label">رمز الأمان الجديد المطلوب *</label>
-                  <input type="password" class="form-input" id="adm-new-key" placeholder="••••••••" autocomplete="new-password">
-                </div>
-              </div>
-              <button class="btn btn-primary" id="btn-change-master-key-act" style="margin-top: 10px;">🔐 تحديث رمز الإدارة السيادي</button>
+          <!-- Master Admin Key Change Card -->
+          <div class="admin-card-section" style="border: 2px solid var(--brand-primary);">
+            <div class="admin-card-section-header">
+              <div class="admin-card-section-title">🔐 تغيير رمز الأمان السيادي للموقع (Master Admin Key)</div>
             </div>
-          `;
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 14px;">
+              تغيير الرمز السري الذي يمكنك من خلاله تسجيل الدخول إلى لوحة إدارة الموقع السيادية. يتم تشفير الرمز فوراً بخوارزمية SHA-256 المشفرة.
+            </p>
+            <div class="modal-form-grid-2">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">رمز الأمان الحالي *</label>
+                <input type="password" class="form-input" id="adm-cur-key" placeholder="••••••••" autocomplete="new-password">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">رمز الأمان الجديد المطلوب *</label>
+                <input type="password" class="form-input" id="adm-new-key" placeholder="••••••••" autocomplete="new-password">
+              </div>
+            </div>
+            <button class="btn btn-primary" id="btn-change-master-key-act" style="margin-top: 10px;">🔐 تحديث رمز الإدارة السيادي</button>
+          </div>
+        `;
 
       case 'merchants':
         return `
@@ -3291,7 +3377,7 @@ class SoukApp {
             <button class="btn btn-primary" id="btn-admin-add-merchant">➕ إضافة تاجر جديد</button>
           </div>
 
-          <div class="admin-table-container">
+          <div class="admin-table-container merchant-desktop-table">
             <table class="admin-data-table">
               <thead>
                 <tr>
@@ -3335,6 +3421,37 @@ class SoukApp {
               </tbody>
             </table>
           </div>
+
+          <!-- Mobile Cards for Merchants -->
+          <div class="merchant-mobile-grid">
+            ${merchants.map(m => `
+              <div class="merchant-product-card">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                  <div>
+                    <h3 style="font-size: 1.05rem; font-weight: 900; margin-bottom: 2px;">${m.name}</h3>
+                    <div style="font-size: 0.8rem; color: var(--text-tertiary);">${m.roleLabel || 'تاجر معتمد'} | 📞 ${m.phone}</div>
+                  </div>
+                  <span class="badge ${m.status === 'active' ? 'badge-new' : 'badge-scrap'}">
+                    ${m.status === 'active' ? 'نشط 🟢' : 'محظور 🔴'}
+                  </span>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface-subtle); padding: 8px 12px; border-radius: var(--radius-sm);">
+                  <span style="font-size: 0.8rem; font-weight: 800;">📦 البضائع: ${allProducts.filter(p => p.merchantId === m.id).length} قطعة</span>
+                  <span style="font-size: 0.75rem; color: #10b981; font-weight: 700;">🔒 كود محمي</span>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 8px;">
+                  <button class="btn btn-secondary" style="font-size: 0.8rem; padding: 8px;" onclick="window.app.openEditMerchantModal('${m.id}')">✏️ تعديل / تعيين رمز</button>
+                  ${m.status === 'active' ? `
+                    <button class="btn btn-danger" style="font-size: 0.8rem; padding: 8px;" onclick="window.app.promptBanMerchant('${m.id}')">🚫 حظر</button>
+                  ` : `
+                    <button class="btn btn-secondary" style="font-size: 0.8rem; padding: 8px;" onclick="window.app.unbanMerchant('${m.id}')">✅ تفعيل</button>
+                  `}
+                </div>
+              </div>
+            `).join('')}
+          </div>
         `;
 
       case 'products':
@@ -3343,7 +3460,7 @@ class SoukApp {
             <h1>📦 الرقابة الشاملة على كافة المنتجات والبضائع</h1>
           </div>
 
-          <div class="admin-table-container">
+          <div class="admin-table-container merchant-desktop-table">
             <table class="admin-data-table">
               <thead>
                 <tr>
@@ -3382,6 +3499,35 @@ class SoukApp {
               </tbody>
             </table>
           </div>
+
+          <!-- Mobile Cards for Admin Products -->
+          <div class="merchant-mobile-grid">
+            ${allProducts.length === 0 ? `
+              <div class="merchant-product-card" style="text-align:center; padding: 30px;">لا توجد أي بضائع منشورة حالياً.</div>
+            ` : allProducts.map(p => `
+              <div class="merchant-product-card">
+                <div class="mpc-top-row">
+                  <img src="${p.image}" class="mpc-thumb" alt="${p.title}">
+                  <div class="mpc-info">
+                    <div class="mpc-title">${p.title}</div>
+                    <div class="mpc-meta-row">
+                      <span class="mpc-price">${Number(p.price).toLocaleString()} د.ع</span>
+                      <span class="badge ${p.status === 'available' ? 'badge-new' : p.status === 'reserved' ? 'badge-used' : 'badge-scrap'}">
+                        ${p.status === 'available' ? 'متوفر 🟢' : p.status === 'reserved' ? 'محجوز ⏳' : 'تم البيع 🔴'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: var(--text-secondary); background: var(--bg-surface-subtle); padding: 6px 10px; border-radius: var(--radius-sm);">
+                  <span>التاجر: <strong>${p.merchantName}</strong></span>
+                  <span>المخزون: <strong>${p.quantity || 1} قطعة</strong></span>
+                </div>
+                <button class="btn btn-danger" style="width: 100%; padding: 8px; font-size: 0.82rem;" onclick="window.app.adminDeleteProduct('${p.id}')">
+                  🗑️ حذف البضاعة نهائياً
+                </button>
+              </div>
+            `).join('')}
+          </div>
         `;
 
       case 'categories':
@@ -3391,7 +3537,7 @@ class SoukApp {
             <button class="btn btn-primary" id="btn-admin-add-cat">➕ إضافة قسم جديد</button>
           </div>
 
-          <div class="admin-table-container">
+          <div class="admin-table-container merchant-desktop-table">
             <table class="admin-data-table">
               <thead>
                 <tr>
@@ -3418,6 +3564,31 @@ class SoukApp {
                 `).join('')}
               </tbody>
             </table>
+          </div>
+
+          <!-- Mobile Cards for Categories -->
+          <div class="merchant-mobile-grid">
+            ${this.categories.map(c => `
+              <div class="merchant-product-card">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 1.6rem;">${c.icon}</span>
+                    <div>
+                      <h4 style="font-weight: 800; font-size: 1rem;">${c.name}</h4>
+                      <code style="font-size: 0.75rem; color: var(--text-tertiary);">${c.id}</code>
+                    </div>
+                  </div>
+                  <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #d97706; font-weight: 800;">
+                    ${allProducts.filter(p => c.id === 'all' || p.category === c.id).length} قطعة
+                  </span>
+                </div>
+                ${c.id !== 'all' ? `
+                  <button class="btn btn-danger" style="width: 100%; padding: 6px; font-size: 0.8rem; margin-top: 4px;" onclick="window.app.deleteCategory('${c.id}')">
+                    🗑️ حذف القسم
+                  </button>
+                ` : ''}
+              </div>
+            `).join('')}
           </div>
         `;
 

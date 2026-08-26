@@ -160,16 +160,23 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 24px;
+  padding: 18px 24px;
   border-bottom: 1px solid var(--border-subtle);
+  gap: 12px;
 }
 
 .modal-title {
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   font-weight: 800;
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.modal-title span {
+  word-break: break-word;
 }
 
 .modal-close {
@@ -177,11 +184,18 @@
   color: var(--text-tertiary);
   cursor: pointer;
   transition: var(--transition-fast);
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
 }
 
 .modal-close:hover {
   color: var(--text-primary);
-  transform: rotate(90deg);
+  background: var(--bg-surface-subtle);
 }
 
 .modal-body {
@@ -196,6 +210,87 @@
   gap: 12px;
   background: var(--bg-surface-subtle);
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+/* Modal Form Grids (Desktop vs Mobile) */
+.modal-form-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.modal-form-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.image-upload-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 768px) {
+  .modal-overlay {
+    padding: 10px;
+    align-items: flex-end;
+  }
+
+  .modal-container {
+    max-height: 92vh;
+    border-radius: 20px 20px 12px 12px;
+  }
+
+  .modal-header {
+    padding: 14px 16px;
+  }
+
+  .modal-title {
+    font-size: 0.98rem;
+  }
+
+  .modal-body {
+    padding: 16px 14px;
+  }
+
+  .modal-footer {
+    padding: 12px 14px;
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+
+  .modal-footer .btn {
+    width: 100%;
+    padding: 12px;
+    font-size: 1rem;
+  }
+
+  .modal-form-grid-3 {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .modal-form-grid-3 > :last-child {
+    grid-column: span 2;
+  }
+
+  .modal-form-grid-2 {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .image-upload-slots-grid {
+    gap: 8px;
+  }
+
+  .form-input, .form-select, .form-textarea {
+    font-size: 16px !important; /* Prevents auto-zoom on iOS safari */
+  }
 }
 
 /* Floating Green WhatsApp Button (Icon Only, Bottom Left) */
