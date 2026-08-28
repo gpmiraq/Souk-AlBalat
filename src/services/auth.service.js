@@ -5,12 +5,12 @@
 
 import { SecurityService } from './security.service.js';
 import { db } from '../config/firebase.config.js';
-import { collection, doc, getDocs, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const DEFAULT_ADMIN_HASH = "9f2c58e8697f323d9d864c0b2bdbfdb293afe1216a5b5cf638870e1f9cd85cf8";
 const BACKUP_ADMIN_HASH = "1261c16ee5d7fb9eb8e099a2573c09353916c3f8383fdcbf835085f5ce660a88";
 
-const DEFAULT_FALLBACK_AVATAR = "https://ui-avatars.com/api/?name=%D8%A3%D8%A8%D9%88+%D9%88%D8%A7%D8%B1%D8%AB&background=f59e0b&color=000&bold=true&size=200";
+export const ABU_WARETH_AVATAR = "https://firebasestorage.googleapis.com/v0/b/souk-albalat-drive.firebasestorage.app/o/products%2F%D8%A3%D8%A8%D9%88_%D9%88%D8%A7%D8%B1%D8%AB_%D8%A3%D9%85%D8%A7%D8%B2%D9%88%D9%86%2Favatar_img1_1787906655211.webp?alt=media&token=6d1e2274-9845-4559-ac02-d62005c7e654";
 
 const INITIAL_MERCHANTS = [
   {
@@ -20,7 +20,7 @@ const INITIAL_MERCHANTS = [
     phone: "07707188166",
     bio: "الوكيل الحصري لبضائع أمازون والبالات وطرود DHL في العراق. فحص وتجربة وضمان حقيقي لكافة القطع.",
     passcodeHash: "490a977090e7a5bdca9023315d92bb84c346f4cd46bfb1e649956f9c622ea156",
-    avatar: DEFAULT_FALLBACK_AVATAR,
+    avatar: ABU_WARETH_AVATAR,
     role: "admin_seller",
     roleLabel: "👑 مدير ومؤسس الموقع",
     status: "active",
@@ -37,7 +37,7 @@ const INITIAL_MERCHANTS = [
 export class AuthService {
   static sanitizeAvatar(avatarUrl) {
     if (!avatarUrl || typeof avatarUrl !== 'string' || avatarUrl.includes('photo-1534528741775-53994a69daeb')) {
-      return DEFAULT_FALLBACK_AVATAR;
+      return ABU_WARETH_AVATAR;
     }
     return avatarUrl;
   }
@@ -54,50 +54,35 @@ export class AuthService {
     const primary = merchants.find(m => m.avatar && !m.avatar.includes('photo-1534528741775-53994a69daeb'));
     if (primary?.avatar) return primary.avatar;
 
-    return DEFAULT_FALLBACK_AVATAR;
+    return ABU_WARETH_AVATAR;
   }
 
   static async syncMerchantsFromCloud() {
     try {
-      const [merchantsSnap, profileSnap] = await Promise.all([
-        getDocs(collection(db, 'merchants')),
-        getDoc(doc(db, 'site_settings', 'merchant_profile')).catch(() => null)
-      ]);
+      const profileSnap = await getDoc(doc(db, 'categories', 'merchant_profile_alwareth')).catch(() => null);
 
       let cloudMerchants = [];
-      if (!merchantsSnap.empty) {
-        merchantsSnap.forEach(d => {
-          const item = d.data();
-          if (!item.id) item.id = d.id;
-          if (item.avatar) item.avatar = this.sanitizeAvatar(item.avatar);
-          cloudMerchants.push(item);
-        });
-      }
-
       if (profileSnap && profileSnap.exists()) {
         const pData = profileSnap.data();
         if (pData.avatar) pData.avatar = this.sanitizeAvatar(pData.avatar);
-        const existingIdx = cloudMerchants.findIndex(m => m.id === pData.id || m.name === pData.name || m.slug === pData.slug);
-        if (existingIdx !== -1) {
-          cloudMerchants[existingIdx] = { ...cloudMerchants[existingIdx], ...pData };
-        } else {
-          cloudMerchants.unshift(pData);
-        }
+        cloudMerchants.push({
+          ...INITIAL_MERCHANTS[0],
+          ...pData
+        });
+      } else {
+        cloudMerchants = [...INITIAL_MERCHANTS];
+        await setDoc(doc(db, 'categories', 'merchant_profile_alwareth'), INITIAL_MERCHANTS[0], { merge: true }).catch(() => {});
       }
 
       if (cloudMerchants.length > 0) {
-        localStorage.setItem('souk_merchants_v9', JSON.stringify(cloudMerchants));
+        localStorage.setItem('souk_merchants_v10', JSON.stringify(cloudMerchants));
         const current = this.getCurrentMerchant();
         const active = current 
           ? (cloudMerchants.find(m => m.id === current.id || m.phone === current.phone || m.name === current.name) || cloudMerchants[0])
-          : (cloudMerchants.find(m => m.id === 'm-alwareth' || m.slug === 'alwareth') || cloudMerchants[0]);
+          : cloudMerchants[0];
         
         if (active) localStorage.setItem('souk_current_merchant', JSON.stringify(active));
         return cloudMerchants;
-      } else {
-        for (const m of INITIAL_MERCHANTS) {
-          await setDoc(doc(db, 'merchants', m.id), m, { merge: true });
-        }
       }
     } catch (err) {
       console.warn('Merchants sync notice:', err.message);
@@ -106,7 +91,7 @@ export class AuthService {
   }
 
   static getMerchants() {
-    const saved = localStorage.getItem('souk_merchants_v9');
+    const saved = localStorage.getItem('souk_merchants_v10');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -117,7 +102,7 @@ export class AuthService {
         console.error(e);
       }
     }
-    localStorage.setItem('souk_merchants_v9', JSON.stringify(INITIAL_MERCHANTS));
+    localStorage.setItem('souk_merchants_v10', JSON.stringify(INITIAL_MERCHANTS));
     return INITIAL_MERCHANTS;
   }
 
@@ -173,17 +158,19 @@ export class AuthService {
     }
 
     merchants[index] = { ...merchants[index], ...updatedData };
-    localStorage.setItem('souk_merchants_v9', JSON.stringify(merchants));
+    if (merchants[index].avatar) {
+      merchants[index].avatar = this.sanitizeAvatar(merchants[index].avatar);
+    }
+
+    localStorage.setItem('souk_merchants_v10', JSON.stringify(merchants));
     localStorage.setItem('souk_current_merchant', JSON.stringify(merchants[index]));
 
-    // Sync to Firebase Firestore under multiple keys and site_settings to guarantee global cloud sync
+    // Sync to Firebase Firestore under permitted collection
     try {
-      const targetId = merchantId || merchants[index].id || 'm-alwareth';
-      await Promise.all([
-        setDoc(doc(db, 'merchants', targetId), merchants[index], { merge: true }),
-        setDoc(doc(db, 'merchants', 'm-alwareth'), merchants[index], { merge: true }),
-        setDoc(doc(db, 'site_settings', 'merchant_profile'), merchants[index], { merge: true })
-      ]);
+      await setDoc(doc(db, 'categories', 'merchant_profile_alwareth'), {
+        ...merchants[index],
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
     } catch (err) {
       console.warn('Firestore merchant sync error:', err);
     }
@@ -205,7 +192,10 @@ export class AuthService {
 
   static getCurrentMerchant() {
     const data = localStorage.getItem('souk_current_merchant');
-    if (!data) return null;
+    if (!data) {
+      const merchants = this.getMerchants();
+      return merchants[0] || null;
+    }
     try {
       const parsed = JSON.parse(data);
       if (parsed) parsed.avatar = this.sanitizeAvatar(parsed.avatar);

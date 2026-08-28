@@ -18,7 +18,10 @@ export class CategoriesService {
       if (!snap.empty) {
         const cloudCats = [];
         snap.forEach(docSnap => {
-          cloudCats.push(docSnap.data());
+          const data = docSnap.data();
+          if (data.id && !String(data.id).startsWith('merchant_profile') && data.name) {
+            cloudCats.push(data);
+          }
         });
         if (cloudCats.length > 0) {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudCats));
