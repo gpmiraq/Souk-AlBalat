@@ -18,7 +18,7 @@ export default async function handler(req, res) {
       const fields = doc.fields || {};
       
       const imagesArr = fields.images?.arrayValue?.values?.map(v => v.stringValue).filter(Boolean) || [];
-      const primaryImage = fields.image?.stringValue || imagesArr[0] || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=1200&h=630&fit=crop';
+      const primaryImage = fields.image?.stringValue || imagesArr[0] || 'https://souk-al-balat.vercel.app/og-banner.jpg';
       
       const rawPrice = fields.price?.integerValue || fields.price?.doubleValue || fields.price?.stringValue || '0';
       const numPrice = Number(rawPrice) || 0;
@@ -50,8 +50,8 @@ export default async function handler(req, res) {
       id: id,
       title: 'بضائع أمازون والبالات الأوروبية | سوق البالات',
       price: 0,
-      image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=1200&h=630&fit=crop',
-      images: ['https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=1200&h=630&fit=crop'],
+      image: 'https://souk-al-balat.vercel.app/og-banner.jpg',
+      images: ['https://souk-al-balat.vercel.app/og-banner.jpg'],
       conditionLabel: 'أوبن بوكس',
       merchantName: 'سوق البالات',
       description: 'تسوق أفضل بضائع الأوتلت والبالات الأوروبية وطرود DHL بأسعار حصرية وحجز فوري عبر الواتساب.'

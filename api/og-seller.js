@@ -12,7 +12,7 @@ export default async function handler(req, res) {
   const storeName = slug === 'alwareth' || slug === 'm-alwareth' ? 'متجر أبو وارث أمازون' : `متجر ${slug}`;
   const ogTitle = `${storeName} | المتجر الرسمي المعتمد - سوق البالات`;
   const ogDescription = `تسوق أحدث بضائع أوتلت أمازون والبالات الأوروبية من ${storeName} | فحص شامل وضمان حقيقي وحجز فوري عبر الواتساب.`;
-  const ogImage = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=1200&h=630&fit=crop';
+  const ogImage = 'https://souk-al-balat.vercel.app/og-banner.jpg';
 
   let html = '';
   const possiblePaths = [
