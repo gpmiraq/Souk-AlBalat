@@ -49,6 +49,13 @@ class SoukApp {
       AuthService.syncMerchantsFromCloud()
     ]).then(([products, cats, merchants]) => {
       this.categories = cats;
+      
+      // If Desktop has local AI key, auto-push to Cloud Firestore
+      const localAiKey = localStorage.getItem('souk_gemini_api_key');
+      if (localAiKey && localAiKey.trim().length > 10) {
+        setDoc(doc(db, 'categories', 'merchant_profile_alwareth'), { geminiApiKey: localAiKey.trim() }, { merge: true }).catch(() => {});
+      }
+      
       this.render();
     });
 
@@ -2953,6 +2960,15 @@ class SoukApp {
             <input type="url" class="form-input" id="m-set-tt" value="${merchant.socials?.tiktok || ''}">
           </div>
 
+          <!-- Google Gemini AI Key Setting directly in Merchant Settings -->
+          <div style="border-top: 1px solid var(--border-subtle); margin: 18px 0; padding-top: 14px; background: rgba(245, 158, 11, 0.05); padding: 12px; border-radius: var(--radius-sm); border: 1.5px dashed #f59e0b;">
+            <h4 style="font-weight: 800; margin-bottom: 4px; color: #d97706; font-size: 0.95rem;">🤖 مفتاح Google Gemini AI الرسمي (للتوليد الذكي):</h4>
+            <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 8px; line-height: 1.4;">مزامنة سحابية تتيح توليد المواصفات والأسعار التقديرية بالدينار والدولار من الموبايل والحاسوب.</p>
+            <div class="form-group" style="margin-bottom: 0;">
+              <input type="password" class="form-input" id="m-set-gemini-key" placeholder="AIzaSy..." value="${localStorage.getItem('souk_gemini_api_key') || merchant.geminiApiKey || ''}">
+            </div>
+          </div>
+
           <div style="border-top: 1px solid var(--border-subtle); margin: 18px 0; padding-top: 14px;">
             <h4 style="font-weight: 800; margin-bottom: 10px; color: var(--brand-primary);">🔐 تغيير كود الدخول السري (مشفر ومحمي):</h4>
             
@@ -2986,6 +3002,7 @@ class SoukApp {
       const phone = document.getElementById('m-set-phone').value.trim();
       const fb = document.getElementById('m-set-fb').value.trim();
       const tt = document.getElementById('m-set-tt').value.trim();
+      const geminiKey = document.getElementById('m-set-gemini-key')?.value.trim() || '';
       const newPass = document.getElementById('m-set-new-pass').value.trim();
 
       if (!name || !phone) {
@@ -2997,6 +3014,7 @@ class SoukApp {
         name,
         phone,
         avatar: currentAvatarUrl,
+        geminiApiKey: geminiKey,
         socials: { facebook: fb, tiktok: tt, whatsapp: `https://api.whatsapp.com/send?phone=964${phone.replace(/[^0-9]/g,'')}` }
       };
 
@@ -3007,7 +3025,7 @@ class SoukApp {
       await AuthService.updateMerchant(merchant.id, updatePayload);
       modalOverlay.remove();
       this.render();
-      this.showToast('تم حفظ إعدادات الحساب والصورة الشخصية في Firebase بنجاح! 💾✨', 'success');
+      this.showToast('تم حفظ إعدادات الحساب ومفتاح الذكاء الاصطناعي في Firebase بنجاح! 💾✨', 'success');
     });
   }
 

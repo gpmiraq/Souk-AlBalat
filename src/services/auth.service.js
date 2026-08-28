@@ -68,8 +68,15 @@ export class AuthService {
         if (pData.avatar) pData.avatar = this.sanitizeAvatar(pData.avatar);
         
         // Sync Gemini AI key from cloud to local storage across all devices
-        if (pData.geminiApiKey) {
-          localStorage.setItem('souk_gemini_api_key', pData.geminiApiKey);
+        if (pData.geminiApiKey && pData.geminiApiKey.trim().length > 10) {
+          localStorage.setItem('souk_gemini_api_key', pData.geminiApiKey.trim());
+        } else {
+          // If cloud doesn't have it yet, check if local device has it and push to cloud!
+          const localKey = localStorage.getItem('souk_gemini_api_key');
+          if (localKey && localKey.trim().length > 10) {
+            pData.geminiApiKey = localKey.trim();
+            setDoc(doc(db, 'categories', 'merchant_profile_alwareth'), { geminiApiKey: localKey.trim() }, { merge: true }).catch(() => {});
+          }
         }
 
         cloudMerchants.push({
@@ -162,6 +169,10 @@ export class AuthService {
     if (updatedData.rawPasscode) {
       updatedData.passcodeHash = await SecurityService.hashString(updatedData.rawPasscode);
       delete updatedData.rawPasscode;
+    }
+
+    if (updatedData.geminiApiKey) {
+      localStorage.setItem('souk_gemini_api_key', updatedData.geminiApiKey.trim());
     }
 
     merchants[index] = { ...merchants[index], ...updatedData };
