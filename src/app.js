@@ -2841,6 +2841,8 @@ class SoukApp {
   }
 
   openMerchantSettingsModal(merchant) {
+    let currentAvatarUrl = merchant.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100';
+
     const modalOverlay = document.createElement('div');
     modalOverlay.className = 'modal-overlay active';
     modalOverlay.innerHTML = `
@@ -2848,12 +2850,25 @@ class SoukApp {
         <div class="modal-header">
           <div class="modal-title">
             <span>⚙️</span>
-            <span>إعدادات الحساب وتغيير كود الدخول</span>
+            <span>إعدادات الحساب والصورة الشخصية</span>
           </div>
           <div class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</div>
         </div>
 
         <div class="modal-body">
+          <!-- Avatar Picture Picker -->
+          <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 18px; background: var(--bg-surface-subtle); padding: 12px 16px; border-radius: var(--radius-md); border: 1.5px solid var(--border-subtle);">
+            <div style="width: 68px; height: 68px; border-radius: 50%; overflow: hidden; border: 3px solid var(--brand-primary); flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
+              <img id="m-set-avatar-img" src="${currentAvatarUrl}" style="width: 100%; height: 100%; object-fit: cover;" alt="${merchant.name}">
+            </div>
+            <div>
+              <div style="font-weight: 800; font-size: 0.92rem; margin-bottom: 6px; color: var(--text-primary);">الصورة الشخصية / لوجو المتجر</div>
+              <button type="button" class="btn btn-secondary" id="btn-change-merchant-avatar" style="font-size: 0.8rem; padding: 6px 12px; font-weight: 800; color: var(--brand-primary); border-color: var(--brand-primary);">
+                📷 تغيير / رفع صورة شخصية
+              </button>
+            </div>
+          </div>
+
           <div class="form-group">
             <label class="form-label">اسم التاجر / المتجر *</label>
             <input type="text" class="form-input" id="m-set-name" value="${merchant.name}">
@@ -2886,12 +2901,21 @@ class SoukApp {
 
         <div class="modal-footer">
           <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">إلغاء</button>
-          <button class="btn btn-primary" id="btn-save-merchant-profile-act">💾 حفظ التعديلات</button>
+          <button class="btn btn-primary" id="btn-save-merchant-profile-act">💾 حفظ التعديلات والصورة</button>
         </div>
       </div>
     `;
 
     document.body.appendChild(modalOverlay);
+
+    modalOverlay.querySelector('#btn-change-merchant-avatar')?.addEventListener('click', () => {
+      this.openMerchantGalleryModal(0, 'avatar_profile', (selectedUrl) => {
+        currentAvatarUrl = selectedUrl;
+        const imgEl = modalOverlay.querySelector('#m-set-avatar-img');
+        if (imgEl) imgEl.src = selectedUrl;
+        this.showToast('تم اختيار الصورة الشخصية بنجاح! اضغط حفظ لتطبيقها.', 'success');
+      });
+    });
 
     modalOverlay.querySelector('#btn-save-merchant-profile-act')?.addEventListener('click', async () => {
       const name = document.getElementById('m-set-name').value.trim();
@@ -2908,6 +2932,7 @@ class SoukApp {
       const updatePayload = {
         name,
         phone,
+        avatar: currentAvatarUrl,
         socials: { facebook: fb, tiktok: tt, whatsapp: `https://api.whatsapp.com/send?phone=964${phone.replace(/[^0-9]/g,'')}` }
       };
 
@@ -2918,7 +2943,7 @@ class SoukApp {
       await AuthService.updateMerchant(merchant.id, updatePayload);
       modalOverlay.remove();
       this.render();
-      this.showToast('تم حفظ وتشفير بيانات حساب التاجر بنجاح!', 'success');
+      this.showToast('تم حفظ إعدادات الحساب والصورة الشخصية في Firebase بنجاح! 💾✨', 'success');
     });
   }
 

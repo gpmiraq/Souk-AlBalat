@@ -38,19 +38,26 @@ export class AuthService {
       const snap = await getDocs(collection(db, 'merchants'));
       if (!snap.empty) {
         const cloudMerchants = [];
-        snap.forEach(d => cloudMerchants.push(d.data()));
+        snap.forEach(d => {
+          const item = d.data();
+          if (!item.id) item.id = d.id;
+          cloudMerchants.push(item);
+        });
         if (cloudMerchants.length > 0) {
           localStorage.setItem('souk_merchants_v8', JSON.stringify(cloudMerchants));
           const current = this.getCurrentMerchant();
           if (current) {
-            const fresh = cloudMerchants.find(m => m.id === current.id);
+            const fresh = cloudMerchants.find(m => m.id === current.id || m.phone === current.phone || m.name === current.name);
             if (fresh) localStorage.setItem('souk_current_merchant', JSON.stringify(fresh));
+          } else {
+            const primary = cloudMerchants.find(m => m.id === 'm-alwareth' || m.slug === 'alwareth') || cloudMerchants[0];
+            if (primary) localStorage.setItem('souk_current_merchant', JSON.stringify(primary));
           }
           return cloudMerchants;
         }
       } else {
         for (const m of INITIAL_MERCHANTS) {
-          await setDoc(doc(db, 'merchants', m.id), m);
+          await setDoc(doc(db, 'merchants', m.id), m, { merge: true });
         }
       }
     } catch (err) {
