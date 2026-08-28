@@ -252,11 +252,18 @@ export class ProductsService {
       product.status = status;
       if (quantity !== null) {
         product.quantity = Number(quantity);
+      } else if (status === 'available' && Number(product.quantity || 0) <= 0) {
+        product.quantity = 1;
       }
+      
       localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
 
       // Cloud write
-      setDoc(doc(db, 'products', id), { status, ...(quantity !== null ? { quantity: Number(quantity) } : {}) }, { merge: true }).catch(e => console.warn('Cloud status update error:', e));
+      const cloudPayload = { 
+        status: product.status, 
+        quantity: Number(product.quantity || 1) 
+      };
+      setDoc(doc(db, 'products', id), cloudPayload, { merge: true }).catch(e => console.warn('Cloud status update error:', e));
 
       return true;
     }

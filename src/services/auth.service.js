@@ -109,27 +109,29 @@ export class AuthService {
 
   static async updateMerchant(merchantId, updatedData) {
     const merchants = this.getMerchants();
-    const index = merchants.findIndex(m => m.id === merchantId);
-    if (index !== -1) {
-      if (updatedData.rawPasscode) {
-        updatedData.passcodeHash = await SecurityService.hashString(updatedData.rawPasscode);
-        delete updatedData.rawPasscode;
-      }
-
-      merchants[index] = { ...merchants[index], ...updatedData };
-      localStorage.setItem('souk_merchants_v8', JSON.stringify(merchants));
-      
-      const current = this.getCurrentMerchant();
-      if (current && current.id === merchantId) {
-        localStorage.setItem('souk_current_merchant', JSON.stringify(merchants[index]));
-      }
-
-      // Sync to Firebase Firestore
-      setDoc(doc(db, 'merchants', merchantId), merchants[index]).catch(e => console.warn(e));
-
-      return { success: true, merchant: merchants[index] };
+    let index = merchants.findIndex(m => m.id === merchantId);
+    if (index === -1) {
+      merchants.push({ id: merchantId, name: 'أبو وارث أمازون', phone: '07707188166', ...updatedData });
+      index = merchants.length - 1;
     }
-    return { success: false, message: "لم يتم العثور على التاجر" };
+    
+    if (updatedData.rawPasscode) {
+      updatedData.passcodeHash = await SecurityService.hashString(updatedData.rawPasscode);
+      delete updatedData.rawPasscode;
+    }
+
+    merchants[index] = { ...merchants[index], ...updatedData };
+    localStorage.setItem('souk_merchants_v8', JSON.stringify(merchants));
+    localStorage.setItem('souk_current_merchant', JSON.stringify(merchants[index]));
+
+    // Sync to Firebase Firestore and await
+    try {
+      await setDoc(doc(db, 'merchants', merchantId), merchants[index], { merge: true });
+    } catch (err) {
+      console.warn('Firestore merchant sync error:', err);
+    }
+
+    return { success: true, merchant: merchants[index] };
   }
 
   static async changeMerchantPasscode(merchantId, oldPasscode, newPasscode) {

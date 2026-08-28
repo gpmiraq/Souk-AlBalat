@@ -45,8 +45,9 @@ class SoukApp {
     // Live Cloud Sync from Google Firebase Firestore
     Promise.all([
       ProductsService.syncFromCloud(),
-      CategoriesService.syncFromCloud()
-    ]).then(([products, cats]) => {
+      CategoriesService.syncFromCloud(),
+      AuthService.syncMerchantsFromCloud()
+    ]).then(([products, cats, merchants]) => {
       this.categories = cats;
       this.render();
     });
@@ -361,6 +362,7 @@ class SoukApp {
   renderProductCard(p) {
     const isSold = p.status === 'sold';
     const isReserved = p.status === 'reserved' || (Number(p.quantity) === 0);
+    const merchantObj = AuthService.getMerchantById(p.merchantId || 'm-alwareth');
 
     return `
       <div class="product-card" data-product-id="${p.id}">
@@ -385,8 +387,9 @@ class SoukApp {
         </div>
 
         <div class="product-card-body">
-          <div class="product-merchant-link" style="cursor: pointer; display: flex; align-items: center; gap: 4px;" onclick="event.stopPropagation(); window.app.navigate('/seller/${p.merchantId || 'm-alwareth'}')">
-            <span>🏪 ${p.merchantName || 'أبو وارث أمازون'}</span>
+          <div class="product-merchant-link" style="cursor: pointer; display: flex; align-items: center; gap: 6px;" onclick="event.stopPropagation(); window.app.navigate('/seller/${p.merchantId || 'm-alwareth'}')">
+            <img src="${merchantObj?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}" style="width: 22px; height: 22px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--brand-primary); flex-shrink: 0;" alt="${p.merchantName}">
+            <span>${p.merchantName || 'أبو وارث أمازون'}</span>
             ${SOCIAL_ICONS.VERIFIED_BADGE}
             ${Number(p.quantity) > 1 ? `<span style="color: #10b981; font-weight: 800;">(متوفر: ${p.quantity} قطع)</span>` : ''}
           </div>
@@ -738,6 +741,7 @@ class SoukApp {
     }
 
     const imagesList = product.images?.length > 0 ? product.images : [product.image];
+    const merchantObj = AuthService.getMerchantById(product.merchantId || 'm-alwareth');
     const relatedFromSeller = ProductsService.getProducts().filter(p => p.merchantId === product.merchantId && p.id !== product.id).slice(0, 4);
     const relatedFromCategory = ProductsService.getProducts().filter(p => p.category === product.category && p.id !== product.id).slice(0, 4);
 
@@ -815,8 +819,9 @@ class SoukApp {
           <!-- 2. Middle Column: Product Details & Official Brand Social Icons -->
           <div class="product-middle-info">
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; background: var(--bg-surface-subtle); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
-              <div style="display: flex; align-items: center; gap: 6px; cursor: pointer;" onclick="window.app.navigate('/seller/${product.merchantId || 'alwareth'}')">
-                <span style="font-weight: 900; color: var(--text-primary); font-size: 0.95rem;">🏪 ${product.merchantName || 'أبو وارث أمازون'}</span>
+              <div style="display: flex; align-items: center; gap: 8px; cursor: pointer;" onclick="window.app.navigate('/seller/${product.merchantId || 'alwareth'}')">
+                <img src="${merchantObj?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid var(--brand-primary); box-shadow: 0 2px 6px rgba(0,0,0,0.15); flex-shrink: 0;" alt="${product.merchantName}">
+                <span style="font-weight: 900; color: var(--text-primary); font-size: 0.95rem;">${product.merchantName || 'أبو وارث أمازون'}</span>
                 ${SOCIAL_ICONS.VERIFIED_BADGE}
                 <span class="badge" style="background: #fef08a; color: #854d0e; font-weight: 800;">👑 مدير الموقع</span>
               </div>
@@ -1847,22 +1852,24 @@ class SoukApp {
   /* ==========================================================================
      Merchant Media Gallery Modal (Browse, Upload to Firebase, Delete, Prevent Duplicates)
      ========================================================================== */
-  openMerchantGalleryModal(slotIndex, productTitle, onSelect) {
-    const merchant = AuthService.getCurrentMerchant();
+  async openMerchantGalleryModal(slotIndex, productTitle, onSelect) {
+    const merchant = AuthService.getCurrentMerchant() || AuthService.getMerchantById('m-alwareth');
     const merchantName = merchant?.name || 'أبو وارث أمازون';
+    const merchantId = merchant?.id || 'm-alwareth';
 
     const modalOverlay = document.createElement('div');
     modalOverlay.className = 'modal-overlay active';
 
+    let currentGallery = await StorageService.getCloudMerchantGallery(merchantId);
+
     const renderGalleryBody = () => {
-      const currentGallery = StorageService.getMerchantGallery();
       return `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
           <div>
             <h3 style="font-weight: 900; font-size: 1.15rem; margin-bottom: 4px;">📁 مجلد صور التاجر: ${merchantName}</h3>
             <p style="font-size: 0.82rem; color: var(--text-secondary);">اختر صورة مرفوعة مسبقاً لمنع التكرار، أو ارفع صورة جديدة مباشرة للسحابة.</p>
           </div>
-          <button class="btn btn-primary" id="btn-upload-new-to-gallery" style="font-size: 0.85rem;">
+          <button class="btn btn-primary" id="btn-upload-new-to-gallery" style="font-size: 0.85rem; font-weight: 800;">
             📤 رفع صورة جديدة من الجهاز
           </button>
           <input type="file" id="gallery-file-input" accept="image/*" style="display: none;">
@@ -1875,14 +1882,14 @@ class SoukApp {
         ${currentGallery.length === 0 ? `
           <div style="text-align: center; padding: 40px 20px; background: var(--bg-surface-subtle); border-radius: var(--radius-md); border: 2px dashed var(--border-subtle);">
             <div style="font-size: 2.5rem; margin-bottom: 10px;">🖼️</div>
-            <p style="font-weight: 800; color: var(--text-primary);">لا توجد صور محفوظة في مجلدك حالياً</p>
-            <p style="font-size: 0.85rem; color: var(--text-secondary);">اضغط على زر (رفع صورة جديدة) أعلاه لإضافة صور إلى مجلدك السحابي.</p>
+            <p style="font-weight: 800; color: var(--text-primary);">لا توجد صور محفوظة في مجلدك السحابي حالياً</p>
+            <p style="font-size: 0.85rem; color: var(--text-secondary);">اضغط على زر (رفع صورة جديدة) أعلاه لإضافة صور إلى مجلدك في Firebase.</p>
           </div>
         ` : `
           <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; max-height: 380px; overflow-y: auto; padding: 4px;">
             ${currentGallery.map((img) => `
               <div style="position: relative; border-radius: 10px; overflow: hidden; border: 2px solid var(--border-subtle); background: #000;">
-                <img src="${img.url}" style="width: 100%; height: 120px; object-fit: cover; display: block;">
+                <img src="${img.url}" style="width: 100%; height: 120px; object-fit: cover; display: block;" alt="معرض التاجر">
                 <div style="padding: 6px; background: var(--bg-surface-elevated); display: flex; justify-content: space-between; align-items: center;">
                   <button class="btn btn-secondary btn-select-gallery-img" data-url="${img.url}" style="font-size: 0.72rem; padding: 4px 8px; font-weight: 800;">
                     اختيار
@@ -1927,7 +1934,7 @@ class SoukApp {
         if (file) {
           if (statusBox) statusBox.style.display = 'block';
           try {
-            const url = await StorageService.processAndUploadImage(file, merchantName, productTitle || 'product', slotIndex);
+            const url = await StorageService.processAndUploadImage(file, merchantName, productTitle || 'product', slotIndex, merchantId);
             modalOverlay.remove();
             onSelect(url);
           } catch (err) {
@@ -1946,13 +1953,14 @@ class SoukApp {
       });
 
       modalOverlay.querySelectorAll('.btn-delete-gallery-img').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
           const url = btn.dataset.url;
-          if (confirm('هل أنت متأكد من رغبتك بحذف هذه الصورة من معرض التاجر؟')) {
-            StorageService.deleteImageFromGallery(url);
+          if (confirm('هل أنت متأكد من رغبتك بحذف هذه الصورة من معرض التاجر في Firebase؟')) {
+            await StorageService.deleteImageFromGallery(url, merchantId);
+            currentGallery = await StorageService.getCloudMerchantGallery(merchantId);
             modalOverlay.querySelector('#gallery-modal-body-wrapper').innerHTML = renderGalleryBody();
             bindGalleryEvents();
-            this.showToast('تم حذف الصورة من المعرض', 'info');
+            this.showToast('تم حذف الصورة من المعرض السحابي بنجاح', 'info');
           }
         });
       });
@@ -2106,8 +2114,8 @@ class SoukApp {
           <!-- Merchant Hero Card -->
           <div style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95)); border: 1px solid var(--border-strong); padding: 20px; border-radius: var(--radius-lg); margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; box-shadow: var(--card-shadow);">
             <div style="display: flex; align-items: center; gap: 14px;">
-              <div style="width: 64px; height: 64px; border-radius: 50%; background: #f59e0b; color: #000; font-size: 2rem; display: flex; align-items: center; justify-content: center; font-weight: 900; border: 3px solid #fff;">
-                👑
+              <div style="width: 64px; height: 64px; border-radius: 50%; overflow: hidden; border: 3px solid var(--brand-primary); flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+                <img src="${merchant.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}" style="width: 100%; height: 100%; object-fit: cover;" alt="${merchant.name}">
               </div>
               <div>
                 <div style="font-size: 1.3rem; font-weight: 900; color: #ffffff; display: flex; align-items: center; gap: 6px;">

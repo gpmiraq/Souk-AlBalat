@@ -1,21 +1,23 @@
 /* ==========================================================================
    Image Processing & Strict Firebase Cloud Storage Pipeline
-   Clean Elegant Watermark & Organized Merchant Cloud Folders
+   Clean Elegant Watermark & Cloud-Synced Merchant Gallery across Devices
    ========================================================================== */
 
-import { CloudStorageProvider } from '../config/firebase.config.js';
+import { CloudStorageProvider, db } from '../config/firebase.config.js';
+import { collection, doc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
 
 export class StorageService {
   /**
-   * Processes an image file: crops to 1:1, burns clean watermark, and uploads to Firebase
+   * Processes an image file: crops to 1:1, burns clean watermark, and uploads to Firebase Storage
    * Path: merchants/{merchantSlug}/{sanitizedTitle}_img{slot}_{timestamp}.webp
    * @param {File} file 
    * @param {string} merchantName 
    * @param {string} productTitle 
    * @param {number} slotIndex 
+   * @param {string} merchantId
    * @returns {Promise<string>} Public Firebase Cloud Storage URL
    */
-  static async processAndUploadImage(file, merchantName = 'abu_wareth', productTitle = 'item', slotIndex = 1) {
+  static async processAndUploadImage(file, merchantName = 'abu_wareth', productTitle = 'item', slotIndex = 1, merchantId = 'm-alwareth') {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (event) => {
@@ -67,12 +69,13 @@ export class StorageService {
 
                 const firebaseCloudUrl = await CloudStorageProvider.uploadBlobToFirebase(blob, fileName);
                 
-                // Save to local merchant gallery cache
-                StorageService.saveImageToGallery({
+                // Save to Cloud Firestore & Local Gallery
+                await StorageService.saveImageToGallery({
                   url: firebaseCloudUrl,
                   name: `${cleanTitle} (صورة ${slotIndex})`,
-                  date: new Date().toISOString()
-                });
+                  merchantId: merchantId,
+                  createdAt: new Date().toISOString()
+                }, merchantId);
 
                 resolve(firebaseCloudUrl);
               } catch (cloudErr) {
@@ -92,8 +95,40 @@ export class StorageService {
   }
 
   /**
-   * Merchant Gallery Management
+   * Merchant Cloud Gallery Management (Synchronized with Google Firebase Firestore)
    */
+  static async getCloudMerchantGallery(merchantId = 'm-alwareth') {
+    let cloudList = [];
+    try {
+      const snap = await getDocs(collection(db, 'merchant_gallery'));
+      if (!snap.empty) {
+        snap.forEach(d => {
+          const item = d.data();
+          if (!item.merchantId || item.merchantId === merchantId) {
+            cloudList.push(item);
+          }
+        });
+      }
+    } catch (err) {
+      console.warn('Could not fetch cloud gallery, falling back to cache:', err);
+    }
+
+    // Merge with local cache for offline reliability
+    const localGallery = this.getMerchantGallery();
+    const map = new Map();
+
+    cloudList.forEach(item => {
+      if (item.url) map.set(item.url, item);
+    });
+    localGallery.forEach(item => {
+      if (item.url && !map.has(item.url)) map.set(item.url, item);
+    });
+
+    const combined = Array.from(map.values()).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    localStorage.setItem('souk_merchant_gallery', JSON.stringify(combined.slice(0, 100)));
+    return combined;
+  }
+
   static getMerchantGallery() {
     try {
       const data = localStorage.getItem('souk_merchant_gallery');
@@ -103,23 +138,34 @@ export class StorageService {
     }
   }
 
-  static saveImageToGallery(imgObj) {
+  static async saveImageToGallery(imgObj, merchantId = 'm-alwareth') {
     try {
       const gallery = this.getMerchantGallery();
-      // Avoid duplicate URLs
       if (!gallery.some(g => g.url === imgObj.url)) {
         gallery.unshift(imgObj);
-        localStorage.setItem('souk_merchant_gallery', JSON.stringify(gallery.slice(0, 60))); // Keep last 60
+        localStorage.setItem('souk_merchant_gallery', JSON.stringify(gallery.slice(0, 100)));
       }
+
+      // Save to Firebase Firestore
+      const docId = 'g_' + (imgObj.url.split('/').pop()?.split('?')[0]?.replace(/[^a-zA-Z0-9]/g, '_') || Date.now());
+      await setDoc(doc(db, 'merchant_gallery', docId), {
+        ...imgObj,
+        merchantId: merchantId || 'm-alwareth'
+      }, { merge: true });
     } catch (e) {
       console.warn('Gallery save error:', e);
     }
   }
 
-  static deleteImageFromGallery(url) {
+  static async deleteImageFromGallery(url, merchantId = 'm-alwareth') {
     try {
       const gallery = this.getMerchantGallery().filter(g => g.url !== url);
       localStorage.setItem('souk_merchant_gallery', JSON.stringify(gallery));
+
+      const docId = 'g_' + (url.split('/').pop()?.split('?')[0]?.replace(/[^a-zA-Z0-9]/g, '_') || '');
+      if (docId) {
+        await deleteDoc(doc(db, 'merchant_gallery', docId)).catch(() => {});
+      }
       return true;
     } catch {
       return false;
