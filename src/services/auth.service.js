@@ -243,6 +243,10 @@ export class AuthService {
     }
   }
 
+  static isAdminAuthenticated() {
+    return this.isAdminLoggedIn();
+  }
+
   static logoutAdmin() {
     localStorage.removeItem('souk_admin_session');
   }

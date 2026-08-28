@@ -84,6 +84,16 @@ class SoukApp {
       this.selectedProductId = null;
       this.selectedSellerId = null;
       this.renderMerchantOrderActionModal(managePids);
+    } else if (path.startsWith('/admin') || path.startsWith('/super-admin') || path.startsWith('/dashboard') || path.startsWith('/hub-mgr-secure-x90')) {
+      this.currentRoute = APP_CONFIG.ROUTES.SUPER_ADMIN;
+      this.selectedProductId = null;
+      this.selectedSellerId = null;
+      this.render();
+    } else if (path.startsWith('/merchant') || path.startsWith('/portal') || path.startsWith('/v-space-k90')) {
+      this.currentRoute = APP_CONFIG.ROUTES.MERCHANT_PORTAL;
+      this.selectedProductId = null;
+      this.selectedSellerId = null;
+      this.render();
     } else if (path.startsWith('/seller/')) {
       this.selectedProductId = null;
       this.selectedSellerId = path.replace('/seller/', '');
@@ -3498,6 +3508,61 @@ class SoukApp {
   /* ==========================================================================
      7. Full 7-Module WordPress-Style Super Admin Dashboard (/hub-mgr-secure-x90)
      ========================================================================== */
+  renderAdminLogin() {
+    this.appEl.innerHTML = `
+      <div style="min-height: 85vh; display: flex; align-items: center; justify-content: center; padding: 20px;">
+        <div style="width: 100%; max-width: 420px; background: var(--bg-surface); border: 2px solid var(--border-strong); border-radius: var(--radius-lg); padding: 32px 24px; box-shadow: var(--card-shadow); text-align: center;">
+          <div style="font-size: 3rem; margin-bottom: 12px;">👑</div>
+          <h2 style="font-size: 1.4rem; font-weight: 900; color: var(--text-primary); margin-bottom: 6px;">لوحة الإدارة العليا (Super Admin)</h2>
+          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 24px;">سوق البالات | إدارة النظام والإعدادات الشاملة</p>
+
+          <form id="admin-login-form" onsubmit="return false;">
+            <div class="form-group" style="text-align: right; margin-bottom: 18px;">
+              <label class="form-label" style="font-weight: 800; font-size: 0.85rem; margin-bottom: 6px; display: block;">رمز المرور السري للإدارة (Master Key) *</label>
+              <input type="password" class="form-input" id="admin-passcode-input" placeholder="أدخل رمز الدخول السري..." required style="width: 100%; padding: 12px 14px; font-size: 1rem; border-radius: var(--radius-sm); border: 1.5px solid var(--border-strong); background: var(--bg-surface-subtle); color: var(--text-primary);">
+            </div>
+
+            <button class="btn btn-primary" id="btn-submit-admin-login" style="width: 100%; padding: 12px; font-size: 1rem; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 8px;">
+              🔐 تسجيل الدخول للوحة الإدارة
+            </button>
+          </form>
+
+          <div style="margin-top: 20px; border-top: 1px solid var(--border-subtle); padding-top: 14px;">
+            <button class="btn btn-secondary" onclick="window.app.navigate('/')" style="font-size: 0.85rem; padding: 8px 16px;">
+              ⬅️ العودة للرئيسية
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const handleLogin = async () => {
+      const passcode = document.getElementById('admin-passcode-input')?.value.trim();
+      if (!passcode) {
+        this.showToast('يرجى إدخال رمز المرور السري!', 'error');
+        return;
+      }
+      const btn = document.getElementById('btn-submit-admin-login');
+      btn.disabled = true;
+      btn.innerHTML = '⏳ جاري التحقق...';
+
+      const res = await AuthService.loginAdmin(passcode);
+      if (res.success) {
+        this.showToast('مرحباً بك! تم تسجيل الدخول بنجاح 👑', 'success');
+        this.render();
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = '🔐 تسجيل الدخول للوحة الإدارة';
+        this.showToast(res.message || 'رمز المرور غير صحيح!', 'error');
+      }
+    };
+
+    document.getElementById('btn-submit-admin-login')?.addEventListener('click', handleLogin);
+    document.getElementById('admin-passcode-input')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleLogin();
+    });
+  }
+
   renderAdminPortal() {
     if (!AuthService.isAdminAuthenticated()) {
       this.renderAdminLogin();
