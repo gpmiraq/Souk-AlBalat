@@ -1931,7 +1931,20 @@ class SoukApp {
     const modalOverlay = document.createElement('div');
     modalOverlay.className = 'modal-overlay active';
 
-    let currentGallery = await StorageService.getCloudMerchantGallery(merchantId);
+    // 1. Instant Synchronous Cached Gallery (0ms latency)
+    let currentGallery = StorageService.getMerchantGallery();
+
+    // 2. Background Cloud Sync
+    StorageService.getCloudMerchantGallery(merchantId).then(cloudList => {
+      if (modalOverlay.isConnected && cloudList && cloudList.length > 0) {
+        currentGallery = cloudList;
+        const wrapper = modalOverlay.querySelector('#gallery-modal-body-wrapper');
+        if (wrapper) {
+          wrapper.innerHTML = renderGalleryBody();
+          bindGalleryEvents();
+        }
+      }
+    }).catch(() => {});
 
     const renderGalleryBody = () => {
       return `
