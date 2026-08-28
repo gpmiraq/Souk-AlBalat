@@ -3999,10 +3999,18 @@ class SoukApp {
       this.showToast('تم حفظ الإعدادات العامة بنجاح!', 'success');
     });
 
-    document.getElementById('btn-save-gemini-key')?.addEventListener('click', () => {
+    document.getElementById('btn-save-gemini-key')?.addEventListener('click', async () => {
       const keyVal = document.getElementById('cfg-gemini-key')?.value.trim() || '';
       localStorage.setItem('souk_gemini_api_key', keyVal);
-      this.showToast('تم حفظ وتفعيل مفتاح Google Gemini API لجميع التجار بنجاح! 🚀', 'success');
+      try {
+        await Promise.all([
+          setDoc(doc(db, 'categories', 'merchant_profile_alwareth'), { geminiApiKey: keyVal }, { merge: true }),
+          setDoc(doc(db, 'categories', 'site_ai_config'), { geminiApiKey: keyVal }, { merge: true })
+        ]);
+      } catch (err) {
+        console.warn('Cloud AI key save error:', err);
+      }
+      this.showToast('تم حفظ وتفعيل مفتاح Google Gemini API سحابياً لجميع الأجهزة والتجار بنجاح! 🚀', 'success');
     });
 
     document.getElementById('btn-change-master-key-act')?.addEventListener('click', async () => {

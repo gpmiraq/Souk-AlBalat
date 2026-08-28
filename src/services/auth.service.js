@@ -21,6 +21,7 @@ const INITIAL_MERCHANTS = [
     bio: "الوكيل الحصري لبضائع أمازون والبالات وطرود DHL في العراق. فحص وتجربة وضمان حقيقي لكافة القطع.",
     passcodeHash: "490a977090e7a5bdca9023315d92bb84c346f4cd46bfb1e649956f9c622ea156",
     avatar: ABU_WARETH_AVATAR,
+    geminiApiKey: "",
     role: "admin_seller",
     roleLabel: "👑 مدير ومؤسس الموقع",
     status: "active",
@@ -65,6 +66,12 @@ export class AuthService {
       if (profileSnap && profileSnap.exists()) {
         const pData = profileSnap.data();
         if (pData.avatar) pData.avatar = this.sanitizeAvatar(pData.avatar);
+        
+        // Sync Gemini AI key from cloud to local storage across all devices
+        if (pData.geminiApiKey) {
+          localStorage.setItem('souk_gemini_api_key', pData.geminiApiKey);
+        }
+
         cloudMerchants.push({
           ...INITIAL_MERCHANTS[0],
           ...pData

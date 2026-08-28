@@ -1,3 +1,7 @@
+/* ==========================================================================
+   Serverless Technical Description & Pricing Engine (Google Gemini AI)
+   ========================================================================== */
+
 export default async function handler(req, res) {
   // Allow CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -9,20 +13,54 @@ export default async function handler(req, res) {
   );
 
   if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
+    return res.status(200).end();
   }
 
-  const { title = '', category = 'electronics', condition = 'open_box', price = 0 } = req.body || req.query || {};
+  const { title = '', category = 'electronics', condition = 'open_box', price = 0, apiKey = '' } = req.body || req.query || {};
 
   const cleanTitle = (title || '').trim();
   if (!cleanTitle) {
     return res.status(400).json({ error: 'العنوان مطلوب' });
   }
 
-  const conditionLabel = condition === 'open_box' ? 'أوبن بوكس (استوكات أمازون)' : condition === 'new' ? 'جديد بالكرتون المصنعي' : condition === 'used' ? 'مستخدم نظيف ومفحوص' : 'عاطل / قطع غيار';
+  const conditionLabel = condition === 'open_box' ? 'أوبن بوكس (استوكات ومستودعات أمازون)' : condition === 'new' ? 'جديد بالكرتون المصنعي' : condition === 'used' ? 'مستخدم مفحوص' : 'عاطل / قطع غيار';
 
-  // 1. Live Web Search Query to extract real technical specifications
+  const activeKey = (apiKey || process.env.GEMINI_API_KEY || '').trim();
+
+  // 1. If Gemini API key is available, call Gemini API
+  if (activeKey) {
+    try {
+      const prompt = `أنت مهندس ومراجع تقني محايد وخبير في بضائع أمازون وسوق الإلكترونيات في العراق.
+المطلوب كتابة بطاقة مواصفات فنية ومعلومات عامة فقط ومجردة من أي مبالغة أو عبارات مدح أو تسويق للمنتج: "${cleanTitle}" (حالة الفحص: ${conditionLabel}).
+قدر أسعار السوق التقديرية الحقيقية للمنتج بناءً على مواصفات الموديل والماركة في السوق العالمية والمحلية في العراق.
+
+التزم حصراً بالهيكل التالي فقط وبدون أي مقدمات أو شروحات إضافية:
+اسم المنتج : [الاسم التقني والموديل الرسمي بدقة في حدود 10 إلى 15 كلمة]
+وصف المنتج : [المواصفات الفنية والمكونات المادية والمنافذ والمعالج/البطارية/الصوت فقط بأسلوب علمي ومحايد بدون مبالغة في حدود 40 إلى 50 كلمة]
+سعر المنتج التقريبي : [تخمين السعر التقديري في السوق العراقي بناءً على الموديل، مثال: 65,000 - 85,000 د.ع]
+سعر المنتج العالمي : [السعر العالمي التقديري بالدولار، مثال: $45 - $60 دولار تقريباً]`;
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${activeKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }]
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text && text.length > 25) {
+          return res.status(200).json({ text: text.trim() });
+        }
+      }
+    } catch (geminiErr) {
+      console.warn('Server Gemini error:', geminiErr);
+    }
+  }
+
+  // 2. Wikipedia Search Fallback with Calculated Market Estimations
   try {
     const searchQuery = encodeURIComponent(cleanTitle.replace(/[\u0600-\u06FF]/g, '').trim() || cleanTitle);
     const wikiRes = await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${searchQuery}&utf8=&format=json&origin=*`);
@@ -39,14 +77,14 @@ export default async function handler(req, res) {
       }
     }
 
-    const numPrice = Number(price) || 35000;
-    const estUsd = Math.max(20, Math.round(numPrice / 1500 * 1.3));
+    const numPrice = Number(price) || 50000;
+    const estUsd = Math.max(30, Math.round(numPrice / 1500 * 1.25));
     const minIqd = (Math.round((numPrice * 1.15) / 250) * 250).toLocaleString();
     const maxIqd = (Math.round((numPrice * 1.45) / 250) * 250).toLocaleString();
 
     let outputDesc = liveWebSnippet 
-      ? `${liveWebSnippet}. قطعة معتمدة ومطابقة للمواصفات الفنية القياسية للمصنع وسلاسل التوريد العالمية تم فحص كفاءتها التشغيلية.`
-      : `قطعة أصلية عالية الكفاءة والمتانة من مستودعات أوتلت أمازون الأوروبية خضعت للفحص الفني الدقيق للتأكد من سلامة الهيكل والأداء.`;
+      ? `${liveWebSnippet}. قطعة أصلية مطابقة للمواصفات القياسية للمصنع وسلاسل التوريد العالمية خضعت للفحص الفني والتشغيلي للأجزاء الداخلية والهيكل.`
+      : `قطعة أصلية عالية الكفاءة من مستودعات أوتلت أمازون وطرود DHL خضعت للفحص الفني الدقيق لسلامة الأداء والاستقرار.`;
 
     const formattedOutput = `اسم المنتج : ${matchedTitle} (${conditionLabel})
 وصف المنتج : ${outputDesc}
