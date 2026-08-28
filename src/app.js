@@ -373,8 +373,14 @@ class SoukApp {
 
           ${p.discountPercent > 0 ? `<span class="badge badge-discount product-discount-tag">وفر ${p.discountPercent}%</span>` : ''}
 
-          <button class="product-poster-btn-mini" onclick="event.stopPropagation(); window.app.openPosterModal('${p.id}')">
-            📷 بوستر 📱
+          <!-- Quick Share Link Button -->
+          <button class="product-share-btn-mini" onclick="event.stopPropagation(); window.app.copyProductShareLink('${p.id}')" title="مشاركة ونسخ رابط المنتج">
+            🔗 مشاركة
+          </button>
+
+          <!-- Poster Generator Button -->
+          <button class="product-poster-btn-mini" onclick="event.stopPropagation(); window.app.openPosterModal('${p.id}')" title="توليد بوستر ستوري">
+            📷 بوستر
           </button>
         </div>
 
@@ -2288,6 +2294,7 @@ class SoukApp {
                       </td>
                       <td>
                         <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                          <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem; font-weight: 800;" onclick="window.app.copyProductShareLink('${p.id}')" title="نسخ ومشاركة رابط المنتج">🔗 مشاركة</button>
                           <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem; font-weight: 800;" onclick="window.app.openEditProductModal('${p.id}')">✏️ تعديل</button>
                           <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;" onclick="window.app.openPosterModal('${p.id}')">📷 بوستر</button>
                           <button class="btn btn-danger" style="padding: 4px 8px; font-size: 0.75rem;" onclick="window.app.softDeleteMerchantProduct('${p.id}')" title="نقل للمحذوفات">🗑️ حذف</button>
@@ -2380,10 +2387,11 @@ class SoukApp {
                     </div>
                   </div>
 
-                  <div class="mpc-actions-toolbar">
-                    <button class="btn btn-secondary" onclick="window.app.openEditProductModal('${p.id}')">✏️ تعديل</button>
-                    <button class="btn btn-secondary" onclick="window.app.openPosterModal('${p.id}')">📷 بوستر</button>
-                    <button class="btn btn-danger" onclick="window.app.softDeleteMerchantProduct('${p.id}')" title="نقل للمحذوفات">🗑️ حذف</button>
+                  <div class="mpc-actions-toolbar" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
+                    <button class="btn btn-secondary" style="padding: 7px 4px; font-size: 0.75rem; font-weight: 800;" onclick="window.app.copyProductShareLink('${p.id}')">🔗 مشاركة</button>
+                    <button class="btn btn-secondary" style="padding: 7px 4px; font-size: 0.75rem;" onclick="window.app.openEditProductModal('${p.id}')">✏️ تعديل</button>
+                    <button class="btn btn-secondary" style="padding: 7px 4px; font-size: 0.75rem;" onclick="window.app.openPosterModal('${p.id}')">📷 بوستر</button>
+                    <button class="btn btn-danger" style="padding: 7px 4px; font-size: 0.75rem;" onclick="window.app.softDeleteMerchantProduct('${p.id}')" title="نقل للمحذوفات">🗑️ حذف</button>
                   </div>
                 </div>
               `).join('')
