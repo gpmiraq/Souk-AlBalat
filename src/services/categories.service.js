@@ -1,12 +1,13 @@
 /* ==========================================================================
    Categories Service with Real-Time Google Firebase Firestore Sync
+   Clean Deduplication & Proper Filtering of System Profile Documents
    ========================================================================== */
 
 import { db } from '../config/firebase.config.js';
 import { collection, doc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
 import { DEFAULT_CATEGORIES } from '../config/constants.js';
 
-const STORAGE_KEY = 'souk_custom_categories_v2';
+const STORAGE_KEY = 'souk_custom_categories_v4';
 
 export class CategoriesService {
   /**
@@ -17,12 +18,27 @@ export class CategoriesService {
       const snap = await getDocs(collection(db, 'categories'));
       if (!snap.empty) {
         const cloudCats = [];
+        const seenNames = new Set();
+
         snap.forEach(docSnap => {
+          const docId = docSnap.id;
+          // Exclude system documents stored in categories collection
+          if (docId.startsWith('merchant_profile') || docId.startsWith('site_')) return;
+
           const data = docSnap.data();
-          if (data.id && !String(data.id).startsWith('merchant_profile') && data.name) {
-            cloudCats.push(data);
-          }
+          const name = (data.name || '').trim();
+          if (!name || seenNames.has(name) || name.includes('أبو وارث') || name.includes('أمازون')) return;
+
+          const id = data.id || docId;
+          seenNames.add(name);
+          cloudCats.push({
+            id,
+            name,
+            icon: data.icon || '📦',
+            order: data.order || 99
+          });
         });
+
         if (cloudCats.length > 0) {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudCats));
           return cloudCats;
@@ -44,7 +60,9 @@ export class CategoriesService {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.filter(c => !c.id?.startsWith('merchant_profile') && !c.name?.includes('أبو وارث'));
+        }
       } catch (e) {
         console.error(e);
       }
@@ -55,7 +73,7 @@ export class CategoriesService {
 
   static async addCategory(newCategory) {
     const categories = this.getCategories();
-    if (!categories.some(c => c.id === newCategory.id)) {
+    if (!categories.some(c => c.id === newCategory.id || c.name === newCategory.name)) {
       categories.push(newCategory);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(categories));
 
