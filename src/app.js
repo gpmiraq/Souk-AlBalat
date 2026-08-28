@@ -949,6 +949,22 @@ class SoukApp {
     document.getElementById('btn-open-cart')?.addEventListener('click', () => this.openCartModal());
   }
 
+  copyProductShareLink(productId) {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://souk-al-balat.vercel.app';
+    const link = `${origin}/p/${productId}`;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(link);
+    }
+    if (navigator.share) {
+      navigator.share({
+        title: 'سوق البالات | بضائع أمازون والبالة',
+        text: 'شاهد هذا المنتج المميز على سوق البالات',
+        url: link
+      }).catch(() => {});
+    }
+    this.showToast('تم نسخ ومشاركة رابط المنتج بنجاح! 🔗', 'success');
+  }
+
   openWhatsAppDirectOrder(productId) {
     const product = ProductsService.getProductById(productId);
     if (!product) return;
@@ -1281,7 +1297,7 @@ class SoukApp {
     };
 
     modalOverlay.innerHTML = `
-      <div class="modal-container marketing-poster-modal" style="max-width: 680px;">
+      <div class="modal-container marketing-poster-modal">
         <div class="modal-header">
           <div class="modal-title">
             <span>✨</span>
@@ -1292,13 +1308,13 @@ class SoukApp {
 
         <div class="modal-body">
           <!-- Theme Selector Bar -->
-          <div style="margin-bottom: 14px; text-align: center;">
-            <div style="font-size: 0.82rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 6px;">🎨 اختر مظهر وألوان البوستر:</div>
-            <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
-              <button class="btn btn-secondary btn-poster-theme-pill active" data-theme="dark_gold" style="font-size: 0.78rem; padding: 5px 12px; font-weight: 800;">🌙 داكن ذهبي</button>
-              <button class="btn btn-secondary btn-poster-theme-pill" data-theme="light_modern" style="font-size: 0.78rem; padding: 5px 12px; font-weight: 800;">☀️ فاتح مودرن</button>
-              <button class="btn btn-secondary btn-poster-theme-pill" data-theme="neon_cyber" style="font-size: 0.78rem; padding: 5px 12px; font-weight: 800;">⚡ نيون أزرق</button>
-              <button class="btn btn-secondary btn-poster-theme-pill" data-theme="royal_purple" style="font-size: 0.78rem; padding: 5px 12px; font-weight: 800;">💎 ملكي بنفسجي</button>
+          <div style="margin-bottom: 12px; text-align: center;">
+            <div style="font-size: 0.8rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 6px;">🎨 اختر مظهر وألوان البوستر:</div>
+            <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
+              <button class="btn btn-secondary btn-poster-theme-pill active" data-theme="dark_gold" style="font-size: 0.75rem; padding: 4px 10px; font-weight: 800;">🌙 داكن ذهبي</button>
+              <button class="btn btn-secondary btn-poster-theme-pill" data-theme="light_modern" style="font-size: 0.75rem; padding: 4px 10px; font-weight: 800;">☀️ فاتح مودرن</button>
+              <button class="btn btn-secondary btn-poster-theme-pill" data-theme="neon_cyber" style="font-size: 0.75rem; padding: 4px 10px; font-weight: 800;">⚡ نيون أزرق</button>
+              <button class="btn btn-secondary btn-poster-theme-pill" data-theme="royal_purple" style="font-size: 0.75rem; padding: 4px 10px; font-weight: 800;">💎 ملكي بنفسجي</button>
             </div>
           </div>
 
@@ -1306,20 +1322,20 @@ class SoukApp {
             ${updatePreviewHTML()}
           </div>
 
-          <p style="font-size: 0.82rem; color: var(--text-tertiary); text-align: center; margin-top: 14px;">
-            * اضغط على زر التدوير 🔄 بالأسفل لقلب شكل البوستر بين (العمودي للستوري 📱) و (الأفقي للمنشورات 🖥️).
+          <p style="font-size: 0.78rem; color: var(--text-tertiary); text-align: center; margin-top: 10px; margin-bottom: 0;">
+            * اضغط على زر التدوير 🔄 لقلب شكل البوستر بين (العمودي للستوري 📱) و (الأفقي للمنشورات 🖥️).
           </p>
         </div>
 
-        <div class="modal-footer" style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-          <button class="btn btn-secondary" id="btn-toggle-poster-format" style="font-weight: 800;">
+        <div class="modal-footer">
+          <button class="btn btn-secondary" id="btn-toggle-poster-format" style="width: 100%; font-weight: 800;">
             🔄 📱 قلب الشكل (${selectedFormat === 'vertical' ? 'عمودي ستوري' : 'أفقي عريض'})
           </button>
 
-          <div style="display: flex; gap: 8px;">
+          <div class="poster-footer-row-actions">
             <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">إلغاء</button>
-            <button class="btn btn-primary" id="btn-download-poster-action">
-              📷 تحميل البوستر كصورة PNG
+            <button class="btn btn-primary" id="btn-download-poster-action" style="font-weight: 800;">
+              💾 حفظ / مشاركة البوستر
             </button>
           </div>
         </div>
@@ -1346,9 +1362,19 @@ class SoukApp {
       });
     });
 
-    modalOverlay.querySelector('#btn-download-poster-action')?.addEventListener('click', async () => {
-      await PosterService.exportFlyerAsImage(product, selectedFormat, selectedTheme);
-      this.showToast(`تم تحميل البوستر (${selectedFormat === 'vertical' ? 'العمودي 📱' : 'الأفقي 🖥️'}) بنجاح!`, 'success');
+    const downloadBtn = modalOverlay.querySelector('#btn-download-poster-action');
+    downloadBtn?.addEventListener('click', async () => {
+      downloadBtn.disabled = true;
+      downloadBtn.innerHTML = '⏳ جاري المعالجة...';
+      try {
+        await PosterService.exportFlyerAsImage(product, selectedFormat, selectedTheme);
+        this.showToast(`تم تجهيز وحفظ البوستر (${selectedFormat === 'vertical' ? 'العمودي 📱' : 'الأفقي 🖥️'}) بنجاح!`, 'success');
+      } catch (err) {
+        this.showToast('حدث خطأ أثناء إنشاء البوستر، يرجى المحاولة ثانية', 'error');
+      } finally {
+        downloadBtn.disabled = false;
+        downloadBtn.innerHTML = '💾 حفظ / مشاركة البوستر';
+      }
     });
   }
 
@@ -1372,42 +1398,61 @@ class SoukApp {
     const updateStorePreviewHTML = () => {
       const isVert = selectedFormat === 'vertical';
       return `
-        <div style="background: ${selectedTheme === 'dark_gold' ? 'linear-gradient(135deg, #0f172a, #020617)' : selectedTheme === 'light_modern' ? 'linear-gradient(135deg, #ffffff, #f1f5f9)' : selectedTheme === 'neon_cyber' ? 'linear-gradient(135deg, #090d16, #020617)' : 'linear-gradient(135deg, #1e112a, #0d0517)'}; color: ${selectedTheme === 'light_modern' ? '#0f172a' : '#ffffff'}; border: 2px solid ${selectedTheme === 'dark_gold' ? '#f59e0b' : selectedTheme === 'light_modern' ? '#2563eb' : selectedTheme === 'neon_cyber' ? '#06b6d4' : '#c084fc'}; border-radius: var(--radius-lg); padding: 24px 20px; text-align: center; box-shadow: var(--card-shadow);">
+        <div style="background: ${selectedTheme === 'dark_gold' ? 'linear-gradient(135deg, #0f172a, #020617)' : selectedTheme === 'light_modern' ? 'linear-gradient(135deg, #ffffff, #f1f5f9)' : selectedTheme === 'neon_cyber' ? 'linear-gradient(135deg, #090d16, #020617)' : 'linear-gradient(135deg, #1e112a, #0d0517)'}; color: ${selectedTheme === 'light_modern' ? '#0f172a' : '#ffffff'}; border: 2px solid ${selectedTheme === 'dark_gold' ? '#f59e0b' : selectedTheme === 'light_modern' ? '#2563eb' : selectedTheme === 'neon_cyber' ? '#06b6d4' : '#c084fc'}; border-radius: var(--radius-lg); padding: 18px 14px; text-align: center; box-shadow: var(--card-shadow);">
           ${isVert ? `
-            <div style="display: flex; flex-direction: column; align-items: center; gap: 12px;">
-              <div style="font-size: 0.85rem; font-weight: 800; color: ${selectedTheme === 'dark_gold' ? '#f59e0b' : selectedTheme === 'light_modern' ? '#2563eb' : selectedTheme === 'neon_cyber' ? '#22d3ee' : '#e879f9'}; background: rgba(255,255,255,0.08); padding: 4px 14px; border-radius: 20px;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+              <div style="font-size: 0.8rem; font-weight: 800; color: ${selectedTheme === 'dark_gold' ? '#f59e0b' : selectedTheme === 'light_modern' ? '#2563eb' : selectedTheme === 'neon_cyber' ? '#22d3ee' : '#e879f9'}; background: rgba(255,255,255,0.08); padding: 3px 12px; border-radius: 20px;">
                 ⚡ ${APP_CONFIG.STORE_NAME_SHORT} | المتجر الرسمي
               </div>
-              
-              <!-- Avatar Centered Above Name -->
-              <img src="${merchant.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80'}" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid #f59e0b; margin-top: 4px;">
 
-              <h3 style="font-size: 1.25rem; font-weight: 900; margin: 0;">🏪 ${merchant.name} ✓</h3>
-              <div style="font-size: 0.8rem; color: #f59e0b; font-weight: 700;">👑 مدير ومؤسس الموقع | حساب معتمد وموثوق</div>
-              <div style="font-size: 0.82rem; color: var(--text-secondary);">📞 واتساب: ${merchant.phone} | 📦 ${sellerProducts.length} قطعة بالة وأوتلت</div>
+              <!-- Avatar directly above name -->
+              ${merchant.avatar ? `
+                <img src="${merchant.avatar}" style="width: 76px; height: 76px; border-radius: 50%; object-fit: cover; border: 3px solid ${selectedTheme === 'dark_gold' ? '#f59e0b' : selectedTheme === 'light_modern' ? '#2563eb' : selectedTheme === 'neon_cyber' ? '#06b6d4' : '#c084fc'}; box-shadow: 0 4px 14px rgba(0,0,0,0.3);" alt="${merchant.name}">
+              ` : ''}
 
-              <div style="background: #ffffff; padding: 10px; border-radius: 14px; margin-top: 8px; border: 2px solid #f59e0b; width: 140px; height: 140px; display: flex; align-items: center; justify-content: center;">
-                ${qrDataUrl ? `<img src="${qrDataUrl}" style="width: 120px; height: 120px; object-fit: contain;">` : '📱'}
+              <div>
+                <h3 style="font-size: 1.15rem; font-weight: 900; color: ${selectedTheme === 'light_modern' ? '#0f172a' : '#ffffff'}; margin-bottom: 2px;">
+                  🏪 ${merchant.name} ✓
+                </h3>
+                <div style="font-size: 0.78rem; color: #f59e0b; font-weight: 800;">
+                  👑 مدير ومؤسس الموقع | حساب معتمد وموثوق
+                </div>
+                <div style="font-size: 0.72rem; color: ${selectedTheme === 'light_modern' ? '#64748b' : '#94a3b8'}; margin-top: 2px;">
+                  📞 واتساب: ${merchant.phone} | 📦 معروض: ${sellerProducts.length} قطعة
+                </div>
               </div>
 
-              <div style="font-size: 0.85rem; font-weight: 800; color: ${selectedTheme === 'light_modern' ? '#0f172a' : '#ffffff'}; margin-top: 4px;">
-                📷 امسح الكود بكاميرا الموبايل لفتح متجري
+              <!-- Real Ultra-HD QR Code with White Rounded Background -->
+              <div style="background: #ffffff; padding: 6px; border-radius: 12px; border: 2px solid ${selectedTheme === 'dark_gold' ? '#f59e0b' : selectedTheme === 'light_modern' ? '#2563eb' : selectedTheme === 'neon_cyber' ? '#06b6d4' : '#c084fc'}; box-shadow: 0 6px 18px rgba(0,0,0,0.3); margin-top: 4px;">
+                ${qrDataUrl ? `<img src="${qrDataUrl}" style="width: 110px; height: 110px; object-fit: contain; display: block;" alt="Store QR Code">` : '📱'}
+              </div>
+
+              <div style="font-size: 0.78rem; font-weight: 800; color: ${selectedTheme === 'light_modern' ? '#0f172a' : '#f8fafc'};">
+                📷 امسح الكود بكاميرا الموبايل لزيارة متجري
               </div>
             </div>
           ` : `
-            <div style="display: grid; grid-template-columns: 1fr 1.3fr; gap: 20px; align-items: center; text-align: right;">
+            <div style="display: grid; grid-template-columns: 1fr 1.4fr; gap: 14px; align-items: center; text-align: right;">
               <div style="text-align: center;">
-                <div style="background: #ffffff; padding: 8px; border-radius: 12px; display: inline-block; border: 2px solid #f59e0b; width: 130px; height: 130px;">
-                  ${qrDataUrl ? `<img src="${qrDataUrl}" style="width: 114px; height: 114px; object-fit: contain;">` : '📱'}
+                <div style="background: #ffffff; padding: 4px; border-radius: 10px; display: inline-block; border: 2px solid ${selectedTheme === 'dark_gold' ? '#f59e0b' : selectedTheme === 'light_modern' ? '#2563eb' : selectedTheme === 'neon_cyber' ? '#06b6d4' : '#c084fc'};">
+                  ${qrDataUrl ? `<img src="${qrDataUrl}" style="width: 80px; height: 80px; object-fit: contain; display: block;" alt="Store QR Code">` : '📱'}
                 </div>
-                <div style="font-size: 0.75rem; font-weight: 800; margin-top: 6px;">امسح لزيارة المتجر 📷</div>
+                <div style="font-size: 0.68rem; font-weight: 700; color: ${selectedTheme === 'light_modern' ? '#475569' : '#cbd5e1'}; margin-top: 4px;">امسح للزيارة 📷</div>
               </div>
-              <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
-                <img src="${merchant.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80'}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2.5px solid #f59e0b;">
-                <h3 style="font-size: 1.15rem; font-weight: 900; margin: 0;">🏪 ${merchant.name} ✓</h3>
-                <div style="font-size: 0.75rem; color: #f59e0b; font-weight: 700;">👑 مدير ومؤسس الموقع</div>
-                <div style="font-size: 0.78rem; color: var(--text-secondary);">📞 ${merchant.phone} | 📦 ${sellerProducts.length} قطعة معروضة</div>
-                <div style="font-size: 0.8rem; font-weight: 800; color: ${selectedTheme === 'dark_gold' ? '#f59e0b' : '#2563eb'};">⚡ ${APP_CONFIG.STORE_NAME_SHORT}</div>
+
+              <div>
+                ${merchant.avatar ? `
+                  <img src="${merchant.avatar}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 2px solid ${selectedTheme === 'dark_gold' ? '#f59e0b' : '#2563eb'}; margin-bottom: 4px;" alt="${merchant.name}">
+                ` : ''}
+                <div style="font-size: 1rem; font-weight: 900; color: ${selectedTheme === 'light_modern' ? '#0f172a' : '#ffffff'};">
+                  🏪 ${merchant.name} ✓
+                </div>
+                <div style="font-size: 0.72rem; color: #f59e0b; font-weight: 800;">
+                  👑 مدير ومؤسس الموقع
+                </div>
+                <div style="font-size: 0.7rem; color: ${selectedTheme === 'light_modern' ? '#64748b' : '#94a3b8'};">
+                  📞 واتساب: ${merchant.phone}
+                </div>
               </div>
             </div>
           `}

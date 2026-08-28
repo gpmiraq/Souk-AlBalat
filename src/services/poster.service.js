@@ -1,6 +1,7 @@
 /* ==========================================================================
    Marketing Flyer & Poster Generator Service
    Ultra-HD Scannable QR Codes, Clean Watermark-Free Visuals & Multi-Theme System
+   Enhanced Mobile Saving via Web Share API + Direct Gallery Dialog
    ========================================================================== */
 
 import { APP_CONFIG } from '../config/constants.js';
@@ -85,6 +86,125 @@ export class PosterService {
   }
 
   /**
+   * Safely loads an image URL into an Image element avoiding CORS canvas taint
+   */
+  static async safeLoadImage(url) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = () => {
+        // Fallback try without crossOrigin or with proxy if fails
+        const fallbackImg = new Image();
+        fallbackImg.onload = () => resolve(fallbackImg);
+        fallbackImg.onerror = () => resolve(null);
+        fallbackImg.src = url;
+      };
+      img.src = url;
+    });
+  }
+
+  /**
+   * Handles downloading / sharing the generated canvas on mobile and desktop
+   */
+  static async deliverPoster(canvas, filename, title) {
+    return new Promise(async (resolve) => {
+      try {
+        canvas.toBlob(async (blob) => {
+          if (!blob) {
+            const dataUrl = canvas.toDataURL('image/png');
+            this.showSavedPosterDialog(dataUrl, filename, title);
+            resolve(true);
+            return;
+          }
+
+          const file = new File([blob], filename, { type: 'image/png' });
+          const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+          // 1. Try Native Mobile Web Share API
+          if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+              await navigator.share({
+                title: title || 'بوستر سوق البالات',
+                text: `${title} - سوق البالات`,
+                files: [file]
+              });
+              resolve(true);
+              return;
+            } catch (shareErr) {
+              if (shareErr.name === 'AbortError') {
+                resolve(true);
+                return;
+              }
+            }
+          }
+
+          // 2. Browser standard download
+          const blobUrl = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.download = filename;
+          link.href = blobUrl;
+          document.body.appendChild(link);
+          link.click();
+          setTimeout(() => {
+            link.remove();
+            URL.revokeObjectURL(blobUrl);
+          }, 1000);
+
+          // 3. For mobile devices, also pop up the preview dialog so user can long-press save to photos
+          if (isMobile) {
+            const dataUrl = canvas.toDataURL('image/png');
+            this.showSavedPosterDialog(dataUrl, filename, title);
+          }
+
+          resolve(true);
+        }, 'image/png');
+      } catch (e) {
+        console.error('Deliver poster error:', e);
+        const dataUrl = canvas.toDataURL('image/png');
+        this.showSavedPosterDialog(dataUrl, filename, title);
+        resolve(true);
+      }
+    });
+  }
+
+  /**
+   * Shows a visual save dialog with the generated image for instant long-press save to mobile camera roll
+   */
+  static showSavedPosterDialog(dataUrl, filename, title) {
+    const existing = document.getElementById('modal-saved-poster-preview');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'modal-saved-poster-preview';
+    modal.className = 'modal-overlay active';
+    modal.style.zIndex = '999999';
+    modal.innerHTML = `
+      <div class="modal-container" style="max-width: 420px; max-height: 90vh; text-align: center; padding: 16px;">
+        <div class="modal-header" style="border-bottom: none; padding-bottom: 0;">
+          <div class="modal-title" style="font-size: 1.05rem;">✅ تم تجهيز البوستر بنجاح!</div>
+          <div class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</div>
+        </div>
+        <div class="modal-body" style="padding: 10px 0;">
+          <p style="font-size: 0.82rem; color: #10b981; font-weight: 800; margin-bottom: 10px;">
+            📱 للحفظ في ألبوم الصور بالموبايل: اضغط مطولاً على الصورة أدناه واختر <strong>(حفظ الصورة في الصور)</strong>.
+          </p>
+          <div style="max-height: 52vh; overflow: hidden; border-radius: 12px; border: 2px solid var(--brand-primary); box-shadow: var(--card-shadow); display: inline-block;">
+            <img src="${dataUrl}" style="max-width: 100%; max-height: 52vh; display: block; object-fit: contain;" alt="Poster Preview">
+          </div>
+        </div>
+        <div class="modal-footer" style="display: flex; gap: 8px; justify-content: center; padding-top: 10px; border-top: none;">
+          <button class="btn btn-secondary" style="font-size: 0.85rem; padding: 8px 16px;" onclick="this.closest('.modal-overlay').remove()">إغلاق</button>
+          <a class="btn btn-primary" style="font-size: 0.85rem; padding: 8px 16px; text-decoration: none;" href="${dataUrl}" download="${filename}">
+            📥 تنزيل الصورة
+          </a>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+
+  /**
    * Generates and downloads the flyer card as an image in selected format and theme
    * @param {Object} product 
    * @param {'horizontal' | 'vertical'} format 
@@ -122,222 +242,211 @@ export class PosterService {
       await new Promise(r => { qrImg.onload = r; qrImg.onerror = r; });
     }
 
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
+    const img = await this.safeLoadImage(product.image);
 
-    return new Promise((resolve) => {
-      img.onload = () => {
-        ctx.textAlign = 'right';
-        ctx.direction = 'rtl';
+    ctx.textAlign = 'right';
+    ctx.direction = 'rtl';
 
-        if (isVertical) {
-          // --- 📱 VERTICAL STORY / STATUS (1080 x 1920) ---
-          
-          // Header Logo & Store Name
-          ctx.font = 'bold 48px Cairo, sans-serif';
-          ctx.fillStyle = theme.accentColor;
-          ctx.fillText(`⚡ ${APP_CONFIG.STORE_NAME_SHORT}`, width - 70, 130);
+    if (isVertical) {
+      // --- 📱 VERTICAL STORY / STATUS (1080 x 1920) ---
+      
+      // Header Logo & Store Name
+      ctx.font = 'bold 48px Cairo, sans-serif';
+      ctx.fillStyle = theme.accentColor;
+      ctx.fillText(`⚡ ${APP_CONFIG.STORE_NAME_SHORT}`, width - 70, 130);
 
-          ctx.font = '32px Outfit, sans-serif';
-          ctx.fillStyle = theme.subColor;
-          ctx.fillText('AMAZON & DHL OUTLET IQ', width - 70, 185);
+      ctx.font = '32px Outfit, sans-serif';
+      ctx.fillStyle = theme.subColor;
+      ctx.fillText('AMAZON & DHL OUTLET IQ', width - 70, 185);
 
-          // Product Image Square Center
-          const imgSize = 940;
-          const imgX = 70;
-          const imgY = 240;
+      // Product Image Square Center
+      const imgSize = 940;
+      const imgX = 70;
+      const imgY = 240;
 
-          ctx.fillStyle = '#000000';
-          ctx.beginPath();
-          ctx.roundRect(imgX, imgY, imgSize, imgSize, 36);
-          ctx.fill();
+      ctx.fillStyle = '#000000';
+      ctx.beginPath();
+      ctx.roundRect(imgX, imgY, imgSize, imgSize, 36);
+      ctx.fill();
 
-          ctx.save();
-          ctx.beginPath();
-          ctx.roundRect(imgX, imgY, imgSize, imgSize, 36);
-          ctx.clip();
-          ctx.drawImage(img, imgX, imgY, imgSize, imgSize);
-          ctx.restore();
+      if (img) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(imgX, imgY, imgSize, imgSize, 36);
+        ctx.clip();
+        ctx.drawImage(img, imgX, imgY, imgSize, imgSize);
+        ctx.restore();
+      }
 
-          // Condition Badge Cleanly on Top-Right Corner INSIDE Image
-          ctx.fillStyle = theme.accentColor;
-          ctx.beginPath();
-          ctx.roundRect(width - 380, 270, 280, 60, 30);
-          ctx.fill();
-          ctx.font = 'bold 30px Cairo, sans-serif';
-          ctx.fillStyle = '#000000';
-          ctx.textAlign = 'center';
-          ctx.fillText(product.conditionLabel || 'أوبن بوكس', width - 240, 312);
+      // Condition Badge Cleanly on Top-Right Corner INSIDE Image
+      ctx.fillStyle = theme.accentColor;
+      ctx.beginPath();
+      ctx.roundRect(width - 380, 270, 280, 60, 30);
+      ctx.fill();
+      ctx.font = 'bold 30px Cairo, sans-serif';
+      ctx.fillStyle = '#000000';
+      ctx.textAlign = 'center';
+      ctx.fillText(product.conditionLabel || 'أوبن بوكس', width - 240, 312);
 
-          // Product Title
-          ctx.textAlign = 'right';
-          ctx.font = 'bold 52px Cairo, sans-serif';
-          ctx.fillStyle = theme.titleColor;
-          const words = product.title.split(' ');
-          let line1 = words.slice(0, 5).join(' ');
-          let line2 = words.slice(5, 10).join(' ');
-          ctx.fillText(line1, width - 70, 1250);
-          if (line2) {
-            ctx.fillText(line2, width - 70, 1320);
-          }
+      // Product Title
+      ctx.textAlign = 'right';
+      ctx.font = 'bold 52px Cairo, sans-serif';
+      ctx.fillStyle = theme.titleColor;
+      const words = (product.title || '').split(' ');
+      let line1 = words.slice(0, 5).join(' ');
+      let line2 = words.slice(5, 10).join(' ');
+      ctx.fillText(line1, width - 70, 1250);
+      if (line2) {
+        ctx.fillText(line2, width - 70, 1320);
+      }
 
-          // Merchant with Verified Badge
-          ctx.font = '34px Cairo, sans-serif';
-          ctx.fillStyle = theme.accentColor;
-          ctx.fillText(`🏪 التاجر: ${product.merchantName || 'أبو وارث أمازون'} ✓`, width - 70, 1400);
+      // Merchant with Verified Badge
+      ctx.font = '34px Cairo, sans-serif';
+      ctx.fillStyle = theme.accentColor;
+      ctx.fillText(`🏪 التاجر: ${product.merchantName || 'أبو وارث أمازون'} ✓`, width - 70, 1400);
 
-          // Price Highlight Box
-          ctx.fillStyle = theme.priceBg;
-          ctx.beginPath();
-          ctx.roundRect(70, 1450, 940, 160, 28);
-          ctx.fill();
-          ctx.strokeStyle = theme.border;
-          ctx.lineWidth = 4;
-          ctx.stroke();
+      // Price Highlight Box
+      ctx.fillStyle = theme.priceBg;
+      ctx.beginPath();
+      ctx.roundRect(70, 1450, 940, 160, 28);
+      ctx.fill();
+      ctx.strokeStyle = theme.border;
+      ctx.lineWidth = 4;
+      ctx.stroke();
 
-          ctx.font = 'bold 38px Cairo, sans-serif';
-          ctx.fillStyle = theme.textColor;
-          ctx.fillText('السعر المباشر:', width - 120, 1550);
+      ctx.font = 'bold 38px Cairo, sans-serif';
+      ctx.fillStyle = theme.textColor;
+      ctx.fillText('السعر المباشر:', width - 120, 1550);
 
-          ctx.font = 'bold 72px Outfit, sans-serif';
-          ctx.fillStyle = theme.priceColor;
-          ctx.textAlign = 'left';
-          ctx.fillText(`${Number(product.price).toLocaleString()} د.ع`, 120, 1560);
+      ctx.font = 'bold 72px Outfit, sans-serif';
+      ctx.fillStyle = theme.priceColor;
+      ctx.textAlign = 'left';
+      ctx.fillText(`${Number(product.price).toLocaleString()} د.ع`, 120, 1560);
 
-          // Footer Real QR Code & Link (Extra Large & Crisp)
-          ctx.textAlign = 'right';
-          ctx.font = 'bold 34px Cairo, sans-serif';
-          ctx.fillStyle = theme.textColor;
-          ctx.fillText('امسح الكود بكاميرا الموبايل للطلب', width - 290, 1730);
+      // Footer Real QR Code & Link (Extra Large & Crisp)
+      ctx.textAlign = 'right';
+      ctx.font = 'bold 34px Cairo, sans-serif';
+      ctx.fillStyle = theme.textColor;
+      ctx.fillText('امسح الكود بكاميرا الموبايل للطلب', width - 290, 1730);
 
-          ctx.font = '28px Outfit, sans-serif';
-          ctx.fillStyle = theme.subColor;
-          ctx.fillText('souk-al-balat.vercel.app', width - 290, 1785);
+      ctx.font = '28px Outfit, sans-serif';
+      ctx.fillStyle = theme.subColor;
+      ctx.fillText('souk-al-balat.vercel.app', width - 290, 1785);
 
-          // Draw Large White QR Box & Image
-          const qrBoxSize = 190;
-          const qrX = width - 260;
-          const qrY = 1660;
-          ctx.fillStyle = '#ffffff';
-          ctx.beginPath();
-          ctx.roundRect(qrX, qrY, qrBoxSize, qrBoxSize, 20);
-          ctx.fill();
-          ctx.strokeStyle = theme.border;
-          ctx.lineWidth = 3;
-          ctx.stroke();
+      // Draw Large White QR Box & Image
+      const qrBoxSize = 190;
+      const qrX = width - 260;
+      const qrY = 1660;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.roundRect(qrX, qrY, qrBoxSize, qrBoxSize, 20);
+      ctx.fill();
+      ctx.strokeStyle = theme.border;
+      ctx.lineWidth = 3;
+      ctx.stroke();
 
-          if (qrImg.complete && qrImg.naturalWidth > 0) {
-            ctx.drawImage(qrImg, qrX + 10, qrY + 10, qrBoxSize - 20, qrBoxSize - 20);
-          }
+      if (qrImg.complete && qrImg.naturalWidth > 0) {
+        ctx.drawImage(qrImg, qrX + 10, qrY + 10, qrBoxSize - 20, qrBoxSize - 20);
+      }
 
-        } else {
-          // --- 🖥️ HORIZONTAL BANNER (1200 x 630) ---
-          const imgSize = 480;
-          const imgX = 660;
-          const imgY = 75;
+    } else {
+      // --- 🖥️ HORIZONTAL BANNER (1200 x 630) ---
+      const imgSize = 480;
+      const imgX = 660;
+      const imgY = 75;
 
-          ctx.fillStyle = '#000000';
-          ctx.beginPath();
-          ctx.roundRect(imgX, imgY, imgSize, imgSize, 24);
-          ctx.fill();
+      ctx.fillStyle = '#000000';
+      ctx.beginPath();
+      ctx.roundRect(imgX, imgY, imgSize, imgSize, 24);
+      ctx.fill();
 
-          ctx.save();
-          ctx.beginPath();
-          ctx.roundRect(imgX, imgY, imgSize, imgSize, 24);
-          ctx.clip();
-          ctx.drawImage(img, imgX, imgY, imgSize, imgSize);
-          ctx.restore();
+      if (img) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(imgX, imgY, imgSize, imgSize, 24);
+        ctx.clip();
+        ctx.drawImage(img, imgX, imgY, imgSize, imgSize);
+        ctx.restore();
+      }
 
-          // Condition Badge inside Image Top-Right
-          ctx.fillStyle = theme.accentColor;
-          ctx.beginPath();
-          ctx.roundRect(width - 320, 95, 230, 48, 24);
-          ctx.fill();
-          ctx.font = 'bold 24px Cairo, sans-serif';
-          ctx.fillStyle = '#000000';
-          ctx.textAlign = 'center';
-          ctx.fillText(product.conditionLabel || 'أوبن بوكس', width - 205, 128);
+      // Condition Badge inside Image Top-Right
+      ctx.fillStyle = theme.accentColor;
+      ctx.beginPath();
+      ctx.roundRect(width - 320, 95, 230, 48, 24);
+      ctx.fill();
+      ctx.font = 'bold 24px Cairo, sans-serif';
+      ctx.fillStyle = '#000000';
+      ctx.textAlign = 'center';
+      ctx.fillText(product.conditionLabel || 'أوبن بوكس', width - 205, 128);
 
-          // Left Info Column
-          ctx.textAlign = 'right';
-          ctx.font = 'bold 36px Cairo, sans-serif';
-          ctx.fillStyle = theme.accentColor;
-          ctx.fillText(`⚡ ${APP_CONFIG.STORE_NAME_SHORT}`, 610, 120);
+      // Left Info Column
+      ctx.textAlign = 'right';
+      ctx.font = 'bold 36px Cairo, sans-serif';
+      ctx.fillStyle = theme.accentColor;
+      ctx.fillText(`⚡ ${APP_CONFIG.STORE_NAME_SHORT}`, 610, 120);
 
-          ctx.font = '22px Cairo, sans-serif';
-          ctx.fillStyle = theme.subColor;
-          ctx.fillText(`| ${product.merchantName || 'أبو وارث'} ✓`, 420, 120);
+      ctx.font = '22px Cairo, sans-serif';
+      ctx.fillStyle = theme.subColor;
+      ctx.fillText(`| ${product.merchantName || 'أبو وارث'} ✓`, 420, 120);
 
-          // Title
-          ctx.font = 'bold 40px Cairo, sans-serif';
-          ctx.fillStyle = theme.titleColor;
-          const words = product.title.split(' ');
-          let line1 = words.slice(0, 5).join(' ');
-          let line2 = words.slice(5, 10).join(' ');
-          ctx.fillText(line1, 610, 200);
-          if (line2) {
-            ctx.fillText(line2, 610, 255);
-          }
+      // Title
+      ctx.font = 'bold 40px Cairo, sans-serif';
+      ctx.fillStyle = theme.titleColor;
+      const words = (product.title || '').split(' ');
+      let line1 = words.slice(0, 5).join(' ');
+      let line2 = words.slice(5, 10).join(' ');
+      ctx.fillText(line1, 610, 200);
+      if (line2) {
+        ctx.fillText(line2, 610, 255);
+      }
 
-          // Price Box
-          ctx.fillStyle = theme.priceBg;
-          ctx.beginPath();
-          ctx.roundRect(60, 310, 550, 110, 20);
-          ctx.fill();
-          ctx.strokeStyle = theme.border;
-          ctx.lineWidth = 3;
-          ctx.stroke();
+      // Price Box
+      ctx.fillStyle = theme.priceBg;
+      ctx.beginPath();
+      ctx.roundRect(60, 310, 550, 110, 20);
+      ctx.fill();
+      ctx.strokeStyle = theme.border;
+      ctx.lineWidth = 3;
+      ctx.stroke();
 
-          ctx.font = 'bold 30px Cairo, sans-serif';
-          ctx.fillStyle = theme.textColor;
-          ctx.fillText('السعر:', 580, 375);
+      ctx.font = 'bold 30px Cairo, sans-serif';
+      ctx.fillStyle = theme.textColor;
+      ctx.fillText('السعر:', 580, 375);
 
-          ctx.font = 'bold 54px Outfit, sans-serif';
-          ctx.fillStyle = theme.priceColor;
-          ctx.textAlign = 'left';
-          ctx.fillText(`${Number(product.price).toLocaleString()} د.ع`, 90, 385);
+      ctx.font = 'bold 54px Outfit, sans-serif';
+      ctx.fillStyle = theme.priceColor;
+      ctx.textAlign = 'left';
+      ctx.fillText(`${Number(product.price).toLocaleString()} د.ع`, 90, 385);
 
-          // QR Code Footer
-          ctx.textAlign = 'right';
-          ctx.font = 'bold 26px Cairo, sans-serif';
-          ctx.fillStyle = theme.textColor;
-          ctx.fillText('امسح الكود للتسوق المباشر', 460, 490);
+      // QR Code Footer
+      ctx.textAlign = 'right';
+      ctx.font = 'bold 26px Cairo, sans-serif';
+      ctx.fillStyle = theme.textColor;
+      ctx.fillText('امسح الكود للتسوق المباشر', 460, 490);
 
-          ctx.font = '22px Outfit, sans-serif';
-          ctx.fillStyle = theme.subColor;
-          ctx.fillText('souk-al-balat.vercel.app', 460, 530);
+      ctx.font = '22px Outfit, sans-serif';
+      ctx.fillStyle = theme.subColor;
+      ctx.fillText('souk-al-balat.vercel.app', 460, 530);
 
-          // Draw QR Box
-          const qrBoxSize = 135;
-          const qrX = 480;
-          const qrY = 445;
-          ctx.fillStyle = '#ffffff';
-          ctx.beginPath();
-          ctx.roundRect(qrX, qrY, qrBoxSize, qrBoxSize, 16);
-          ctx.fill();
-          ctx.strokeStyle = theme.border;
-          ctx.lineWidth = 2;
-          ctx.stroke();
+      // Draw QR Box
+      const qrBoxSize = 135;
+      const qrX = 480;
+      const qrY = 445;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.roundRect(qrX, qrY, qrBoxSize, qrBoxSize, 16);
+      ctx.fill();
+      ctx.strokeStyle = theme.border;
+      ctx.lineWidth = 2;
+      ctx.stroke();
 
-          if (qrImg.complete && qrImg.naturalWidth > 0) {
-            ctx.drawImage(qrImg, qrX + 8, qrY + 8, qrBoxSize - 16, qrBoxSize - 16);
-          }
-        }
+      if (qrImg.complete && qrImg.naturalWidth > 0) {
+        ctx.drawImage(qrImg, qrX + 8, qrY + 8, qrBoxSize - 16, qrBoxSize - 16);
+      }
+    }
 
-        // Trigger Download
-        const link = document.createElement('a');
-        link.download = `poster_${product.id}_${format}_${themeKey}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-        resolve(true);
-      };
-
-      img.onerror = () => {
-        resolve(false);
-      };
-
-      img.src = product.image;
-    });
+    const filename = `poster_${product.id}_${format}_${themeKey}.png`;
+    return await this.deliverPoster(canvas, filename, product.title);
   }
 
   /**
@@ -384,12 +493,7 @@ export class PosterService {
       await new Promise(r => { qrImg.onload = r; qrImg.onerror = r; });
     }
 
-    const avatarImg = new Image();
-    avatarImg.crossOrigin = 'anonymous';
-    if (merchant.avatar) {
-      avatarImg.src = merchant.avatar;
-      await new Promise(r => { avatarImg.onload = r; avatarImg.onerror = r; });
-    }
+    const avatarImg = merchant.avatar ? await this.safeLoadImage(merchant.avatar) : null;
 
     // Background Gradient
     const bgGrad = ctx.createLinearGradient(0, 0, width, height);
@@ -425,7 +529,7 @@ export class PosterService {
       const avatarX = (width - avatarSize) / 2;
       const avatarY = 200;
 
-      if (avatarImg.complete && avatarImg.naturalWidth > 0) {
+      if (avatarImg) {
         ctx.save();
         ctx.beginPath();
         ctx.arc(540, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
@@ -516,7 +620,6 @@ export class PosterService {
       ctx.fillText(storeUrl, 540, 1795);
     } else {
       // --- 🖥️ HORIZONTAL BANNER (1200 x 630) ---
-      // Left side: QR Code Box
       const qrBoxSize = 260;
       const qrX = 80;
       const qrY = 185;
@@ -543,7 +646,7 @@ export class PosterService {
       const avatarX = 750;
       const avatarY = 65;
 
-      if (avatarImg.complete && avatarImg.naturalWidth > 0) {
+      if (avatarImg) {
         ctx.save();
         ctx.beginPath();
         ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
@@ -580,11 +683,7 @@ export class PosterService {
       ctx.fillText(storeUrl, 1120, 480);
     }
 
-    // Trigger Download
-    const link = document.createElement('a');
-    link.download = `poster_store_${merchant.slug || merchant.id}_${format}_${themeKey}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-    return true;
+    const filename = `poster_store_${merchant.slug || merchant.id}_${format}_${themeKey}.png`;
+    return await this.deliverPoster(canvas, filename, `متجر ${merchant.name}`);
   }
 }

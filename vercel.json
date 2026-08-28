@@ -4,6 +4,18 @@
   "framework": "vite",
   "rewrites": [
     {
+      "source": "/p/:id",
+      "destination": "/api/og-product?id=:id"
+    },
+    {
+      "source": "/product/:id",
+      "destination": "/api/og-product?id=:id"
+    },
+    {
+      "source": "/seller/:slug",
+      "destination": "/api/og-seller?slug=:slug"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
