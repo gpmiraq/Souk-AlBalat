@@ -16,7 +16,7 @@ export class StorageService {
    * @param {number} quality (Default 0.78)
    * @returns {Promise<Blob>} Ultra-compact WebP/JPEG Blob
    */
-  static async compressImageFile(file, maxDimension = 1080, quality = 0.78) {
+  static async compressImageFile(file, maxDimension = 960, quality = 0.74) {
     let sourceImg = null;
     let objectUrl = null;
 
@@ -61,13 +61,13 @@ export class StorageService {
 
       // Subtle, Elegant Watermark
       ctx.save();
-      ctx.font = 'bold 32px "Tajawal", "Cairo", sans-serif';
+      ctx.font = 'bold 30px "Tajawal", "Cairo", sans-serif';
       ctx.textAlign = 'right';
       ctx.direction = 'rtl';
       ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-      ctx.fillText('⚡ سوق البالات', maxDimension - 38, maxDimension - 38);
+      ctx.fillText('⚡ سوق البالات', maxDimension - 32, maxDimension - 32);
       ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-      ctx.fillText('⚡ سوق البالات', maxDimension - 40, maxDimension - 40);
+      ctx.fillText('⚡ سوق البالات', maxDimension - 34, maxDimension - 34);
       ctx.restore();
 
       // Convert to ultra-lightweight WebP Blob (with JPEG fallback)
@@ -105,11 +105,11 @@ export class StorageService {
     console.log(`⚡ Processing photo (${originalMb} MB)...`);
 
     const startTime = performance.now();
-    const compressedBlob = await this.compressImageFile(file, 1080, 0.78);
+    const compressedBlob = await this.compressImageFile(file, 960, 0.74);
     const compressTimeMs = Math.round(performance.now() - startTime);
     const compressedKb = (compressedBlob.size / 1024).toFixed(1);
     
-    console.log(`✅ Compressed in ${compressTimeMs}ms: ${originalMb}MB -> ${compressedKb}KB (Speedup ~15x)`);
+    console.log(`✅ Compressed in ${compressTimeMs}ms: ${originalMb}MB -> ${compressedKb}KB (Speedup ~20x)`);
 
     try {
       // Sanitize names for clean Firebase Storage paths

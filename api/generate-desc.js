@@ -40,7 +40,7 @@ export default async function handler(req, res) {
 سعر المنتج التقريبي : [تخمين السعر التقديري في السوق العراقي بناءً على الموديل، مثال: 65,000 - 85,000 د.ع]
 سعر المنتج العالمي : [السعر العالمي التقديري بالدولار، مثال: $45 - $60 دولار تقريباً]`;
 
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${activeKey}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${activeKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

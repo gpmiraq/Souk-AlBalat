@@ -1,7 +1,7 @@
 /* ==========================================================================
    Objective Technical AI & Market Pricing Engine for Souk-AlBalat
    Strict Neutral Tone (No Marketing Fluff), Independent Market Price Estimation
-   Multi-Device Cloud Synced Google Gemini AI
+   Multi-Device Cloud Synced Google Gemini AI (Gemini 3.6 Flash / Flash Latest)
    ========================================================================== */
 
 import { db } from '../config/firebase.config.js';
@@ -38,6 +38,15 @@ export class AIService {
     return '';
   }
 
+  static cleanAIText(text) {
+    if (!text) return '';
+    return text
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/\*(.*?)\*/g, '$1')
+      .replace(/###\s*/g, '')
+      .trim();
+  }
+
   /**
    * Generates the 4-line structured AI Product Sheet with strictly neutral technical facts
    * Independent market pricing estimation (does NOT rely on merchant's stated price)
@@ -58,17 +67,17 @@ export class AIService {
     // 1. Official Google Gemini Live API
     if (apiKey) {
       try {
-        const prompt = `أنت مهندس ومراجع تقني محايد وخبير في بضائع أمازون وسوق الإلكترونيات في العراق.
+        const prompt = `أنت مهندس ومراجع تقني محايد وخبير في بضائع أمازون وسوق الإلكترونيات والبالات في العراق.
 المطلوب كتابة بطاقة مواصفات فنية ومعلومات عامة فقط ومجردة من أي مبالغة أو عبارات مدح أو تسويق للمنتج: "${cleanTitle}" (حالة الفحص: ${conditionLabel}).
 قدر أسعار السوق التقديرية الحقيقية للمنتج بناءً على مواصفات الموديل والماركة في السوق العالمية والمحلية في العراق.
 
-التزم حصراً بالهيكل التالي فقط وبدون أي مقدمات أو شروحات إضافية:
+التزم حصراً بالهيكل التالي فقط وبدون أي مقدمات أو شروحات إضافية وبدون استخدام علامات النجوم:
 اسم المنتج : [الاسم التقني والموديل الرسمي بدقة في حدود 10 إلى 15 كلمة]
 وصف المنتج : [المواصفات الفنية والمكونات المادية والمنافذ والمعالج/البطارية/الصوت فقط بأسلوب علمي ومحايد بدون مبالغة في حدود 40 إلى 50 كلمة]
 سعر المنتج التقريبي : [تخمين السعر التقديري في السوق العراقي بناءً على الموديل، مثال: 65,000 - 85,000 د.ع]
 سعر المنتج العالمي : [السعر العالمي التقديري بالدولار، مثال: $45 - $60 دولار تقريباً]`;
 
-        const models = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash'];
+        const models = ['gemini-3.6-flash', 'gemini-flash-latest', 'gemini-3.7-flash', 'gemini-3.5-flash', 'gemini-2.5-pro'];
         for (const model of models) {
           try {
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
@@ -83,7 +92,7 @@ export class AIService {
               const data = await response.json();
               const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
               if (text && text.length > 25) {
-                return text.trim();
+                return this.cleanAIText(text);
               }
             }
           } catch (modelErr) {
@@ -104,7 +113,7 @@ export class AIService {
       });
       if (srvRes.ok) {
         const srvData = await srvRes.json();
-        if (srvData?.text) return srvData.text;
+        if (srvData?.text) return this.cleanAIText(srvData.text);
       }
     } catch (srvErr) {}
 
