@@ -118,26 +118,43 @@ export class PosterService {
   }
 
   /**
-   * Fast, reliable poster delivery (Instant Direct Download + Mobile Saved Dialog)
+   * Fast, 1-Click Direct Poster Save / Download
+   * On mobile: directly invokes native system share / save sheet
+   * On desktop: directly triggers automatic download to downloads folder
+   * ZERO second popups or extra dialogs!
    */
   static async deliverPoster(canvas, filename, title) {
     try {
-      // 1. Generate clean DataURL
+      // 1. Direct browser download trigger
       const dataUrl = canvas.toDataURL('image/png');
-
-      // 2. Direct browser download trigger
       const link = document.createElement('a');
       link.download = filename;
       link.href = dataUrl;
       document.body.appendChild(link);
       link.click();
-      setTimeout(() => link.remove(), 600);
+      setTimeout(() => link.remove(), 400);
 
-      // 3. Display the saved visual modal for mobile photo gallery saving
-      this.showSavedPosterDialog(dataUrl, filename, title);
+      // 2. On Mobile, if Native Share API is supported, invoke it directly to allow 1-tap "Save Image to Photos"
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (isMobile && navigator.canShare) {
+        try {
+          const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+          if (blob) {
+            const file = new File([blob], filename, { type: 'image/png' });
+            if (navigator.canShare({ files: [file] })) {
+              await navigator.share({
+                files: [file],
+                title: title || 'بوستر سوق البالات'
+              });
+            }
+          }
+        } catch (shareErr) {
+          // If user dismissed share or unsupported, download was already triggered above
+        }
+      }
       return true;
     } catch (e) {
-      console.error('Deliver poster canvas error:', e);
+      console.error('Deliver poster error:', e);
       try {
         canvas.toBlob((blob) => {
           if (blob) {
@@ -151,48 +168,11 @@ export class PosterService {
               link.remove();
               URL.revokeObjectURL(blobUrl);
             }, 600);
-            this.showSavedPosterDialog(blobUrl, filename, title);
           }
         }, 'image/png');
       } catch (err) {}
       return true;
     }
-  }
-
-  /**
-   * Shows a visual save dialog with the generated image for instant long-press save to mobile camera roll
-   */
-  static showSavedPosterDialog(dataUrl, filename, title) {
-    const existing = document.getElementById('modal-saved-poster-preview');
-    if (existing) existing.remove();
-
-    const modal = document.createElement('div');
-    modal.id = 'modal-saved-poster-preview';
-    modal.className = 'modal-overlay active';
-    modal.style.zIndex = '999999';
-    modal.innerHTML = `
-      <div class="modal-container" style="max-width: 420px; max-height: 90vh; text-align: center; padding: 16px; border-radius: 18px; box-shadow: 0 25px 60px rgba(0,0,0,0.6);">
-        <div class="modal-header" style="border-bottom: none; padding-bottom: 0;">
-          <div class="modal-title" style="font-size: 1.1rem; color: var(--brand-primary); font-weight: 900;">✅ تم تجهيز البوستر بنجاح!</div>
-          <div class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</div>
-        </div>
-        <div class="modal-body" style="padding: 12px 0;">
-          <p style="font-size: 0.85rem; color: #10b981; font-weight: 800; margin-bottom: 12px; line-height: 1.4;">
-            📱 للحفظ في ألبوم الصور بالموبايل: اضغط مطولاً على الصورة أدناه واختر <strong>(حفظ الصورة في الصور / Save Image)</strong>.
-          </p>
-          <div style="max-height: 52vh; overflow: hidden; border-radius: 12px; border: 2.5px solid var(--brand-primary); box-shadow: var(--card-shadow); display: inline-block;">
-            <img src="${dataUrl}" style="max-width: 100%; max-height: 52vh; display: block; object-fit: contain;" alt="Poster Preview">
-          </div>
-        </div>
-        <div class="modal-footer" style="display: flex; gap: 10px; justify-content: center; padding-top: 10px; border-top: none;">
-          <button class="btn btn-secondary" style="font-size: 0.9rem; padding: 10px 18px;" onclick="this.closest('.modal-overlay').remove()">إغلاق</button>
-          <a class="btn btn-primary" style="font-size: 0.9rem; padding: 10px 20px; text-decoration: none; font-weight: 900; display: inline-flex; align-items: center; gap: 6px;" href="${dataUrl}" download="${filename}">
-            📥 تنزيل الصورة الآن
-          </a>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(modal);
   }
 
   /**

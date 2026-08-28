@@ -1506,6 +1506,9 @@ class SoukApp {
       try {
         await PosterService.exportFlyerAsImage(product, selectedFormat, selectedTheme);
         this.showToast(`تم حفظ البوستر (${selectedFormat === 'vertical' ? 'العمودي 📱' : 'الأفقي 🖥️'}) بنجاح!`, 'success');
+        setTimeout(() => {
+          modalOverlay.remove();
+        }, 500);
       } catch (err) {
         console.error(err);
         this.showToast('حدث خطأ أثناء إنشاء البوستر، يرجى المحاولة ثانية', 'error');
@@ -1686,6 +1689,9 @@ class SoukApp {
       try {
         await PosterService.exportMerchantStorePosterAsImage(merchant, sellerProducts, selectedFormat, selectedTheme);
         this.showToast(`تم تحميل بوستر المتجر (${selectedFormat === 'vertical' ? 'العمودي 📱' : 'الأفقي 🖥️'}) بنجاح!`, 'success');
+        setTimeout(() => {
+          modalOverlay.remove();
+        }, 500);
       } catch (e) {
         this.showToast('حدث خطأ أثناء إنشاء البوستر', 'error');
       } finally {
