@@ -1,7 +1,7 @@
 /* ==========================================================================
    Marketing Flyer & Poster Generator Service
    Ultra-HD Scannable QR Codes, Clean Visuals & Dual Standard Formats (Vertical / Horizontal)
-   Blazing Fast Instant Rendering (Zero Hang / Zero Lag)
+   CORS-Safe Canvas Export & Universal Instant Download on Mobile and Desktop
    ========================================================================== */
 
 import { APP_CONFIG } from '../config/constants.js';
@@ -86,12 +86,18 @@ export class PosterService {
   }
 
   /**
-   * Safely and rapidly loads an image URL with strict 2-second timeout to avoid any hang
+   * Safely loads an image with CORS headers using CORS proxy to guarantee canvas is NEVER tainted
    */
   static async safeLoadImage(url) {
     if (!url) return null;
+
+    let targetUrl = url;
+    if (url.startsWith('http') && !url.startsWith('data:image')) {
+      targetUrl = `https://wsrv.nl/?url=${encodeURIComponent(url)}&output=webp`;
+    }
+
     return new Promise((resolve) => {
-      const timer = setTimeout(() => resolve(null), 2000);
+      const timer = setTimeout(() => resolve(null), 3000);
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => {
@@ -100,12 +106,14 @@ export class PosterService {
       };
       img.onerror = () => {
         clearTimeout(timer);
+        // Secondary proxy fallback
         const fallback = new Image();
+        fallback.crossOrigin = 'anonymous';
         fallback.onload = () => resolve(fallback);
         fallback.onerror = () => resolve(null);
-        fallback.src = url;
+        fallback.src = `/api/proxy-image?url=${encodeURIComponent(url)}`;
       };
-      img.src = url;
+      img.src = targetUrl;
     });
   }
 
@@ -114,9 +122,10 @@ export class PosterService {
    */
   static async deliverPoster(canvas, filename, title) {
     try {
+      // 1. Generate clean DataURL
       const dataUrl = canvas.toDataURL('image/png');
 
-      // Instant download trigger
+      // 2. Direct browser download trigger
       const link = document.createElement('a');
       link.download = filename;
       link.href = dataUrl;
@@ -124,17 +133,27 @@ export class PosterService {
       link.click();
       setTimeout(() => link.remove(), 600);
 
-      // On mobile devices, also show the long-press save dialog
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      if (isMobile) {
-        this.showSavedPosterDialog(dataUrl, filename, title);
-      }
+      // 3. Display the saved visual modal for mobile photo gallery saving
+      this.showSavedPosterDialog(dataUrl, filename, title);
       return true;
     } catch (e) {
-      console.error('Deliver poster error:', e);
+      console.error('Deliver poster canvas error:', e);
       try {
-        const dataUrl = canvas.toDataURL('image/png');
-        this.showSavedPosterDialog(dataUrl, filename, title);
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const blobUrl = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = blobUrl;
+            document.body.appendChild(link);
+            link.click();
+            setTimeout(() => {
+              link.remove();
+              URL.revokeObjectURL(blobUrl);
+            }, 600);
+            this.showSavedPosterDialog(blobUrl, filename, title);
+          }
+        }, 'image/png');
       } catch (err) {}
       return true;
     }
@@ -152,23 +171,23 @@ export class PosterService {
     modal.className = 'modal-overlay active';
     modal.style.zIndex = '999999';
     modal.innerHTML = `
-      <div class="modal-container" style="max-width: 400px; max-height: 90vh; text-align: center; padding: 16px;">
+      <div class="modal-container" style="max-width: 420px; max-height: 90vh; text-align: center; padding: 16px; border-radius: 18px; box-shadow: 0 25px 60px rgba(0,0,0,0.6);">
         <div class="modal-header" style="border-bottom: none; padding-bottom: 0;">
-          <div class="modal-title" style="font-size: 1.05rem;">✅ تم تجهيز البوستر بنجاح!</div>
+          <div class="modal-title" style="font-size: 1.1rem; color: var(--brand-primary); font-weight: 900;">✅ تم تجهيز البوستر بنجاح!</div>
           <div class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</div>
         </div>
-        <div class="modal-body" style="padding: 10px 0;">
-          <p style="font-size: 0.82rem; color: #10b981; font-weight: 800; margin-bottom: 10px;">
-            📱 للحفظ في ألبوم الصور بالموبايل: اضغط مطولاً على الصورة أدناه واختر <strong>(حفظ الصورة في الصور)</strong>.
+        <div class="modal-body" style="padding: 12px 0;">
+          <p style="font-size: 0.85rem; color: #10b981; font-weight: 800; margin-bottom: 12px; line-height: 1.4;">
+            📱 للحفظ في ألبوم الصور بالموبايل: اضغط مطولاً على الصورة أدناه واختر <strong>(حفظ الصورة في الصور / Save Image)</strong>.
           </p>
-          <div style="max-height: 50vh; overflow: hidden; border-radius: 12px; border: 2px solid var(--brand-primary); box-shadow: var(--card-shadow); display: inline-block;">
-            <img src="${dataUrl}" style="max-width: 100%; max-height: 50vh; display: block; object-fit: contain;" alt="Poster Preview">
+          <div style="max-height: 52vh; overflow: hidden; border-radius: 12px; border: 2.5px solid var(--brand-primary); box-shadow: var(--card-shadow); display: inline-block;">
+            <img src="${dataUrl}" style="max-width: 100%; max-height: 52vh; display: block; object-fit: contain;" alt="Poster Preview">
           </div>
         </div>
-        <div class="modal-footer" style="display: flex; gap: 8px; justify-content: center; padding-top: 10px; border-top: none;">
-          <button class="btn btn-secondary" style="font-size: 0.85rem; padding: 8px 16px;" onclick="this.closest('.modal-overlay').remove()">إغلاق</button>
-          <a class="btn btn-primary" style="font-size: 0.85rem; padding: 8px 16px; text-decoration: none; font-weight: 800;" href="${dataUrl}" download="${filename}">
-            📥 تنزيل الصورة
+        <div class="modal-footer" style="display: flex; gap: 10px; justify-content: center; padding-top: 10px; border-top: none;">
+          <button class="btn btn-secondary" style="font-size: 0.9rem; padding: 10px 18px;" onclick="this.closest('.modal-overlay').remove()">إغلاق</button>
+          <a class="btn btn-primary" style="font-size: 0.9rem; padding: 10px 20px; text-decoration: none; font-weight: 900; display: inline-flex; align-items: center; gap: 6px;" href="${dataUrl}" download="${filename}">
+            📥 تنزيل الصورة الآن
           </a>
         </div>
       </div>
