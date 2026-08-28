@@ -388,7 +388,7 @@ class SoukApp {
 
         <div class="product-card-body">
           <div class="product-merchant-link" style="cursor: pointer; display: flex; align-items: center; gap: 6px;" onclick="event.stopPropagation(); window.app.navigate('/seller/${p.merchantId || 'm-alwareth'}')">
-            <img src="${merchantObj?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}" style="width: 22px; height: 22px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--brand-primary); flex-shrink: 0;" alt="${p.merchantName}">
+            <img src="${AuthService.getMerchantAvatar(merchantObj)}" style="width: 22px; height: 22px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--brand-primary); flex-shrink: 0;" alt="${p.merchantName}">
             <span>${p.merchantName || 'أبو وارث أمازون'}</span>
             ${SOCIAL_ICONS.VERIFIED_BADGE}
             ${Number(p.quantity) > 1 ? `<span style="color: #10b981; font-weight: 800;">(متوفر: ${p.quantity} قطع)</span>` : ''}
@@ -501,7 +501,7 @@ class SoukApp {
       name: 'أبو وارث أمازون',
       phone: '07707188166',
       bio: 'الوكيل الحصري لبضائع أمازون والبالات وطرود DHL في العراق. فحص وتجربة وضمان حقيقي.',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80',
+      avatar: AuthService.getMerchantAvatar(),
       socials: {
         facebook: 'https://www.facebook.com/gpm90',
         tiktok: 'https://www.tiktok.com/@alwareth_amazon',
@@ -560,7 +560,7 @@ class SoukApp {
         <!-- Seller Store Banner Card (Avatar Centered Above Name) -->
         <div style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98)); border: 1.5px solid var(--border-strong); padding: 30px 20px; border-radius: var(--radius-lg); margin-bottom: 28px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; box-shadow: var(--card-shadow);">
           <!-- Circular Avatar Directly Above Name -->
-          <img src="${merchant.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80'}" style="width: 88px; height: 88px; border-radius: 50%; object-fit: cover; border: 3.5px solid #f59e0b; box-shadow: 0 4px 20px rgba(245,158,11,0.4);" alt="${merchant.name}">
+          <img src="${AuthService.getMerchantAvatar(merchant)}" style="width: 88px; height: 88px; border-radius: 50%; object-fit: cover; border: 3.5px solid #f59e0b; box-shadow: 0 4px 20px rgba(245,158,11,0.4);" alt="${merchant.name}">
           
           <div>
             <div style="font-size: 1.5rem; font-weight: 900; color: #ffffff; display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;">
@@ -820,7 +820,7 @@ class SoukApp {
           <div class="product-middle-info">
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; background: var(--bg-surface-subtle); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
               <div style="display: flex; align-items: center; gap: 8px; cursor: pointer;" onclick="window.app.navigate('/seller/${product.merchantId || 'alwareth'}')">
-                <img src="${merchantObj?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid var(--brand-primary); box-shadow: 0 2px 6px rgba(0,0,0,0.15); flex-shrink: 0;" alt="${product.merchantName}">
+                <img src="${AuthService.getMerchantAvatar(merchantObj)}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid var(--brand-primary); box-shadow: 0 2px 6px rgba(0,0,0,0.15); flex-shrink: 0;" alt="${product.merchantName}">
                 <span style="font-weight: 900; color: var(--text-primary); font-size: 0.95rem;">${product.merchantName || 'أبو وارث أمازون'}</span>
                 ${SOCIAL_ICONS.VERIFIED_BADGE}
                 <span class="badge" style="background: #fef08a; color: #854d0e; font-weight: 800;">👑 مدير الموقع</span>
@@ -2115,7 +2115,7 @@ class SoukApp {
           <div style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95)); border: 1px solid var(--border-strong); padding: 20px; border-radius: var(--radius-lg); margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; box-shadow: var(--card-shadow);">
             <div style="display: flex; align-items: center; gap: 14px;">
               <div style="width: 64px; height: 64px; border-radius: 50%; overflow: hidden; border: 3px solid var(--brand-primary); flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
-                <img src="${merchant.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}" style="width: 100%; height: 100%; object-fit: cover;" alt="${merchant.name}">
+                <img src="${AuthService.getMerchantAvatar(merchant)}" style="width: 100%; height: 100%; object-fit: cover;" alt="${merchant.name}">
               </div>
               <div>
                 <div style="font-size: 1.3rem; font-weight: 900; color: #ffffff; display: flex; align-items: center; gap: 6px;">
@@ -2338,7 +2338,7 @@ class SoukApp {
           <div class="merchant-top-header">
             <div class="merchant-profile-card">
               <div class="merchant-avatar-circle" style="position: relative; cursor: pointer;" id="btn-quick-avatar-settings">
-                <img src="${merchant.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" alt="${merchant.name}">
+                <img src="${AuthService.getMerchantAvatar(merchant)}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" alt="${merchant.name}">
                 <div style="position: absolute; bottom: 0; right: 0; background: var(--brand-primary); color: #000; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; border: 1.5px solid #fff;">📷</div>
               </div>
               <div>
@@ -2841,7 +2841,7 @@ class SoukApp {
   }
 
   openMerchantSettingsModal(merchant) {
-    let currentAvatarUrl = merchant.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100';
+    let currentAvatarUrl = AuthService.getMerchantAvatar(merchant);
 
     const modalOverlay = document.createElement('div');
     modalOverlay.className = 'modal-overlay active';
