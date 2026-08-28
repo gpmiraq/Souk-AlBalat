@@ -1946,8 +1946,8 @@ class SoukApp {
           <input type="file" id="gallery-file-input" accept="image/*" style="display: none;">
         </div>
 
-        <div id="gallery-upload-status" style="margin-bottom: 10px; display: none; padding: 10px; border-radius: 8px; background: rgba(59, 130, 246, 0.1); color: #3b82f6; font-weight: 700;">
-          ⏳ جاري المعالجة والرفع لمجلد التاجر في Firebase...
+        <div id="gallery-upload-status" style="margin-bottom: 10px; display: none; padding: 12px; border-radius: 10px; background: rgba(16, 185, 129, 0.12); color: #10b981; font-weight: 800; border: 1.5px solid #10b981; text-align: center;">
+          ⚡ جاري الضغط فائق السرعة وتقليص الحجم والرفع للسحابة فوراً (10x)...
         </div>
 
         ${currentGallery.length === 0 ? `
