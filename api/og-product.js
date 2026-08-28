@@ -23,11 +23,15 @@ export default async function handler(req, res) {
       const rawPrice = fields.price?.integerValue || fields.price?.doubleValue || fields.price?.stringValue || '0';
       const numPrice = Number(rawPrice) || 0;
 
+      // Extract all unique valid images for multi-image preview selection
+      const allImages = Array.from(new Set([primaryImage, ...imagesArr])).filter(Boolean);
+
       product = {
         id: fields.id?.stringValue || id,
         title: fields.title?.stringValue || 'منتج بالة أوتلت أمازون',
         price: numPrice,
         image: primaryImage,
+        images: allImages.length > 0 ? allImages : [primaryImage],
         condition: fields.condition?.stringValue || 'open_box',
         conditionLabel: fields.conditionLabel?.stringValue || 'أوبن بوكس (استوكات أمازون)',
         merchantName: fields.merchantName?.stringValue || 'أبو وارث أمازون',
@@ -47,6 +51,7 @@ export default async function handler(req, res) {
       title: 'بضائع أمازون والبالات الأوروبية | سوق البالات',
       price: 0,
       image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=1200&h=630&fit=crop',
+      images: ['https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=1200&h=630&fit=crop'],
       conditionLabel: 'أوبن بوكس',
       merchantName: 'سوق البالات',
       description: 'تسوق أفضل بضائع الأوتلت والبالات الأوروبية وطرود DHL بأسعار حصرية وحجز فوري عبر الواتساب.'
@@ -54,8 +59,10 @@ export default async function handler(req, res) {
   }
 
   const formattedPrice = product.price > 0 ? `${product.price.toLocaleString()} د.ع` : 'أفضل سعر';
-  const ogTitle = `${product.title} | ${formattedPrice}`;
-  const ogDescription = `⚡ السعر: ${formattedPrice} | الحالة: ${product.conditionLabel} | التاجر: ${product.merchantName} | اضغط للطلب والحجز المباشر عبر الواتساب والتوصيل لكافة المحافظات`;
+  
+  // Custom CTA Title badge that emulates an action button right inside the social card header
+  const ogTitle = `⚡【 احجز الآن : ${formattedPrice} 】${product.title}`;
+  const ogDescription = `👈 اضغط هنا لمعاينة كافة الصور والطلب الفوري عبر الواتساب | الحالة: ${product.conditionLabel} | التاجر: ${product.merchantName} | توصيل سريع لكافة محافظات العراق`;
   const productUrl = `https://souk-al-balat.vercel.app/p/${encodeURIComponent(product.id)}`;
 
   // 2. Read template HTML file
@@ -74,7 +81,6 @@ export default async function handler(req, res) {
     }
   }
 
-  // If no static file found on filesystem, use standard shell
   if (!html) {
     html = `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -90,21 +96,27 @@ export default async function handler(req, res) {
 </html>`;
   }
 
-  // 3. Inject Dynamic OpenGraph & Twitter Meta Tags
+  // 3. Generate Multiple Image Tags so Facebook Desktop offers multi-image selection preview
+  const multiImageMetaTags = product.images.map(imgUrl => `
+  <meta property="og:image" content="${escapeHtml(imgUrl)}">
+  <meta property="og:image:secure_url" content="${escapeHtml(imgUrl)}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="${escapeHtml(product.title)}">
+  `).join('\n');
+
+  // 4. Inject Dynamic OpenGraph & Twitter Meta Tags
   const dynamicMetaTags = `
   <title>${ogTitle} - سوق البالات</title>
   <meta name="description" content="${escapeHtml(ogDescription)}">
   
-  <!-- OpenGraph / Facebook / WhatsApp / Telegram Dynamic Product Tags -->
+  <!-- OpenGraph / Facebook / WhatsApp / Telegram Dynamic Multi-Image Tags -->
   <meta property="og:type" content="product">
-  <meta property="og:site_name" content="سوق البالات والأوتلت">
+  <meta property="og:site_name" content="سوق البالات ⚡ متجر الطلب والحجز الفوري">
   <meta property="og:title" content="${escapeHtml(ogTitle)}">
   <meta property="og:description" content="${escapeHtml(ogDescription)}">
-  <meta property="og:image" content="${escapeHtml(product.image)}">
-  <meta property="og:image:secure_url" content="${escapeHtml(product.image)}">
-  <meta property="og:image:type" content="image/jpeg">
-  <meta property="og:image:alt" content="${escapeHtml(product.title)}">
   <meta property="og:url" content="${productUrl}">
+${multiImageMetaTags}
   <meta property="product:price:amount" content="${product.price}">
   <meta property="product:price:currency" content="IQD">
   <meta property="product:condition" content="${escapeHtml(product.conditionLabel)}">
@@ -114,7 +126,7 @@ export default async function handler(req, res) {
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${escapeHtml(ogTitle)}">
   <meta name="twitter:description" content="${escapeHtml(ogDescription)}">
-  <meta name="twitter:image" content="${escapeHtml(product.image)}">
+  <meta name="twitter:image" content="${escapeHtml(product.images[0])}">
   `;
 
   // Replace existing meta tags or inject into <head>
