@@ -862,6 +862,34 @@ class SoukApp {
               <span>توصيل سريع لكافة محافظات العراق (أجور التوصيل: ${product.freeDelivery ? 'مجاني 🎁' : '5,000 د.ع فقط'})</span>
             </div>
 
+            <!-- Buy Box Action Buttons (Placed directly below Price & Delivery Badge) -->
+            <div style="display: flex; flex-direction: column; gap: 10px; margin: 16px 0;">
+              ${product.status === 'sold' ? `
+                <button class="btn btn-secondary" style="width: 100%; padding: 14px; font-size: 1.05rem;" disabled>❌ هذه القطعة مباعة بالكامل</button>
+              ` : (product.status === 'reserved' || Number(product.quantity) === 0) ? `
+                <div style="background: #fffbeb; border: 1.5px solid #fde68a; border-radius: var(--radius-md); padding: 10px 14px; color: #92400e; font-weight: 800; font-size: 0.88rem; text-align: center;">
+                  ⏳ هذه القطعة قيد الحجز مؤقتاً لزبون آخر
+                </div>
+                <button class="btn btn-whatsapp" style="width: 100%; padding: 12px; font-size: 1rem; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="window.app.openReservedProductInquiryModal('${product.id}')">
+                  ${SOCIAL_ICONS.WHATSAPP}
+                  <span>💬 استفسار عن توفر القطعة عبر واتساب</span>
+                </button>
+              ` : `
+                <button class="btn btn-primary" style="width: 100%; padding: 14px; font-size: 1.05rem; font-weight: 900;" onclick="window.app.addToCart('${product.id}')">
+                  🛒 أضف إلى السلة
+                </button>
+
+                <button class="btn btn-whatsapp" style="width: 100%; padding: 12px; font-size: 1rem; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="window.app.openDirectBuyModal('${product.id}')">
+                  ${SOCIAL_ICONS.WHATSAPP}
+                  <span>الشراء الآن</span>
+                </button>
+              `}
+
+              <button class="btn btn-secondary" style="width: 100%; padding: 10px; font-weight: 800;" onclick="window.app.openPosterModal('${product.id}')">
+                📷 بطاقة بوستر تسويقي 📱
+              </button>
+            </div>
+
             <!-- 1. Merchant Manual Description (if provided) -->
             ${product.description ? `
               <div style="background: var(--bg-surface-subtle); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-bottom: 14px;">
@@ -882,34 +910,6 @@ class SoukApp {
                 </div>
               </div>
             ` : ''}
-
-            <!-- Buy Box Action Buttons -->
-            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
-              ${product.status === 'sold' ? `
-                <button class="btn btn-secondary" style="width: 100%; padding: 14px; font-size: 1.05rem;" disabled>❌ هذه القطعة مباعة بالكامل</button>
-              ` : (product.status === 'reserved' || Number(product.quantity) === 0) ? `
-                <div style="background: #fffbeb; border: 1.5px solid #fde68a; border-radius: var(--radius-md); padding: 10px 14px; color: #92400e; font-weight: 800; font-size: 0.88rem; text-align: center;">
-                  ⏳ هذه القطعة قيد الحجز مؤقتاً لزبون آخر
-                </div>
-                <button class="btn btn-whatsapp" style="width: 100%; padding: 12px; font-size: 1rem; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="window.app.openReservedProductInquiryModal('${product.id}')">
-                  ${SOCIAL_ICONS.WHATSAPP}
-                  <span>💬 استفسار عن توفر القطعة عبر واتساب</span>
-                </button>
-              ` : `
-                <button class="btn btn-primary" style="width: 100%; padding: 14px; font-size: 1.05rem; font-weight: 900;" onclick="window.app.addToCart('${product.id}')">
-                  🛒 أضف إلى السلة
-                </button>
-
-                <button class="btn btn-whatsapp" style="width: 100%; padding: 12px; font-size: 1rem; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="window.app.openWhatsAppDirectOrder('${product.id}')">
-                  ${SOCIAL_ICONS.WHATSAPP}
-                  <span>اشترِ الآن عبر واتساب</span>
-                </button>
-              `}
-
-              <button class="btn btn-secondary" style="width: 100%; padding: 10px; font-weight: 800;" onclick="window.app.openPosterModal('${product.id}')">
-                📷 بطاقة بوستر تسويقي 📱
-              </button>
-            </div>
 
             <!-- Trust Icons -->
             <div style="display: flex; justify-content: space-around; gap: 12px; padding: 14px 10px; background: var(--bg-surface-subtle); border-radius: var(--radius-md); margin-top: 10px; flex-wrap: wrap; border: 1px solid var(--border-subtle); font-size: 0.85rem; font-weight: 700; color: var(--text-secondary);">
@@ -971,36 +971,144 @@ class SoukApp {
     this.showToast('تم نسخ ومشاركة رابط المنتج بنجاح! 🔗', 'success');
   }
 
-  openWhatsAppDirectOrder(productId) {
+  openDirectBuyModal(productId) {
     const product = ProductsService.getProductById(productId);
     if (!product) return;
 
-    // Decrement stock in catalog
-    ProductsService.decrementStock(productId, 1);
-
-    const cleanPhone = (product.merchantPhone || '07707188166').replace(/[^0-9]/g, '');
-    const origin = window.location.origin;
+    const savedCustomer = AuthService.getCustomerProfile() || { name: '', phone: '', province: 'بغداد', address: '', notes: '' };
     const itemPrice = Number(product.price) || 0;
-    const deliveryFee = APP_CONFIG.FIXED_DELIVERY_FEE;
+    const deliveryFee = product.freeDelivery ? 0 : Number(this.siteSettings.deliveryFee || APP_CONFIG.FIXED_DELIVERY_FEE);
     const grandTotal = itemPrice + deliveryFee;
 
-    let msg = `⚡ *طلب حجز بضاعة جديد من سوق البالات*\n\n`;
-    msg += `رقم المنتج : 1\n`;
-    msg += `اسم المنتج : ${product.title}\n`;
-    msg += `رابط المنتج : ${origin}/p/${product.id}\n`;
-    msg += `السعر : ${itemPrice.toLocaleString()} د.ع\n\n`;
+    const modalOverlay = document.createElement('div');
+    modalOverlay.className = 'modal-overlay active';
+    modalOverlay.innerHTML = `
+      <div class="modal-container" style="max-width: 540px;">
+        <div class="modal-header">
+          <div class="modal-title">
+            <span>⚡🛍️</span>
+            <span>الشراء والطلب الفوري</span>
+          </div>
+          <div class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</div>
+        </div>
 
-    msg += `──────────────────────\n`;
-    msg += `التوصيل : ${deliveryFee.toLocaleString()} د.ع لكافة محافظات العراق\n`;
-    msg += `*السعر الكلي : ${grandTotal.toLocaleString()} د.ع*\n\n`;
-    msg += `⚠️ *ملاحظة :* يجب فحص المنتج امام المندوب ولا يتحمل البائع مسؤولية سعر التوصيل في حال مغادرة المندوب.\n\n`;
+        <div class="modal-body">
+          <!-- Product Mini Summary Card -->
+          <div style="display: flex; align-items: center; gap: 12px; background: var(--bg-surface-subtle); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-bottom: 16px;">
+            <img src="${product.image}" style="width: 56px; height: 56px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border-subtle);" alt="${product.title}">
+            <div style="flex: 1;">
+              <div style="font-weight: 800; font-size: 0.95rem; line-height: 1.4; color: var(--text-primary);">${product.title}</div>
+              <div style="font-size: 0.8rem; color: var(--brand-primary); font-weight: 800; margin-top: 2px;">
+                ${itemPrice.toLocaleString()} د.ع ${product.freeDelivery ? '(توصيل مجاني 🎁)' : `(+ ${deliveryFee.toLocaleString()} د.ع توصيل)`}
+              </div>
+            </div>
+          </div>
 
-    msg += `──────────────────────\n`;
-    msg += `🔐 *كود تأكيد البائع:* ${origin}/m-manage-order?pid=${product.id}`;
+          <div style="background: rgba(16, 185, 129, 0.08); border: 1px dashed #10b981; padding: 10px 14px; border-radius: var(--radius-md); margin-bottom: 16px; font-size: 0.85rem; color: var(--text-primary);">
+            📍 <strong>معلومات الشحن:</strong> يرجى اختيار محافظتك وعنوانك بالتفصيل لتجهيز الشحنة فوراً.
+          </div>
 
-    const waPhone = cleanPhone.startsWith('0') ? '964' + cleanPhone.slice(1) : (cleanPhone.startsWith('964') ? cleanPhone : '964' + cleanPhone);
-    window.open(`https://api.whatsapp.com/send?phone=${waPhone}&text=${encodeURIComponent(msg)}`, '_blank');
-    this.render();
+          <!-- Mandatory Delivery Fields -->
+          <div class="form-group">
+            <label class="form-label" style="font-weight: 800; color: #dc2626;">المحافظة * (إجباري)</label>
+            <select class="form-select" id="direct-cust-province" style="font-weight: 800;">
+              ${IRAQI_GOVERNORATES.map(gov => `
+                <option value="${gov}" ${(savedCustomer.province || 'بغداد') === gov ? 'selected' : ''}>📍 ${gov}</option>
+              `).join('')}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" style="font-weight: 800; color: #dc2626;">العنوان بالتفصيل * (إجباري)</label>
+            <input type="text" class="form-input" id="direct-cust-address" placeholder="المنطقة / الحي / الشارع / أقرب نقطة دالة" value="${savedCustomer.address || ''}">
+          </div>
+
+          <!-- Optional Customer Contact Fields -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="form-group">
+              <label class="form-label">الاسم الكامل (اختياري)</label>
+              <input type="text" class="form-input" id="direct-cust-name" placeholder="أدخل اسمك" value="${savedCustomer.name || ''}">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">رقم الهاتف (اختياري)</label>
+              <input type="tel" class="form-input" id="direct-cust-phone" placeholder="07XXXXXXXXX" value="${savedCustomer.phone || ''}">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">ملاحظات إضافية على التوصيل (اختياري)</label>
+            <input type="text" class="form-input" id="direct-cust-notes" placeholder="أوقات التسليم، نقطة دالة..." value="${savedCustomer.notes || ''}">
+          </div>
+
+          <!-- Pricing Total Box -->
+          <div style="background: var(--bg-surface-elevated); border: 1.5px solid var(--border-strong); padding: 12px 16px; border-radius: var(--radius-md); margin-top: 14px;">
+            <div style="display: flex; justify-content: space-between; font-weight: 900; font-size: 1.15rem;">
+              <span>المجموع الكلي مع التوصيل:</span>
+              <span style="color: #10b981; font-family: var(--font-numbers);">${grandTotal.toLocaleString()} د.ع</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">إلغاء</button>
+          <button class="btn btn-whatsapp" id="btn-submit-direct-whatsapp" style="font-weight: 900; font-size: 0.95rem;">
+            📲 تأكيد وإرسال الطلب عبر الواتساب
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modalOverlay);
+
+    modalOverlay.querySelector('#btn-submit-direct-whatsapp')?.addEventListener('click', () => {
+      const province = document.getElementById('direct-cust-province')?.value.trim();
+      const address = document.getElementById('direct-cust-address')?.value.trim();
+      const name = document.getElementById('direct-cust-name')?.value.trim() || '';
+      const phone = document.getElementById('direct-cust-phone')?.value.trim() || '';
+      const notes = document.getElementById('direct-cust-notes')?.value.trim() || '';
+
+      if (!province || !address) {
+        this.showToast('يرجى اختيار المحافظة وكتابة العنوان بالتفصيل للمتابعة!', 'error');
+        return;
+      }
+
+      // Save customer profile for future auto-fill
+      AuthService.saveCustomerProfile({ name, phone, province, address, notes });
+
+      // Decrement stock in catalog
+      ProductsService.decrementStock(productId, 1);
+
+      const cleanPhone = (product.merchantPhone || '07707188166').replace(/[^0-9]/g, '');
+      const origin = window.location.origin;
+
+      let msg = `⚡ *طلب حجز وشراء فوري من سوق البالات*\n\n`;
+      msg += `📍 *معلومات التوصيل والزبون:*\n`;
+      msg += `المحافظة : ${province}\n`;
+      msg += `العنوان بالتفصيل : ${address}\n`;
+      if (name) msg += `الاسم : ${name}\n`;
+      if (phone) msg += `الهاتف : ${phone}\n`;
+      if (notes) msg += `ملاحظات : ${notes}\n`;
+
+      msg += `\n📦 *تفاصيل المنتج المطلوب:*\n`;
+      msg += `اسم المنتج : ${product.title}\n`;
+      msg += `رابط المنتج : ${origin}/p/${product.id}\n`;
+      msg += `السعر : ${itemPrice.toLocaleString()} د.ع\n\n`;
+
+      msg += `──────────────────────\n`;
+      msg += `أجور التوصيل : ${deliveryFee > 0 ? `${deliveryFee.toLocaleString()} د.ع` : 'مجاني 🎁'}\n`;
+      msg += `*المجموع الكلي المطلوب : ${grandTotal.toLocaleString()} د.ع*\n\n`;
+      msg += `⚠️ *ملاحظة :* يجب فحص المنتج أمام المندوب ولا يتحمل البائع مسؤولية سعر التوصيل في حال مغادرة المندوب.\n\n`;
+      msg += `──────────────────────\n`;
+      msg += `🔐 *كود تأكيد البائع:* ${origin}/m-manage-order?pid=${product.id}`;
+
+      const waPhone = cleanPhone.startsWith('0') ? '964' + cleanPhone.slice(1) : (cleanPhone.startsWith('964') ? cleanPhone : '964' + cleanPhone);
+      window.open(`https://api.whatsapp.com/send?phone=${waPhone}&text=${encodeURIComponent(msg)}`, '_blank');
+      
+      modalOverlay.remove();
+      this.render();
+      this.showToast('تم إرسال طلب الشراء إلى التاجر عبر الواتساب بنجاح! 🚀', 'success');
+    });
   }
 
   /* ==========================================================================
@@ -2090,23 +2198,34 @@ class SoukApp {
 
             <h4 style="font-weight: 800; margin-bottom: 10px;">معلومات التوصيل والزبون:</h4>
             <div class="form-group">
-              <label class="form-label">الاسم الثلاثي *</label>
-              <input type="text" class="form-input" id="cust-name" placeholder="أدخل اسمك الكامل" value="${savedCustomer.name}">
+              <label class="form-label" style="font-weight: 800; color: #dc2626;">المحافظة * (إجباري)</label>
+              <select class="form-select" id="cust-province" style="font-weight: 800;">
+                ${IRAQI_GOVERNORATES.map(gov => `
+                  <option value="${gov}" ${(savedCustomer.province || 'بغداد') === gov ? 'selected' : ''}>📍 ${gov}</option>
+                `).join('')}
+              </select>
             </div>
 
             <div class="form-group">
-              <label class="form-label">رقم هاتف الواتساب المعتمد *</label>
-              <input type="tel" class="form-input" id="cust-phone" placeholder="07XXXXXXXXX" value="${savedCustomer.phone}">
+              <label class="form-label" style="font-weight: 800; color: #dc2626;">العنوان بالتفصيل * (إجباري)</label>
+              <input type="text" class="form-input" id="cust-address" placeholder="المنطقة / الحي / الشارع / أقرب نقطة دالة" value="${savedCustomer.address || ''}">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div class="form-group">
+                <label class="form-label">الاسم الكامل (اختياري)</label>
+                <input type="text" class="form-input" id="cust-name" placeholder="أدخل اسمك" value="${savedCustomer.name || ''}">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">رقم الهاتف (اختياري)</label>
+                <input type="tel" class="form-input" id="cust-phone" placeholder="07XXXXXXXXX" value="${savedCustomer.phone || ''}">
+              </div>
             </div>
 
             <div class="form-group">
-              <label class="form-label">المحافظة والعنوان بالتفصيل *</label>
-              <input type="text" class="form-input" id="cust-address" placeholder="بغداد - المنصور - شارع 14 رمضان..." value="${savedCustomer.address}">
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">ملاحظات إضافية على الطلب</label>
-              <input type="text" class="form-input" id="cust-notes" placeholder="وقت التسليم المفضل، نقطة دالة..." value="${savedCustomer.notes}">
+              <label class="form-label">ملاحظات إضافية على الطلب (اختياري)</label>
+              <input type="text" class="form-input" id="cust-notes" placeholder="وقت التسليم المفضل، نقطة دالة..." value="${savedCustomer.notes || ''}">
             </div>
 
             <div style="background: var(--bg-surface-elevated); border: 1px solid var(--border-strong); padding: 14px; border-radius: var(--radius-md); margin-top: 14px;">
@@ -2140,18 +2259,19 @@ class SoukApp {
     document.body.appendChild(modalOverlay);
 
     modalOverlay.querySelector('#btn-submit-whatsapp-order')?.addEventListener('click', () => {
-      const name = document.getElementById('cust-name').value.trim();
-      const phone = document.getElementById('cust-phone').value.trim();
-      const address = document.getElementById('cust-address').value.trim();
-      const notes = document.getElementById('cust-notes').value.trim();
+      const province = document.getElementById('cust-province')?.value.trim();
+      const address = document.getElementById('cust-address')?.value.trim();
+      const name = document.getElementById('cust-name')?.value.trim() || '';
+      const phone = document.getElementById('cust-phone')?.value.trim() || '';
+      const notes = document.getElementById('cust-notes')?.value.trim() || '';
 
-      if (!name || !phone || !address) {
-        this.showToast('يرجى ملء الاسم ورقم الهاتف والعنوان للمتابعة', 'error');
+      if (!province || !address) {
+        this.showToast('يرجى اختيار المحافظة وكتابة العنوان بالتفصيل للمتابعة!', 'error');
         return;
       }
 
-      AuthService.saveCustomerProfile({ name, phone, address, notes });
-      const orders = OrdersService.processOrderAndGenerateWhatsApp(this.cart, { name, phone, address, notes });
+      AuthService.saveCustomerProfile({ name, phone, province, address, notes });
+      const orders = OrdersService.processOrderAndGenerateWhatsApp(this.cart, { name, phone, province, address, notes });
 
       orders.forEach(order => {
         window.open(order.waUrl, '_blank');
@@ -2182,19 +2302,36 @@ class SoukApp {
     }
 
     if (!this.merchantActiveTab) {
-      this.merchantActiveTab = 'active'; // 'active' or 'deleted'
+      this.merchantActiveTab = 'all'; // 'all', 'available', 'reserved', 'sold', 'deleted'
     }
 
-    const myActiveProducts = ProductsService.getProducts().filter(p => p.merchantId === merchant.id);
+    const myAllActiveProducts = ProductsService.getProducts().filter(p => p.merchantId === merchant.id);
+    const myAvailableProducts = myAllActiveProducts.filter(p => p.status === 'available');
+    const myReservedProducts = myAllActiveProducts.filter(p => p.status === 'reserved');
+    const mySoldProducts = myAllActiveProducts.filter(p => p.status === 'sold');
     const myDeletedProducts = ProductsService.getDeletedProducts(merchant.id);
+
+    let displayedProducts = myAllActiveProducts;
+    if (this.merchantActiveTab === 'available') {
+      displayedProducts = myAvailableProducts;
+    } else if (this.merchantActiveTab === 'reserved') {
+      displayedProducts = myReservedProducts;
+    } else if (this.merchantActiveTab === 'sold') {
+      displayedProducts = mySoldProducts;
+    } else if (this.merchantActiveTab === 'deleted') {
+      displayedProducts = myDeletedProducts;
+    } else {
+      displayedProducts = myAllActiveProducts;
+    }
 
     this.appEl.innerHTML = `
       <div class="merchant-portal-view">
         <div class="container">
           <div class="merchant-top-header">
             <div class="merchant-profile-card">
-              <div class="merchant-avatar-circle">
-                <img src="${merchant.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+              <div class="merchant-avatar-circle" style="position: relative; cursor: pointer;" id="btn-quick-avatar-settings">
+                <img src="${merchant.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" alt="${merchant.name}">
+                <div style="position: absolute; bottom: 0; right: 0; background: var(--brand-primary); color: #000; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; border: 1.5px solid #fff;">📷</div>
               </div>
               <div>
                 <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
@@ -2221,7 +2358,7 @@ class SoukApp {
                 ➕ نشر بضاعة جديدة
               </button>
               <button class="btn btn-secondary" id="btn-merchant-settings">
-                ⚙️ إعدادات الحساب
+                ⚙️ إعدادات الحساب والصورة
               </button>
               <button class="btn btn-secondary" id="btn-merchant-logout">
                 🚪 خروج
@@ -2229,34 +2366,52 @@ class SoukApp {
             </div>
           </div>
 
-          <div class="merchant-stats-grid">
-            <div class="merchant-stat-card">
-              <span class="stat-label">📦 البضائع النشطة</span>
-              <span class="stat-value">${myActiveProducts.filter(p => p.status === 'available').length}</span>
+          <!-- Merchant 5-Categories Stats Grid -->
+          <div class="merchant-stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));">
+            <div class="merchant-stat-card" style="cursor: pointer;" onclick="window.app.setMerchantTab('all')">
+              <span class="stat-label">📦 الكل</span>
+              <span class="stat-value" style="color: var(--brand-primary);">${myAllActiveProducts.length}</span>
             </div>
-            <div class="merchant-stat-card">
+            <div class="merchant-stat-card" style="cursor: pointer;" onclick="window.app.setMerchantTab('available')">
+              <span class="stat-label">🟢 الفعالة</span>
+              <span class="stat-value" style="color: #10b981;">${myAvailableProducts.length}</span>
+            </div>
+            <div class="merchant-stat-card" style="cursor: pointer;" onclick="window.app.setMerchantTab('reserved')">
               <span class="stat-label">⏳ قيد الحجز</span>
-              <span class="stat-value">${myActiveProducts.filter(p => p.status === 'reserved').length}</span>
+              <span class="stat-value" style="color: #f59e0b;">${myReservedProducts.length}</span>
             </div>
-            <div class="merchant-stat-card">
+            <div class="merchant-stat-card" style="cursor: pointer;" onclick="window.app.setMerchantTab('sold')">
+              <span class="stat-label">🔴 تم البيع</span>
+              <span class="stat-value" style="color: #64748b;">${mySoldProducts.length}</span>
+            </div>
+            <div class="merchant-stat-card" style="cursor: pointer;" onclick="window.app.setMerchantTab('deleted')">
               <span class="stat-label">🗑️ المحذوفات</span>
               <span class="stat-value" style="color: #ef4444;">${myDeletedProducts.length}</span>
             </div>
           </div>
 
-          <!-- Merchant Tabs Selector -->
-          <div class="merchant-tabs-wrapper">
-            <button class="btn ${this.merchantActiveTab === 'active' ? 'btn-primary' : 'btn-secondary'}" id="tab-merchant-active" style="font-weight: 800;">
-              📦 البضائع النشطة المعروضة (${myActiveProducts.length})
+          <!-- Merchant 5 Tabs Selector -->
+          <div class="merchant-tabs-wrapper" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
+            <button class="btn ${this.merchantActiveTab === 'all' ? 'btn-primary' : 'btn-secondary'}" id="tab-merchant-all" style="font-weight: 800; font-size: 0.85rem;">
+              📦 الكل (${myAllActiveProducts.length})
             </button>
-            <button class="btn ${this.merchantActiveTab === 'deleted' ? 'btn-danger' : 'btn-secondary'}" id="tab-merchant-deleted" style="font-weight: 800;">
+            <button class="btn ${this.merchantActiveTab === 'available' ? 'btn-primary' : 'btn-secondary'}" id="tab-merchant-available" style="font-weight: 800; font-size: 0.85rem;">
+              🟢 الفعالة (${myAvailableProducts.length})
+            </button>
+            <button class="btn ${this.merchantActiveTab === 'reserved' ? 'btn-primary' : 'btn-secondary'}" id="tab-merchant-reserved" style="font-weight: 800; font-size: 0.85rem;">
+              ⏳ قيد الحجز (${myReservedProducts.length})
+            </button>
+            <button class="btn ${this.merchantActiveTab === 'sold' ? 'btn-primary' : 'btn-secondary'}" id="tab-merchant-sold" style="font-weight: 800; font-size: 0.85rem;">
+              🔴 تم البيع (${mySoldProducts.length})
+            </button>
+            <button class="btn ${this.merchantActiveTab === 'deleted' ? 'btn-danger' : 'btn-secondary'}" id="tab-merchant-deleted" style="font-weight: 800; font-size: 0.85rem; margin-right: auto;">
               🗑️ سلة المحذوفات والأرشيف (${myDeletedProducts.length})
             </button>
           </div>
 
           <!-- 1. Desktop Data Table View (Visible on screens > 768px) -->
           <div class="admin-table-container merchant-desktop-table">
-            ${this.merchantActiveTab === 'active' ? `
+            ${this.merchantActiveTab !== 'deleted' ? `
               <table class="admin-data-table">
                 <thead>
                   <tr>
@@ -2270,18 +2425,18 @@ class SoukApp {
                   </tr>
                 </thead>
                 <tbody>
-                  ${myActiveProducts.length === 0 ? `
+                  ${displayedProducts.length === 0 ? `
                     <tr><td colspan="7" style="text-align: center; padding: 40px; font-weight: 700; color: var(--text-secondary);">
-                      لا توجد بضائع نشطة حالياً. اضغط على زر <strong>"➕ نشر بضاعة جديدة"</strong> أعلاه لنشر أول منتج!
+                      لا توجد بضائع في هذا التبويب حالياً.
                     </td></tr>
-                  ` : myActiveProducts.map(p => `
+                  ` : displayedProducts.map(p => `
                     <tr>
                       <td><img src="${p.image}" style="width: 44px; height: 44px; border-radius: 6px; object-fit: cover;"></td>
                       <td style="font-weight: 800; max-width: 240px;">${p.title}</td>
                       <td style="font-family: var(--font-numbers); font-weight: 800;">${Number(p.price).toLocaleString()} د.ع</td>
                       <td style="font-weight: 800; color: #10b981;">${p.quantity || 1} قطعة</td>
                       <td>
-                        <select class="form-select" style="padding: 4px 8px; font-size: 0.8rem;" onchange="window.app.changeProductStatus('${p.id}', this.value)">
+                        <select class="form-select" style="padding: 4px 8px; font-size: 0.8rem; font-weight: 800;" onchange="window.app.changeProductStatus('${p.id}', this.value)">
                           <option value="available" ${p.status === 'available' ? 'selected' : ''}>متوفر 🟢</option>
                           <option value="reserved" ${p.status === 'reserved' ? 'selected' : ''}>قيد الحجز ⏳</option>
                           <option value="sold" ${p.status === 'sold' ? 'selected' : ''}>تم البيع 🔴</option>
@@ -2341,17 +2496,17 @@ class SoukApp {
 
           <!-- 2. Mobile Responsive Card Grid View (Visible on smartphones <= 768px) -->
           <div class="merchant-mobile-grid">
-            ${this.merchantActiveTab === 'active' ? (
-              myActiveProducts.length === 0 ? `
+            ${this.merchantActiveTab !== 'deleted' ? (
+              displayedProducts.length === 0 ? `
                 <div class="merchant-product-card" style="text-align: center; padding: 36px 16px;">
                   <div style="font-size: 2.5rem; margin-bottom: 8px;">📦</div>
-                  <h3 style="font-size: 1.1rem; font-weight: 900; margin-bottom: 6px;">لا توجد بضائع نشطة حالياً</h3>
-                  <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 16px;">ابدأ الآن بنشر أول منتج في متجرك بكل سهولة وسرعة!</p>
+                  <h3 style="font-size: 1.1rem; font-weight: 900; margin-bottom: 6px;">لا توجد بضائع في هذا التبويب</h3>
+                  <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 16px;">اضغط بالأسفل لنشر بضاعة جديدة في متجرك بكل سهولة!</p>
                   <button class="btn btn-primary" onclick="window.app.openAddProductModal()" style="width: 100%; padding: 12px; font-size: 1rem;">
                     ➕ نشر بضاعة جديدة الآن 🚀
                   </button>
                 </div>
-              ` : myActiveProducts.map(p => `
+              ` : displayedProducts.map(p => `
                 <div class="merchant-product-card">
                   <div class="mpc-top-row">
                     <img src="${p.image}" class="mpc-thumb" alt="${p.title}">
@@ -2428,22 +2583,24 @@ class SoukApp {
       </div>
     `;
 
-    document.getElementById('tab-merchant-active')?.addEventListener('click', () => {
-      this.merchantActiveTab = 'active';
-      this.renderMerchantPortal();
-    });
+    document.getElementById('tab-merchant-all')?.addEventListener('click', () => this.setMerchantTab('all'));
+    document.getElementById('tab-merchant-available')?.addEventListener('click', () => this.setMerchantTab('available'));
+    document.getElementById('tab-merchant-reserved')?.addEventListener('click', () => this.setMerchantTab('reserved'));
+    document.getElementById('tab-merchant-sold')?.addEventListener('click', () => this.setMerchantTab('sold'));
+    document.getElementById('tab-merchant-deleted')?.addEventListener('click', () => this.setMerchantTab('deleted'));
 
-    document.getElementById('tab-merchant-deleted')?.addEventListener('click', () => {
-      this.merchantActiveTab = 'deleted';
-      this.renderMerchantPortal();
-    });
-
+    document.getElementById('btn-quick-avatar-settings')?.addEventListener('click', () => this.openMerchantSettingsModal(merchant));
     document.getElementById('btn-merchant-add-product')?.addEventListener('click', () => this.openAddProductModal());
     document.getElementById('btn-merchant-settings')?.addEventListener('click', () => this.openMerchantSettingsModal(merchant));
     document.getElementById('btn-merchant-logout')?.addEventListener('click', () => {
       AuthService.logoutMerchant();
       this.render();
     });
+  }
+
+  setMerchantTab(tab) {
+    this.merchantActiveTab = tab;
+    this.renderMerchantPortal();
   }
 
   softDeleteMerchantProduct(productId) {
@@ -3192,9 +3349,11 @@ class SoukApp {
     });
   }
 
-  changeProductStatus(productId, status) {
+  async changeProductStatus(productId, status) {
     ProductsService.updateProductStatus(productId, status);
-    this.showToast(`تم تحديث حالة المنتج إلى: ${status === 'available' ? 'متوفر' : status === 'reserved' ? 'قيد الحجز' : 'تم البيع'}`, 'info');
+    this.render();
+    const statusArabic = status === 'available' ? 'متوفر 🟢' : status === 'reserved' ? 'قيد الحجز ⏳' : 'تم البيع 🔴';
+    this.showToast(`تم تحديث وحفظ حالة المنتج إلى: (${statusArabic}) بنجاح!`, 'success');
   }
 
   openDiscountModal(productId) {
