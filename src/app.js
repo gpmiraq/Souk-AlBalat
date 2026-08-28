@@ -2740,17 +2740,26 @@ class SoukApp {
         </div>
 
         <div class="modal-body">
-          <!-- 3 Photo Slots -->
-          <div class="form-group">
-            <label class="form-label" style="font-weight: 800;">📸 صور المنتج (اختر صورة واحدة على الأقل):</label>
-            <div class="image-upload-slots-grid">
+          <!-- 3 Photo Slots with Multi-Image Batch Picker -->
+          <div style="margin-bottom: 14px; background: rgba(37, 99, 235, 0.04); padding: 12px; border-radius: var(--radius-md); border: 1.5px dashed var(--brand-primary);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+              <span style="font-weight: 800; font-size: 0.88rem; color: var(--brand-primary);">📸 صور المنتج (اختر 1 إلى 3 صور معاً):</span>
+              <span id="edit-upload-progress-badge" style="font-size: 0.75rem; font-weight: 800; color: #10b981; display: none;">⚡ جاري الرفع...</span>
+            </div>
+
+            <button type="button" class="btn btn-primary" id="btn-edit-multi-pick-images" style="width: 100%; padding: 10px 14px; font-size: 0.9rem; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px;">
+              <span>📁 فتح الاستوديو وتحديد صور جديدة معاً</span>
+            </button>
+            <input type="file" id="edit-multi-file-input" accept="image/*" multiple style="display: none;">
+
+            <div class="image-upload-slots-grid" style="margin-bottom: 0;">
               ${[1, 2, 3].map(slot => `
-                <div class="image-upload-dropzone" id="edit-upload-slot-${slot}" style="padding: 10px; cursor: pointer; text-align: center; border: 2px dashed var(--border-strong); border-radius: 8px; background: var(--bg-surface-subtle);">
-                  <div id="edit-preview-slot-${slot}" style="width: 100%; height: 85px; margin-bottom: 6px; ${uploadedImagesList[slot-1] ? 'display:block;' : 'display:none;'}">
+                <div class="image-upload-dropzone" id="edit-upload-slot-${slot}" style="padding: 8px 4px; cursor: pointer; text-align: center; border: 2px dashed var(--border-strong); border-radius: 8px; background: var(--bg-surface);">
+                  <div id="edit-preview-slot-${slot}" style="width: 100%; aspect-ratio: 1/1; margin-bottom: 4px; position: relative; ${uploadedImagesList[slot-1] ? 'display:block;' : 'display:none;'}">
                     ${uploadedImagesList[slot-1] ? `<img src="${uploadedImagesList[slot-1]}" style="width:100%; height:100%; object-fit:cover; border-radius:6px;">` : ''}
                   </div>
-                  <span id="edit-slot-label-${slot}" style="font-size: 0.72rem; font-weight: 800; color: var(--text-secondary);">
-                    ${uploadedImagesList[slot-1] ? `✅ الصورة ${slot}` : `📷 اختيار صورة ${slot}`}
+                  <span id="edit-slot-label-${slot}" style="font-size: 0.68rem; font-weight: 800; color: var(--text-secondary);">
+                    ${uploadedImagesList[slot-1] ? `✅ الصورة ${slot}` : `📷 صورة ${slot}`}
                   </span>
                 </div>
               `).join('')}
@@ -2837,19 +2846,99 @@ class SoukApp {
       });
     });
 
-    // 3 upload slots for edit modal
+    // Multi-Image Batch Selection for Edit Modal
+    const editMultiFileInput = modalOverlay.querySelector('#edit-multi-file-input');
+    const editMultiPickBtn = modalOverlay.querySelector('#btn-edit-multi-pick-images');
+    const editProgressBadge = modalOverlay.querySelector('#edit-upload-progress-badge');
+    const editSaveBtn = modalOverlay.querySelector('#btn-save-edit-product');
+
+    editMultiPickBtn?.addEventListener('click', () => editMultiFileInput?.click());
+
+    editMultiFileInput?.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files).slice(0, 3);
+      if (files.length === 0) return;
+
+      const prodTitle = document.getElementById('edit-prod-title')?.value.trim() || 'product';
+      editSaveBtn.disabled = true;
+      editSaveBtn.innerHTML = `⏳ جاري اكتمال رفع الصور (0/${files.length})...`;
+      if (editProgressBadge) {
+        editProgressBadge.style.display = 'inline-block';
+        editProgressBadge.innerHTML = `⚡ جاري الرفع بالخلفية (0/${files.length})...`;
+      }
+
+      let completedCount = 0;
+
+      // 1. Instant local preview
+      files.forEach((file, idx) => {
+        const slot = idx + 1;
+        const previewBox = modalOverlay.querySelector(`#edit-preview-slot-${slot}`);
+        const slotLabel = modalOverlay.querySelector(`#edit-slot-label-${slot}`);
+        const localBlobUrl = URL.createObjectURL(file);
+
+        if (previewBox) {
+          previewBox.style.display = 'block';
+          previewBox.innerHTML = `
+            <img src="${localBlobUrl}" style="width:100%; height:100%; object-fit:cover; border-radius:6px;">
+            <div id="edit-slot-status-tag-${slot}" style="position: absolute; bottom: 0; left: 0; right: 0; font-size: 0.58rem; font-weight: 800; padding: 2px; background: rgba(245, 158, 11, 0.9); color: #000; text-align: center;">
+              ⏳ جاري الرفع...
+            </div>
+          `;
+        }
+        if (slotLabel) slotLabel.innerHTML = `صورة ${slot} (مختارة)`;
+      });
+
+      // 2. Parallel background upload
+      const uploadPromises = files.map(async (file, idx) => {
+        const slot = idx + 1;
+        try {
+          const cloudUrl = await StorageService.processAndUploadImage(file, merchant?.name || 'abu_wareth', prodTitle, slot, merchant?.id || 'm-alwareth');
+          uploadedImagesList[idx] = cloudUrl;
+          completedCount++;
+
+          const statusTag = modalOverlay.querySelector(`#edit-slot-status-tag-${slot}`);
+          if (statusTag) {
+            statusTag.style.background = 'rgba(16, 185, 129, 0.95)';
+            statusTag.style.color = '#fff';
+            statusTag.innerHTML = `✅ تم الرفع للسحابة`;
+          }
+
+          if (editProgressBadge) {
+            editProgressBadge.innerHTML = `⚡ تم رفع (${completedCount}/${files.length}) صور...`;
+          }
+          editSaveBtn.innerHTML = `⏳ جاري اكتمال رفع الصور (${completedCount}/${files.length})...`;
+        } catch (err) {
+          console.error(`Edit upload slot ${slot} error:`, err);
+        }
+      });
+
+      await Promise.all(uploadPromises);
+
+      editSaveBtn.disabled = false;
+      editSaveBtn.innerHTML = `💾 حفظ التعديلات`;
+      if (editProgressBadge) {
+        editProgressBadge.innerHTML = `✅ اكتمل رفع الصور بنجاح!`;
+        editProgressBadge.style.color = '#10b981';
+      }
+      this.showToast(`تم رفع ${completedCount} صور إلى السحابة بنجاح!`, 'success');
+    });
+
+    // 3 upload slots individual click for edit modal
     [1, 2, 3].forEach(slot => {
       const dropZone = modalOverlay.querySelector(`#edit-upload-slot-${slot}`);
       const previewBox = modalOverlay.querySelector(`#edit-preview-slot-${slot}`);
       const slotLabel = modalOverlay.querySelector(`#edit-slot-label-${slot}`);
 
-      dropZone.addEventListener('click', () => {
+      dropZone.addEventListener('click', (e) => {
+        if (e.target.closest('#btn-edit-multi-pick-images')) return;
         const prodTitle = document.getElementById('edit-prod-title')?.value.trim() || 'product';
         this.openMerchantGalleryModal(slot, prodTitle, (selectedUrl) => {
           uploadedImagesList[slot - 1] = selectedUrl;
           slotLabel.innerHTML = `✅ تم اختيار الصورة ${slot}`;
           previewBox.style.display = 'block';
-          previewBox.innerHTML = `<img src="${selectedUrl}" style="width:100%; height:100%; object-fit:cover; border-radius:6px;">`;
+          previewBox.innerHTML = `
+            <img src="${selectedUrl}" style="width:100%; height:100%; object-fit:cover; border-radius:6px;">
+            <div style="position: absolute; bottom: 0; left: 0; right: 0; font-size: 0.58rem; color: #fff; font-weight: 800; padding: 2px; background: rgba(16, 185, 129, 0.95); text-align: center;">Firebase ☁️</div>
+          `;
           this.showToast(`تم تحديث الصورة ${slot} بنجاح!`, 'success');
         });
       });
@@ -3117,17 +3206,30 @@ class SoukApp {
         </div>
 
         <div class="modal-body">
-          <!-- 3-Image Upload Slots -->
-          <label class="form-label" style="font-weight: 800;">📸 صور المنتج (ارفع حتى 3 صور مع ختم المنصة السحابي):</label>
-          <div class="image-upload-slots-grid">
-            ${[1, 2, 3].map(slot => `
-              <div class="image-upload-zone" id="upload-slot-${slot}" style="padding: 12px 6px; text-align: center; cursor: pointer; position: relative; margin-bottom: 0;">
-                <div id="slot-icon-${slot}" style="font-size: 1.5rem; margin-bottom: 2px;">📷</div>
-                <div id="slot-label-${slot}" style="font-size: 0.72rem; font-weight: 800;">صورة ${slot} ${slot === 1 ? '(الرئيسية *)' : '(إضافية)'}</div>
-                <input type="file" id="file-slot-input-${slot}" accept="image/*" style="display: none;">
-                <div id="preview-slot-${slot}" style="display: none; aspect-ratio: 1/1; width: 100%; margin-top: 4px; border-radius: 6px; overflow: hidden; border: 2px solid var(--brand-primary);"></div>
-              </div>
-            `).join('')}
+          <!-- 3-Image Upload Slots with 1-Tap Multi-Picker -->
+          <div style="margin-bottom: 14px; background: rgba(37, 99, 235, 0.04); padding: 12px; border-radius: var(--radius-md); border: 1.5px dashed var(--brand-primary);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+              <span style="font-weight: 800; font-size: 0.88rem; color: var(--brand-primary);">📸 صور المنتج (اختر 1 إلى 3 صور معاً):</span>
+              <span id="upload-progress-badge" style="font-size: 0.75rem; font-weight: 800; color: #10b981; display: none;">⚡ جاري الرفع...</span>
+            </div>
+            
+            <button type="button" class="btn btn-primary" id="btn-multi-pick-images" style="width: 100%; padding: 10px 14px; font-size: 0.9rem; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px;">
+              <span>📁 فتح الاستوديو واختيار الصور معاً (1 إلى 3 صور)</span>
+            </button>
+            <input type="file" id="multi-file-input" accept="image/*" multiple style="display: none;">
+
+            <div class="image-upload-slots-grid" style="margin-bottom: 0;">
+              ${[1, 2, 3].map(slot => `
+                <div class="image-upload-zone" id="upload-slot-${slot}" style="padding: 8px 4px; text-align: center; cursor: pointer; position: relative; margin-bottom: 0; background: var(--bg-surface);">
+                  <div id="slot-icon-${slot}" style="font-size: 1.3rem; margin-bottom: 2px;">📷</div>
+                  <div id="slot-label-${slot}" style="font-size: 0.68rem; font-weight: 800;">صورة ${slot} ${slot === 1 ? '(الرئيسية *)' : '(إضافية)'}</div>
+                  <div id="preview-slot-${slot}" style="display: none; aspect-ratio: 1/1; width: 100%; margin-top: 4px; border-radius: 6px; overflow: hidden; border: 2px solid var(--brand-primary); position: relative;"></div>
+                </div>
+              `).join('')}
+            </div>
+            <p style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 6px; margin-bottom: 0;">
+              💡 نصيحة: حدد حتى 3 صور بنقرة واحدة، وسيتم ضغطها ورفعها بالخلفية بينما تكمل إدخال اسم وسعر المنتج.
+            </p>
           </div>
 
           <div class="form-group">
@@ -3212,13 +3314,90 @@ class SoukApp {
       });
     });
 
-    // Setup 3 upload slots connected to Merchant Cloud Gallery
+    // Multi-Image Batch Selection (1 to 3 images at once)
+    const multiFileInput = modalOverlay.querySelector('#multi-file-input');
+    const multiPickBtn = modalOverlay.querySelector('#btn-multi-pick-images');
+    const progressBadge = modalOverlay.querySelector('#upload-progress-badge');
+    const saveBtn = modalOverlay.querySelector('#btn-save-new-product');
+
+    multiPickBtn?.addEventListener('click', () => multiFileInput?.click());
+
+    multiFileInput?.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files).slice(0, 3);
+      if (files.length === 0) return;
+
+      const prodTitle = document.getElementById('new-prod-title')?.value.trim() || 'product';
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = `⏳ جاري اكتمال رفع الصور (0/${files.length})...`;
+      if (progressBadge) {
+        progressBadge.style.display = 'inline-block';
+        progressBadge.innerHTML = `⚡ جاري الرفع بالخلفية (0/${files.length})...`;
+      }
+
+      let completedCount = 0;
+
+      // 1. Instant local preview in 0.01 seconds
+      files.forEach((file, idx) => {
+        const slot = idx + 1;
+        const previewBox = modalOverlay.querySelector(`#preview-slot-${slot}`);
+        const slotLabel = modalOverlay.querySelector(`#slot-label-${slot}`);
+        const localBlobUrl = URL.createObjectURL(file);
+
+        if (previewBox) {
+          previewBox.style.display = 'block';
+          previewBox.innerHTML = `
+            <img src="${localBlobUrl}" style="width:100%; height:100%; object-fit:cover;">
+            <div id="slot-status-tag-${slot}" style="position: absolute; bottom: 0; left: 0; right: 0; font-size: 0.58rem; font-weight: 800; padding: 2px; background: rgba(245, 158, 11, 0.9); color: #000; text-align: center;">
+              ⏳ جاري الرفع...
+            </div>
+          `;
+        }
+        if (slotLabel) slotLabel.innerHTML = `صورة ${slot} (مختارة)`;
+      });
+
+      // 2. Parallel background upload
+      const uploadPromises = files.map(async (file, idx) => {
+        const slot = idx + 1;
+        try {
+          const cloudUrl = await StorageService.processAndUploadImage(file, merchant?.name || 'abu_wareth', prodTitle, slot, merchant?.id || 'm-alwareth');
+          uploadedImagesList[idx] = cloudUrl;
+          completedCount++;
+
+          const statusTag = modalOverlay.querySelector(`#slot-status-tag-${slot}`);
+          if (statusTag) {
+            statusTag.style.background = 'rgba(16, 185, 129, 0.95)';
+            statusTag.style.color = '#fff';
+            statusTag.innerHTML = `✅ تم الرفع للسحابة`;
+          }
+
+          if (progressBadge) {
+            progressBadge.innerHTML = `⚡ تم رفع (${completedCount}/${files.length}) صور...`;
+          }
+          saveBtn.innerHTML = `⏳ جاري اكتمال رفع الصور (${completedCount}/${files.length})...`;
+        } catch (err) {
+          console.error(`Upload slot ${slot} error:`, err);
+        }
+      });
+
+      await Promise.all(uploadPromises);
+
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = `نشر المنتج الآن 🚀`;
+      if (progressBadge) {
+        progressBadge.innerHTML = `✅ اكتمل رفع الصور بنجاح!`;
+        progressBadge.style.color = '#10b981';
+      }
+      this.showToast(`تم رفع ${completedCount} صور إلى السحابة بنجاح!`, 'success');
+    });
+
+    // Individual slot clicks fallback
     [1, 2, 3].forEach(slot => {
       const dropZone = modalOverlay.querySelector(`#upload-slot-${slot}`);
       const previewBox = modalOverlay.querySelector(`#preview-slot-${slot}`);
       const slotLabel = modalOverlay.querySelector(`#slot-label-${slot}`);
 
-      dropZone.addEventListener('click', () => {
+      dropZone.addEventListener('click', (e) => {
+        if (e.target.closest('#btn-multi-pick-images')) return;
         const prodTitle = document.getElementById('new-prod-title')?.value.trim() || 'product';
         this.openMerchantGalleryModal(slot, prodTitle, (selectedUrl) => {
           uploadedImagesList[slot - 1] = selectedUrl;
@@ -3226,7 +3405,7 @@ class SoukApp {
           previewBox.style.display = 'block';
           previewBox.innerHTML = `
             <img src="${selectedUrl}" style="width:100%; height:100%; object-fit:cover;">
-            <div style="font-size: 0.65rem; color: #10b981; font-weight: 800; padding: 2px 4px; background: rgba(15, 23, 42, 0.85); color: #fff; text-align: center; border-top: 1px solid var(--border-subtle);">Google Firebase ☁️</div>
+            <div style="position: absolute; bottom: 0; left: 0; right: 0; font-size: 0.58rem; color: #fff; font-weight: 800; padding: 2px; background: rgba(16, 185, 129, 0.95); text-align: center;">Firebase ☁️</div>
           `;
           this.showToast(`تم تعيين الصورة ${slot} بنجاح!`, 'success');
         });
