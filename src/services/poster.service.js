@@ -1,7 +1,7 @@
 /* ==========================================================================
    Marketing Flyer & Poster Generator Service
-   Ultra-HD Scannable QR Codes, Clean Watermark-Free Visuals & Multi-Theme System
-   Enhanced Mobile Saving via Web Share API + Direct Gallery Dialog
+   Ultra-HD Scannable QR Codes, Clean Visuals & Dual Standard Formats (Vertical / Horizontal)
+   Blazing Fast Instant Rendering (Zero Hang / Zero Lag)
    ========================================================================== */
 
 import { APP_CONFIG } from '../config/constants.js';
@@ -72,8 +72,8 @@ export class PosterService {
     try {
       return await QRCode.toDataURL(productUrl, {
         margin: 1,
-        width: 400,
-        errorCorrectionLevel: 'H',
+        width: 360,
+        errorCorrectionLevel: 'M',
         color: {
           dark: '#000000',
           light: '#ffffff'
@@ -86,86 +86,58 @@ export class PosterService {
   }
 
   /**
-   * Safely loads an image URL into an Image element avoiding CORS canvas taint
+   * Safely and rapidly loads an image URL with strict 2-second timeout to avoid any hang
    */
   static async safeLoadImage(url) {
+    if (!url) return null;
     return new Promise((resolve) => {
+      const timer = setTimeout(() => resolve(null), 2000);
       const img = new Image();
       img.crossOrigin = 'anonymous';
-      img.onload = () => resolve(img);
+      img.onload = () => {
+        clearTimeout(timer);
+        resolve(img);
+      };
       img.onerror = () => {
-        // Fallback try without crossOrigin or with proxy if fails
-        const fallbackImg = new Image();
-        fallbackImg.onload = () => resolve(fallbackImg);
-        fallbackImg.onerror = () => resolve(null);
-        fallbackImg.src = url;
+        clearTimeout(timer);
+        const fallback = new Image();
+        fallback.onload = () => resolve(fallback);
+        fallback.onerror = () => resolve(null);
+        fallback.src = url;
       };
       img.src = url;
     });
   }
 
   /**
-   * Handles downloading / sharing the generated canvas on mobile and desktop
+   * Fast, reliable poster delivery (Instant Direct Download + Mobile Saved Dialog)
    */
   static async deliverPoster(canvas, filename, title) {
-    return new Promise(async (resolve) => {
+    try {
+      const dataUrl = canvas.toDataURL('image/png');
+
+      // Instant download trigger
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = dataUrl;
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => link.remove(), 600);
+
+      // On mobile devices, also show the long-press save dialog
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (isMobile) {
+        this.showSavedPosterDialog(dataUrl, filename, title);
+      }
+      return true;
+    } catch (e) {
+      console.error('Deliver poster error:', e);
       try {
-        canvas.toBlob(async (blob) => {
-          if (!blob) {
-            const dataUrl = canvas.toDataURL('image/png');
-            this.showSavedPosterDialog(dataUrl, filename, title);
-            resolve(true);
-            return;
-          }
-
-          const file = new File([blob], filename, { type: 'image/png' });
-          const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-          // 1. Try Native Mobile Web Share API
-          if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
-            try {
-              await navigator.share({
-                title: title || 'بوستر سوق البالات',
-                text: `${title} - سوق البالات`,
-                files: [file]
-              });
-              resolve(true);
-              return;
-            } catch (shareErr) {
-              if (shareErr.name === 'AbortError') {
-                resolve(true);
-                return;
-              }
-            }
-          }
-
-          // 2. Browser standard download
-          const blobUrl = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.download = filename;
-          link.href = blobUrl;
-          document.body.appendChild(link);
-          link.click();
-          setTimeout(() => {
-            link.remove();
-            URL.revokeObjectURL(blobUrl);
-          }, 1000);
-
-          // 3. For mobile devices, also pop up the preview dialog so user can long-press save to photos
-          if (isMobile) {
-            const dataUrl = canvas.toDataURL('image/png');
-            this.showSavedPosterDialog(dataUrl, filename, title);
-          }
-
-          resolve(true);
-        }, 'image/png');
-      } catch (e) {
-        console.error('Deliver poster error:', e);
         const dataUrl = canvas.toDataURL('image/png');
         this.showSavedPosterDialog(dataUrl, filename, title);
-        resolve(true);
-      }
-    });
+      } catch (err) {}
+      return true;
+    }
   }
 
   /**
@@ -180,7 +152,7 @@ export class PosterService {
     modal.className = 'modal-overlay active';
     modal.style.zIndex = '999999';
     modal.innerHTML = `
-      <div class="modal-container" style="max-width: 420px; max-height: 90vh; text-align: center; padding: 16px;">
+      <div class="modal-container" style="max-width: 400px; max-height: 90vh; text-align: center; padding: 16px;">
         <div class="modal-header" style="border-bottom: none; padding-bottom: 0;">
           <div class="modal-title" style="font-size: 1.05rem;">✅ تم تجهيز البوستر بنجاح!</div>
           <div class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</div>
@@ -189,13 +161,13 @@ export class PosterService {
           <p style="font-size: 0.82rem; color: #10b981; font-weight: 800; margin-bottom: 10px;">
             📱 للحفظ في ألبوم الصور بالموبايل: اضغط مطولاً على الصورة أدناه واختر <strong>(حفظ الصورة في الصور)</strong>.
           </p>
-          <div style="max-height: 52vh; overflow: hidden; border-radius: 12px; border: 2px solid var(--brand-primary); box-shadow: var(--card-shadow); display: inline-block;">
-            <img src="${dataUrl}" style="max-width: 100%; max-height: 52vh; display: block; object-fit: contain;" alt="Poster Preview">
+          <div style="max-height: 50vh; overflow: hidden; border-radius: 12px; border: 2px solid var(--brand-primary); box-shadow: var(--card-shadow); display: inline-block;">
+            <img src="${dataUrl}" style="max-width: 100%; max-height: 50vh; display: block; object-fit: contain;" alt="Poster Preview">
           </div>
         </div>
         <div class="modal-footer" style="display: flex; gap: 8px; justify-content: center; padding-top: 10px; border-top: none;">
           <button class="btn btn-secondary" style="font-size: 0.85rem; padding: 8px 16px;" onclick="this.closest('.modal-overlay').remove()">إغلاق</button>
-          <a class="btn btn-primary" style="font-size: 0.85rem; padding: 8px 16px; text-decoration: none;" href="${dataUrl}" download="${filename}">
+          <a class="btn btn-primary" style="font-size: 0.85rem; padding: 8px 16px; text-decoration: none; font-weight: 800;" href="${dataUrl}" download="${filename}">
             📥 تنزيل الصورة
           </a>
         </div>
@@ -210,7 +182,7 @@ export class PosterService {
    * @param {'horizontal' | 'vertical'} format 
    * @param {string} themeKey
    */
-  static async exportFlyerAsImage(product, format = 'horizontal', themeKey = 'dark_gold') {
+  static async exportFlyerAsImage(product, format = 'vertical', themeKey = 'dark_gold') {
     const theme = POSTER_THEMES[themeKey] || POSTER_THEMES.dark_gold;
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -458,8 +430,8 @@ export class PosterService {
     try {
       return await QRCode.toDataURL(storeUrl, {
         margin: 1,
-        width: 400,
-        errorCorrectionLevel: 'H',
+        width: 360,
+        errorCorrectionLevel: 'M',
         color: { dark: '#000000', light: '#ffffff' }
       });
     } catch (e) {

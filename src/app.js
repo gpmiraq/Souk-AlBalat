@@ -1380,9 +1380,9 @@ class SoukApp {
       const isVertical = selectedFormat === 'vertical';
       return `
         <div class="${isVertical ? 'flyer-preview-vertical' : 'flyer-preview-horizontal'} flyer-theme-${selectedTheme}" id="flyer-render-target">
-          <div class="flyer-image-col" style="position: relative; overflow: hidden; border-radius: 14px;">
+          <div class="flyer-image-col" style="position: relative; overflow: hidden; border-radius: 12px;">
             <img src="${product.image}" alt="${product.title}" style="width:100%; height:100%; object-fit:cover; display:block;">
-            <span class="badge badge-new" style="position: absolute; top: 12px; right: 12px; z-index: 5; font-size: 0.82rem; padding: 5px 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
+            <span class="badge badge-new" style="position: absolute; top: 8px; right: 8px; z-index: 5; font-size: 0.75rem; padding: 4px 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
               ${PRODUCT_CONDITIONS[product.condition?.toUpperCase()]?.label || product.conditionLabel || 'أوبن بوكس'}
             </span>
           </div>
@@ -1394,20 +1394,20 @@ class SoukApp {
             </div>
 
             <h2 class="flyer-product-title">${product.title}</h2>
-            <div style="font-size: 0.85rem; color: #d1d5db;">الموديل / الكود: #${product.id}</div>
+            <div style="font-size: 0.78rem; color: #94a3b8;">الموديل / الكود: #${product.id}</div>
 
             <div class="flyer-price-container">
               <span class="flyer-price-label">السعر:</span>
               <span class="flyer-price-value">${Number(product.price).toLocaleString()} ${APP_CONFIG.CURRENCY}</span>
             </div>
 
-            <div class="flyer-qr-footer" style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+            <div class="flyer-qr-footer">
               <div>
-                <div style="font-size: 0.85rem; font-weight: 700; color: #f59e0b;">امسح الكود بكاميرا الموبايل للتسوق</div>
-                <div style="font-size: 0.75rem; color: #94a3b8;">souk-al-balat.vercel.app</div>
+                <div style="font-size: 0.75rem; font-weight: 700; color: #f59e0b;">امسح الكود بكاميرا الموبايل للطلب</div>
+                <div style="font-size: 0.68rem; color: #94a3b8;">souk-al-balat.vercel.app</div>
               </div>
-              <div class="flyer-qr-box" style="background:#ffffff; padding:4px; border-radius:10px; display:flex; align-items:center; justify-content:center; width:80px; height:80px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); border:2px solid #f59e0b;">
-                ${qrDataUrl ? `<img src="${qrDataUrl}" style="width:72px; height:72px; object-fit:contain; display:block;" alt="QR Code">` : '📱'}
+              <div class="flyer-qr-box" style="background:#ffffff; padding:3px; border-radius:8px; display:flex; align-items:center; justify-content:center; box-shadow: 0 4px 12px rgba(0,0,0,0.3); border:1.5px solid #f59e0b; flex-shrink: 0;">
+                ${qrDataUrl ? `<img src="${qrDataUrl}" style="width:38px; height:38px; object-fit:contain; display:block;" alt="QR Code">` : '📱'}
               </div>
             </div>
           </div>
@@ -1418,44 +1418,55 @@ class SoukApp {
     modalOverlay.innerHTML = `
       <div class="modal-container marketing-poster-modal">
         <div class="modal-header">
-          <div class="modal-title">
+          <div class="modal-title" style="display: flex; align-items: center; gap: 8px;">
             <span>✨</span>
             <span>بطاقة / هوية تسويقية جاهزة للمشاركة</span>
           </div>
           <div class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</div>
         </div>
 
-        <div class="modal-body">
-          <!-- Theme Selector Bar -->
-          <div style="margin-bottom: 12px; text-align: center;">
-            <div style="font-size: 0.8rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 6px;">🎨 اختر مظهر وألوان البوستر:</div>
-            <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
-              <button class="btn btn-secondary btn-poster-theme-pill active" data-theme="dark_gold" style="font-size: 0.75rem; padding: 4px 10px; font-weight: 800;">🌙 داكن ذهبي</button>
-              <button class="btn btn-secondary btn-poster-theme-pill" data-theme="light_modern" style="font-size: 0.75rem; padding: 4px 10px; font-weight: 800;">☀️ فاتح مودرن</button>
-              <button class="btn btn-secondary btn-poster-theme-pill" data-theme="neon_cyber" style="font-size: 0.75rem; padding: 4px 10px; font-weight: 800;">⚡ نيون أزرق</button>
-              <button class="btn btn-secondary btn-poster-theme-pill" data-theme="royal_purple" style="font-size: 0.75rem; padding: 4px 10px; font-weight: 800;">💎 ملكي بنفسجي</button>
+        <div class="modal-body" style="padding: 14px;">
+          <div class="poster-modal-desktop-layout">
+            <!-- Left Side: Controls Panel -->
+            <div class="poster-controls-sidebar">
+              <div>
+                <label class="control-label">🎨 اختر مظهر وألوان البوستر:</label>
+                <div class="poster-themes-grid">
+                  <button class="btn btn-secondary btn-poster-theme-pill active" data-theme="dark_gold" style="font-size: 0.75rem; padding: 6px 8px; font-weight: 800;">🌙 داكن ذهبي</button>
+                  <button class="btn btn-secondary btn-poster-theme-pill" data-theme="light_modern" style="font-size: 0.75rem; padding: 6px 8px; font-weight: 800;">☀️ فاتح مودرن</button>
+                  <button class="btn btn-secondary btn-poster-theme-pill" data-theme="neon_cyber" style="font-size: 0.75rem; padding: 6px 8px; font-weight: 800;">⚡ نيون أزرق</button>
+                  <button class="btn btn-secondary btn-poster-theme-pill" data-theme="royal_purple" style="font-size: 0.75rem; padding: 6px 8px; font-weight: 800;">💎 ملكي بنفسجي</button>
+                </div>
+              </div>
+
+              <div>
+                <label class="control-label">📐 قياس وتنسيق البوستر:</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                  <button class="btn btn-primary btn-poster-format-toggle active" data-format="vertical" style="font-weight: 900; font-size: 0.85rem; padding: 8px;">
+                    📱 عمودي
+                  </button>
+                  <button class="btn btn-secondary btn-poster-format-toggle" data-format="horizontal" style="font-weight: 900; font-size: 0.85rem; padding: 8px;">
+                    🖥️ أفقي
+                  </button>
+                </div>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 8px; margin-top: auto;">
+                <button class="btn btn-primary" id="btn-download-poster-action" style="font-weight: 900; font-size: 0.95rem; padding: 12px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                  💾 حفظ / تنزيل البوستر
+                </button>
+                <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()" style="font-size: 0.85rem; padding: 8px;">
+                  إلغاء
+                </button>
+              </div>
             </div>
-          </div>
 
-          <div id="dynamic-poster-preview-box">
-            ${updatePreviewHTML()}
-          </div>
-
-          <p style="font-size: 0.78rem; color: var(--text-tertiary); text-align: center; margin-top: 10px; margin-bottom: 0;">
-            * اضغط على زر التدوير 🔄 لقلب شكل البوستر بين (العمودي للستوري 📱) و (الأفقي للمنشورات 🖥️).
-          </p>
-        </div>
-
-        <div class="modal-footer">
-          <button class="btn btn-secondary" id="btn-toggle-poster-format" style="width: 100%; font-weight: 800;">
-            🔄 📱 قلب الشكل (${selectedFormat === 'vertical' ? 'عمودي ستوري' : 'أفقي عريض'})
-          </button>
-
-          <div class="poster-footer-row-actions">
-            <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">إلغاء</button>
-            <button class="btn btn-primary" id="btn-download-poster-action" style="font-weight: 800;">
-              💾 حفظ / مشاركة البوستر
-            </button>
+            <!-- Right Side: Preview Stage -->
+            <div class="poster-preview-stage">
+              <div id="dynamic-poster-preview-box">
+                ${updatePreviewHTML()}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1463,13 +1474,20 @@ class SoukApp {
 
     document.body.appendChild(modalOverlay);
 
-    const toggleBtn = modalOverlay.querySelector('#btn-toggle-poster-format');
     const previewBox = modalOverlay.querySelector('#dynamic-poster-preview-box');
+    const formatBtns = modalOverlay.querySelectorAll('.btn-poster-format-toggle');
 
-    toggleBtn.addEventListener('click', () => {
-      selectedFormat = selectedFormat === 'vertical' ? 'horizontal' : 'vertical';
-      toggleBtn.innerHTML = `🔄 📱 قلب الشكل (${selectedFormat === 'vertical' ? 'عمودي ستوري' : 'أفقي عريض'})`;
-      previewBox.innerHTML = updatePreviewHTML();
+    formatBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        formatBtns.forEach(b => {
+          b.classList.remove('btn-primary', 'active');
+          b.classList.add('btn-secondary');
+        });
+        btn.classList.remove('btn-secondary');
+        btn.classList.add('btn-primary', 'active');
+        selectedFormat = btn.dataset.format;
+        previewBox.innerHTML = updatePreviewHTML();
+      });
     });
 
     modalOverlay.querySelectorAll('.btn-poster-theme-pill').forEach(btn => {
@@ -1487,12 +1505,13 @@ class SoukApp {
       downloadBtn.innerHTML = '⏳ جاري المعالجة...';
       try {
         await PosterService.exportFlyerAsImage(product, selectedFormat, selectedTheme);
-        this.showToast(`تم تجهيز وحفظ البوستر (${selectedFormat === 'vertical' ? 'العمودي 📱' : 'الأفقي 🖥️'}) بنجاح!`, 'success');
+        this.showToast(`تم حفظ البوستر (${selectedFormat === 'vertical' ? 'العمودي 📱' : 'الأفقي 🖥️'}) بنجاح!`, 'success');
       } catch (err) {
+        console.error(err);
         this.showToast('حدث خطأ أثناء إنشاء البوستر، يرجى المحاولة ثانية', 'error');
       } finally {
         downloadBtn.disabled = false;
-        downloadBtn.innerHTML = '💾 حفظ / مشاركة البوستر';
+        downloadBtn.innerHTML = '💾 حفظ / تنزيل البوستر';
       }
     });
   }
@@ -1516,60 +1535,57 @@ class SoukApp {
 
     const updateStorePreviewHTML = () => {
       const isVert = selectedFormat === 'vertical';
+      const avatarUrl = AuthService.getMerchantAvatar(merchant);
       return `
-        <div style="background: ${selectedTheme === 'dark_gold' ? 'linear-gradient(135deg, #0f172a, #020617)' : selectedTheme === 'light_modern' ? 'linear-gradient(135deg, #ffffff, #f1f5f9)' : selectedTheme === 'neon_cyber' ? 'linear-gradient(135deg, #090d16, #020617)' : 'linear-gradient(135deg, #1e112a, #0d0517)'}; color: ${selectedTheme === 'light_modern' ? '#0f172a' : '#ffffff'}; border: 2px solid ${selectedTheme === 'dark_gold' ? '#f59e0b' : selectedTheme === 'light_modern' ? '#2563eb' : selectedTheme === 'neon_cyber' ? '#06b6d4' : '#c084fc'}; border-radius: var(--radius-lg); padding: 18px 14px; text-align: center; box-shadow: var(--card-shadow);">
+        <div style="background: ${selectedTheme === 'dark_gold' ? 'linear-gradient(135deg, #0f172a, #020617)' : selectedTheme === 'light_modern' ? 'linear-gradient(135deg, #ffffff, #f1f5f9)' : selectedTheme === 'neon_cyber' ? 'linear-gradient(135deg, #090d16, #020617)' : 'linear-gradient(135deg, #1e112a, #0d0517)'}; color: ${selectedTheme === 'light_modern' ? '#0f172a' : '#ffffff'}; border: 2px solid ${selectedTheme === 'dark_gold' ? '#f59e0b' : selectedTheme === 'light_modern' ? '#2563eb' : selectedTheme === 'neon_cyber' ? '#06b6d4' : '#c084fc'}; border-radius: var(--radius-lg); padding: 14px; text-align: center; box-shadow: var(--card-shadow); max-height: 65vh; overflow: hidden;">
           ${isVert ? `
-            <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
-              <div style="font-size: 0.8rem; font-weight: 800; color: ${selectedTheme === 'dark_gold' ? '#f59e0b' : selectedTheme === 'light_modern' ? '#2563eb' : selectedTheme === 'neon_cyber' ? '#22d3ee' : '#e879f9'}; background: rgba(255,255,255,0.08); padding: 3px 12px; border-radius: 20px;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+              <div style="font-size: 0.78rem; font-weight: 800; color: ${selectedTheme === 'dark_gold' ? '#f59e0b' : selectedTheme === 'light_modern' ? '#2563eb' : selectedTheme === 'neon_cyber' ? '#22d3ee' : '#e879f9'}; background: rgba(255,255,255,0.08); padding: 2px 10px; border-radius: 20px;">
                 ⚡ ${APP_CONFIG.STORE_NAME_SHORT} | المتجر الرسمي
               </div>
 
               <!-- Avatar directly above name -->
-              ${merchant.avatar ? `
-                <img src="${merchant.avatar}" style="width: 76px; height: 76px; border-radius: 50%; object-fit: cover; border: 3px solid ${selectedTheme === 'dark_gold' ? '#f59e0b' : selectedTheme === 'light_modern' ? '#2563eb' : selectedTheme === 'neon_cyber' ? '#06b6d4' : '#c084fc'}; box-shadow: 0 4px 14px rgba(0,0,0,0.3);" alt="${merchant.name}">
-              ` : ''}
+              <img src="${avatarUrl}" style="width: 68px; height: 68px; border-radius: 50%; object-fit: cover; border: 2.5px solid ${selectedTheme === 'dark_gold' ? '#f59e0b' : selectedTheme === 'light_modern' ? '#2563eb' : selectedTheme === 'neon_cyber' ? '#06b6d4' : '#c084fc'}; box-shadow: 0 4px 14px rgba(0,0,0,0.3);" alt="${merchant.name}">
 
               <div>
-                <h3 style="font-size: 1.15rem; font-weight: 900; color: ${selectedTheme === 'light_modern' ? '#0f172a' : '#ffffff'}; margin-bottom: 2px;">
+                <h3 style="font-size: 1.05rem; font-weight: 900; color: ${selectedTheme === 'light_modern' ? '#0f172a' : '#ffffff'}; margin-bottom: 2px;">
                   🏪 ${merchant.name} ✓
                 </h3>
-                <div style="font-size: 0.78rem; color: #f59e0b; font-weight: 800;">
+                <div style="font-size: 0.75rem; color: #f59e0b; font-weight: 800;">
                   👑 مدير ومؤسس الموقع | حساب معتمد وموثوق
                 </div>
-                <div style="font-size: 0.72rem; color: ${selectedTheme === 'light_modern' ? '#64748b' : '#94a3b8'}; margin-top: 2px;">
+                <div style="font-size: 0.7rem; color: ${selectedTheme === 'light_modern' ? '#64748b' : '#94a3b8'}; margin-top: 2px;">
                   📞 واتساب: ${merchant.phone} | 📦 معروض: ${sellerProducts.length} قطعة
                 </div>
               </div>
 
               <!-- Real Ultra-HD QR Code with White Rounded Background -->
-              <div style="background: #ffffff; padding: 6px; border-radius: 12px; border: 2px solid ${selectedTheme === 'dark_gold' ? '#f59e0b' : selectedTheme === 'light_modern' ? '#2563eb' : selectedTheme === 'neon_cyber' ? '#06b6d4' : '#c084fc'}; box-shadow: 0 6px 18px rgba(0,0,0,0.3); margin-top: 4px;">
-                ${qrDataUrl ? `<img src="${qrDataUrl}" style="width: 110px; height: 110px; object-fit: contain; display: block;" alt="Store QR Code">` : '📱'}
+              <div style="background: #ffffff; padding: 4px; border-radius: 10px; border: 1.5px solid ${selectedTheme === 'dark_gold' ? '#f59e0b' : selectedTheme === 'light_modern' ? '#2563eb' : selectedTheme === 'neon_cyber' ? '#06b6d4' : '#c084fc'}; box-shadow: 0 6px 18px rgba(0,0,0,0.3);">
+                ${qrDataUrl ? `<img src="${qrDataUrl}" style="width: 90px; height: 90px; object-fit: contain; display: block;" alt="Store QR Code">` : '📱'}
               </div>
 
-              <div style="font-size: 0.78rem; font-weight: 800; color: ${selectedTheme === 'light_modern' ? '#0f172a' : '#f8fafc'};">
+              <div style="font-size: 0.75rem; font-weight: 800; color: ${selectedTheme === 'light_modern' ? '#0f172a' : '#f8fafc'};">
                 📷 امسح الكود بكاميرا الموبايل لزيارة متجري
               </div>
             </div>
           ` : `
-            <div style="display: grid; grid-template-columns: 1fr 1.4fr; gap: 14px; align-items: center; text-align: right;">
+            <div style="display: grid; grid-template-columns: 1fr 1.4fr; gap: 12px; align-items: center; text-align: right;">
               <div style="text-align: center;">
-                <div style="background: #ffffff; padding: 4px; border-radius: 10px; display: inline-block; border: 2px solid ${selectedTheme === 'dark_gold' ? '#f59e0b' : selectedTheme === 'light_modern' ? '#2563eb' : selectedTheme === 'neon_cyber' ? '#06b6d4' : '#c084fc'};">
-                  ${qrDataUrl ? `<img src="${qrDataUrl}" style="width: 80px; height: 80px; object-fit: contain; display: block;" alt="Store QR Code">` : '📱'}
+                <div style="background: #ffffff; padding: 4px; border-radius: 10px; display: inline-block; border: 1.5px solid ${selectedTheme === 'dark_gold' ? '#f59e0b' : selectedTheme === 'light_modern' ? '#2563eb' : selectedTheme === 'neon_cyber' ? '#06b6d4' : '#c084fc'};">
+                  ${qrDataUrl ? `<img src="${qrDataUrl}" style="width: 70px; height: 70px; object-fit: contain; display: block;" alt="Store QR Code">` : '📱'}
                 </div>
-                <div style="font-size: 0.68rem; font-weight: 700; color: ${selectedTheme === 'light_modern' ? '#475569' : '#cbd5e1'}; margin-top: 4px;">امسح للزيارة 📷</div>
+                <div style="font-size: 0.65rem; font-weight: 700; color: ${selectedTheme === 'light_modern' ? '#475569' : '#cbd5e1'}; margin-top: 4px;">امسح للزيارة 📷</div>
               </div>
 
               <div>
-                ${merchant.avatar ? `
-                  <img src="${merchant.avatar}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 2px solid ${selectedTheme === 'dark_gold' ? '#f59e0b' : '#2563eb'}; margin-bottom: 4px;" alt="${merchant.name}">
-                ` : ''}
-                <div style="font-size: 1rem; font-weight: 900; color: ${selectedTheme === 'light_modern' ? '#0f172a' : '#ffffff'};">
+                <img src="${avatarUrl}" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid ${selectedTheme === 'dark_gold' ? '#f59e0b' : '#2563eb'}; margin-bottom: 4px;" alt="${merchant.name}">
+                <div style="font-size: 0.95rem; font-weight: 900; color: ${selectedTheme === 'light_modern' ? '#0f172a' : '#ffffff'};">
                   🏪 ${merchant.name} ✓
                 </div>
-                <div style="font-size: 0.72rem; color: #f59e0b; font-weight: 800;">
+                <div style="font-size: 0.7rem; color: #f59e0b; font-weight: 800;">
                   👑 مدير ومؤسس الموقع
                 </div>
-                <div style="font-size: 0.7rem; color: ${selectedTheme === 'light_modern' ? '#64748b' : '#94a3b8'};">
+                <div style="font-size: 0.68rem; color: ${selectedTheme === 'light_modern' ? '#64748b' : '#94a3b8'};">
                   📞 واتساب: ${merchant.phone}
                 </div>
               </div>
@@ -1580,7 +1596,7 @@ class SoukApp {
     };
 
     modalOverlay.innerHTML = `
-      <div class="modal-container marketing-poster-modal" style="max-width: 650px;">
+      <div class="modal-container marketing-poster-modal">
         <div class="modal-header">
           <div class="modal-title" style="display: flex; align-items: center; gap: 8px;">
             <span>📷</span>
@@ -1589,33 +1605,48 @@ class SoukApp {
           <div class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</div>
         </div>
 
-        <div class="modal-body">
-          <!-- Theme Selector Bar -->
-          <div style="margin-bottom: 14px; text-align: center;">
-            <div style="font-size: 0.82rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 6px;">🎨 اختر مظهر وألوان البوستر:</div>
-            <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
-              <button class="btn btn-secondary btn-store-theme-pill active" data-theme="dark_gold" style="font-size: 0.78rem; padding: 5px 12px; font-weight: 800;">🌙 داكن ذهبي</button>
-              <button class="btn btn-secondary btn-store-theme-pill" data-theme="light_modern" style="font-size: 0.78rem; padding: 5px 12px; font-weight: 800;">☀️ فاتح مودرن</button>
-              <button class="btn btn-secondary btn-store-theme-pill" data-theme="neon_cyber" style="font-size: 0.78rem; padding: 5px 12px; font-weight: 800;">⚡ نيون أزرق</button>
-              <button class="btn btn-secondary btn-store-theme-pill" data-theme="royal_purple" style="font-size: 0.78rem; padding: 5px 12px; font-weight: 800;">💎 ملكي بنفسجي</button>
+        <div class="modal-body" style="padding: 14px;">
+          <div class="poster-modal-desktop-layout">
+            <!-- Left Side: Controls Panel -->
+            <div class="poster-controls-sidebar">
+              <div>
+                <label class="control-label">🎨 اختر مظهر وألوان البوستر:</label>
+                <div class="poster-themes-grid">
+                  <button class="btn btn-secondary btn-store-theme-pill active" data-theme="dark_gold" style="font-size: 0.75rem; padding: 6px 8px; font-weight: 800;">🌙 داكن ذهبي</button>
+                  <button class="btn btn-secondary btn-store-theme-pill" data-theme="light_modern" style="font-size: 0.75rem; padding: 6px 8px; font-weight: 800;">☀️ فاتح مودرن</button>
+                  <button class="btn btn-secondary btn-store-theme-pill" data-theme="neon_cyber" style="font-size: 0.75rem; padding: 6px 8px; font-weight: 800;">⚡ نيون أزرق</button>
+                  <button class="btn btn-secondary btn-store-theme-pill" data-theme="royal_purple" style="font-size: 0.75rem; padding: 6px 8px; font-weight: 800;">💎 ملكي بنفسجي</button>
+                </div>
+              </div>
+
+              <div>
+                <label class="control-label">📐 قياس وتنسيق البوستر:</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                  <button class="btn btn-primary btn-store-format-toggle active" data-format="vertical" style="font-weight: 900; font-size: 0.85rem; padding: 8px;">
+                    📱 عمودي
+                  </button>
+                  <button class="btn btn-secondary btn-store-format-toggle" data-format="horizontal" style="font-weight: 900; font-size: 0.85rem; padding: 8px;">
+                    🖥️ أفقي
+                  </button>
+                </div>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 8px; margin-top: auto;">
+                <button class="btn btn-primary" id="btn-download-store-poster-act" style="font-weight: 900; font-size: 0.95rem; padding: 12px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                  💾 حفظ / تنزيل البوستر
+                </button>
+                <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()" style="font-size: 0.85rem; padding: 8px;">
+                  إلغاء
+                </button>
+              </div>
             </div>
-          </div>
 
-          <div id="store-poster-preview-box">
-            ${updateStorePreviewHTML()}
-          </div>
-        </div>
-
-        <div class="modal-footer" style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-          <button class="btn btn-secondary" id="btn-toggle-store-poster-format" style="font-weight: 800;">
-            🔄 📱 قلب الشكل (${selectedFormat === 'vertical' ? 'عمودي ستوري' : 'أفقي عريض'})
-          </button>
-
-          <div style="display: flex; gap: 8px;">
-            <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">إلغاء</button>
-            <button class="btn btn-primary" id="btn-download-store-poster-act" style="font-weight: 800;">
-              📷 تحميل بوستر المتجر كصورة PNG
-            </button>
+            <!-- Right Side: Preview Stage -->
+            <div class="poster-preview-stage">
+              <div id="store-poster-preview-box">
+                ${updateStorePreviewHTML()}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1623,13 +1654,20 @@ class SoukApp {
 
     document.body.appendChild(modalOverlay);
 
-    const toggleBtn = modalOverlay.querySelector('#btn-toggle-store-poster-format');
     const previewBox = modalOverlay.querySelector('#store-poster-preview-box');
+    const formatBtns = modalOverlay.querySelectorAll('.btn-store-format-toggle');
 
-    toggleBtn.addEventListener('click', () => {
-      selectedFormat = selectedFormat === 'vertical' ? 'horizontal' : 'vertical';
-      toggleBtn.innerHTML = `🔄 📱 قلب الشكل (${selectedFormat === 'vertical' ? 'عمودي ستوري' : 'أفقي عريض'})`;
-      previewBox.innerHTML = updateStorePreviewHTML();
+    formatBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        formatBtns.forEach(b => {
+          b.classList.remove('btn-primary', 'active');
+          b.classList.add('btn-secondary');
+        });
+        btn.classList.remove('btn-secondary');
+        btn.classList.add('btn-primary', 'active');
+        selectedFormat = btn.dataset.format;
+        previewBox.innerHTML = updateStorePreviewHTML();
+      });
     });
 
     modalOverlay.querySelectorAll('.btn-store-theme-pill').forEach(btn => {
@@ -1642,8 +1680,18 @@ class SoukApp {
     });
 
     modalOverlay.querySelector('#btn-download-store-poster-act')?.addEventListener('click', async () => {
-      await PosterService.exportMerchantStorePosterAsImage(merchant, sellerProducts, selectedFormat, selectedTheme);
-      this.showToast(`تم تحميل بوستر المتجر (${selectedFormat === 'vertical' ? 'العمودي 📱' : 'الأفقي 🖥️'}) بنجاح!`, 'success');
+      const downloadBtn = modalOverlay.querySelector('#btn-download-store-poster-act');
+      downloadBtn.disabled = true;
+      downloadBtn.innerHTML = '⏳ جاري المعالجة...';
+      try {
+        await PosterService.exportMerchantStorePosterAsImage(merchant, sellerProducts, selectedFormat, selectedTheme);
+        this.showToast(`تم تحميل بوستر المتجر (${selectedFormat === 'vertical' ? 'العمودي 📱' : 'الأفقي 🖥️'}) بنجاح!`, 'success');
+      } catch (e) {
+        this.showToast('حدث خطأ أثناء إنشاء البوستر', 'error');
+      } finally {
+        downloadBtn.disabled = false;
+        downloadBtn.innerHTML = '💾 حفظ / تنزيل البوستر';
+      }
     });
   }
 
