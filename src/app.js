@@ -800,8 +800,30 @@ class SoukApp {
 
     const imagesList = product.images?.length > 0 ? product.images : [product.image];
     const merchantObj = AuthService.getMerchantById(product.merchantId || 'm-alwareth');
-    const relatedFromSeller = ProductsService.getProducts().filter(p => p.merchantId === product.merchantId && p.id !== product.id).slice(0, 4);
-    const relatedFromCategory = ProductsService.getProducts().filter(p => p.category === product.category && p.id !== product.id).slice(0, 4);
+    
+    // Deduplicated Related Products Engine (Zero Overlap between sections)
+    const allProducts = ProductsService.getProducts();
+    const usedProductIds = new Set([product.id]);
+
+    // 1. Products from the same merchant (up to 4 items)
+    const relatedFromSeller = allProducts
+      .filter(p => p.merchantId === product.merchantId && !usedProductIds.has(p.id))
+      .slice(0, 4);
+
+    relatedFromSeller.forEach(p => usedProductIds.add(p.id));
+
+    // 2. Similar products from other merchants / whole site (Strictly excluding items already displayed above)
+    let relatedFromCategory = allProducts
+      .filter(p => !usedProductIds.has(p.id) && (p.category === product.category || p.condition === product.condition))
+      .slice(0, 4);
+
+    // If not enough from exact category, pick other unique active products
+    if (relatedFromCategory.length < 4) {
+      const additional = allProducts
+        .filter(p => !usedProductIds.has(p.id) && !relatedFromCategory.some(r => r.id === p.id))
+        .slice(0, 4 - relatedFromCategory.length);
+      relatedFromCategory = [...relatedFromCategory, ...additional];
+    }
 
     this.appEl.innerHTML = `
       <!-- Top Announcement Marquee -->
