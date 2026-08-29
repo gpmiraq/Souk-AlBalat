@@ -124,8 +124,33 @@ class SoukApp {
 
   getActiveCategories() {
     const products = ProductsService.getProducts();
-    const productCategoryIds = new Set(products.map(p => p.category));
-    return this.categories.filter(cat => cat.id === 'all' || productCategoryIds.has(cat.id));
+    const usedCatValues = new Set(products.map(p => p.category).filter(Boolean));
+
+    const activeList = [{ id: 'all', name: 'الكل', icon: '✨' }];
+    const seenNames = new Set(['الكل']);
+
+    (this.categories || []).forEach(cat => {
+      if (cat.id === 'all') return;
+      const isUsed = usedCatValues.has(cat.name) || usedCatValues.has(cat.id);
+      if (isUsed && !seenNames.has(cat.name)) {
+        seenNames.add(cat.name);
+        activeList.push(cat);
+      }
+    });
+
+    // Also include any categories present in active products
+    products.forEach(p => {
+      if (p.category && !seenNames.has(p.category)) {
+        seenNames.add(p.category);
+        activeList.push({
+          id: p.category,
+          name: p.category,
+          icon: '📦'
+        });
+      }
+    });
+
+    return activeList;
   }
 
   render() {
@@ -149,8 +174,24 @@ class SoukApp {
     const products = ProductsService.getProducts();
     const activeCategories = this.getActiveCategories();
 
+    const activeCatObj = activeCategories.find(c => c.id === this.activeCategory || c.name === this.activeCategory);
+
+    const countProductsInCat = (c) => {
+      if (c.id === 'all') return products.length;
+      return products.filter(p => p.category === c.id || p.category === c.name).length;
+    };
+
+    const isCatActive = (c) => {
+      if (this.activeCategory === 'all' && c.id === 'all') return true;
+      if (this.activeCategory === c.id || this.activeCategory === c.name) return true;
+      if (activeCatObj && (activeCatObj.id === c.id || activeCatObj.name === c.name)) return true;
+      return false;
+    };
+
     const filteredProducts = products.filter(p => {
-      const matchCat = this.activeCategory === 'all' || p.category === this.activeCategory;
+      const matchCat = this.activeCategory === 'all' || 
+        p.category === this.activeCategory || 
+        (activeCatObj && (p.category === activeCatObj.name || p.category === activeCatObj.id));
       const matchCondition = this.activeCondition === 'all' || p.condition === this.activeCondition;
       const matchSearch = !this.searchQuery || p.title.toLowerCase().includes(this.searchQuery.toLowerCase());
       return matchCat && matchCondition && matchSearch;
@@ -188,7 +229,7 @@ class SoukApp {
             <!-- Search Bar -->
             <div class="header-search-box">
               <select class="search-category-select" id="search-cat-dropdown">
-                ${activeCategories.map(c => `<option value="${c.id}" ${this.activeCategory === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}
+                ${activeCategories.map(c => `<option value="${c.id}" ${isCatActive(c) ? 'selected' : ''}>${c.name}</option>`).join('')}
               </select>
               <input type="text" class="search-input" id="search-keyword-input" placeholder="ابحث عن موديل، ماركة، أو كود..." value="${this.searchQuery}">
               <button class="search-submit-btn" id="btn-search-trigger">🔍 بحث</button>
@@ -213,8 +254,8 @@ class SoukApp {
           <div class="container">
             <div class="categories-list">
               ${activeCategories.map(cat => `
-                <button class="category-pill ${this.activeCategory === cat.id ? 'active' : ''}" data-cat="${cat.id}">
-                  ${cat.icon} ${cat.name}
+                <button class="category-pill ${isCatActive(cat) ? 'active' : ''}" data-cat="${cat.id}">
+                  ${cat.icon || '📦'} ${cat.name}
                 </button>
               `).join('')}
             </div>
@@ -236,9 +277,9 @@ class SoukApp {
         <div style="margin-bottom: 20px;">
           <h4 style="font-size: 0.85rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 8px;">التصنيفات:</h4>
           ${activeCategories.map(c => `
-            <div class="filter-list-item ${this.activeCategory === c.id ? 'active' : ''}" data-cat="${c.id}" style="padding: 10px 8px; margin-bottom: 4px;">
-              <span>${c.name}</span>
-              <span class="filter-count-badge">${products.filter(p => c.id === 'all' || p.category === c.id).length}</span>
+            <div class="filter-list-item ${isCatActive(c) ? 'active' : ''}" data-cat="${c.id}" style="padding: 10px 8px; margin-bottom: 4px;">
+              <span>${c.icon || '📦'} ${c.name}</span>
+              <span class="filter-count-badge">${countProductsInCat(c)}</span>
             </div>
           `).join('')}
         </div>
@@ -319,9 +360,9 @@ class SoukApp {
               </div>
               <div>
                 ${activeCategories.map(c => `
-                  <div class="filter-list-item ${this.activeCategory === c.id ? 'active' : ''}" data-cat="${c.id}">
-                    <span>${c.name}</span>
-                    <span class="filter-count-badge">${products.filter(p => c.id === 'all' || p.category === c.id).length}</span>
+                  <div class="filter-list-item ${isCatActive(c) ? 'active' : ''}" data-cat="${c.id}">
+                    <span>${c.icon || '📦'} ${c.name}</span>
+                    <span class="filter-count-badge">${countProductsInCat(c)}</span>
                   </div>
                 `).join('')}
               </div>
